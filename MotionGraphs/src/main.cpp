@@ -42,11 +42,10 @@
   * 1992 David G Yu -- Silicon Graphics Computer Systems
   */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
-#include <GL/glut.h>
+// # Headers 
+#include "../headers/pch.h"
+
+static int frame_time = 0;
 
 static int useRGB = 1;
 static int useLighting = 1;
@@ -59,7 +58,7 @@ static int tick = -1;
 static int moving = 1;
 
 #define GREY	0
-#define RED	1
+#define RED		1
 #define GREEN	2
 #define BLUE	3
 #define CYAN	4
@@ -534,6 +533,8 @@ display(void)
 	else {
 		glFlush();
 	}
+
+	int fps = glutGet(GLUT_ELAPSED_TIME);
 }
 
 void
