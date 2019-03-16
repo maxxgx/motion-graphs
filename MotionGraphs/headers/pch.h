@@ -8,10 +8,20 @@
 #define PCH_H
 
 // add headers that you want to pre-compile here
+// Include GLEW
+#include <GL/glew.h>
+
 #include <GL/glut.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+
+// Include GLFW
+#include <GLFW/glfw3.h>
+
+// Include GLM
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #endif //PCH_H

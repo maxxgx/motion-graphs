@@ -1,49 +1,11 @@
-
-/* Copyright (c) Mark J. Kilgard, 1994. */
-
-/**
- * (c) Copyright 1993, 1994, Silicon Graphics, Inc.
- * ALL RIGHTS RESERVED
- * Permission to use, copy, modify, and distribute this software for
- * any purpose and without fee is hereby granted, provided that the above
- * copyright notice appear in all copies and that both the copyright notice
- * and this permission notice appear in supporting documentation, and that
- * the name of Silicon Graphics, Inc. not be used in advertising
- * or publicity pertaining to distribution of the software without specific,
- * written prior permission.
- *
- * THE MATERIAL EMBODIED ON THIS SOFTWARE IS PROVIDED TO YOU "AS-IS"
- * AND WITHOUT WARRANTY OF ANY KIND, EXPRESS, IMPLIED OR OTHERWISE,
- * INCLUDING WITHOUT LIMITATION, ANY WARRANTY OF MERCHANTABILITY OR
- * FITNESS FOR A PARTICULAR PURPOSE.  IN NO EVENT SHALL SILICON
- * GRAPHICS, INC.  BE LIABLE TO YOU OR ANYONE ELSE FOR ANY DIRECT,
- * SPECIAL, INCIDENTAL, INDIRECT OR CONSEQUENTIAL DAMAGES OF ANY
- * KIND, OR ANY DAMAGES WHATSOEVER, INCLUDING WITHOUT LIMITATION,
- * LOSS OF PROFIT, LOSS OF USE, SAVINGS OR REVENUE, OR THE CLAIMS OF
- * THIRD PARTIES, WHETHER OR NOT SILICON GRAPHICS, INC.  HAS BEEN
- * ADVISED OF THE POSSIBILITY OF SUCH LOSS, HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE
- * POSSESSION, USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * US Government Users Restricted Rights
- * Use, duplication, or disclosure by the Government is subject to
- * restrictions set forth in FAR 52.227.19(c)(2) or subparagraph
- * (c)(1)(ii) of the Rights in Technical Data and Computer Software
- * clause at DFARS 252.227-7013 and/or in similar or successor
- * clauses in the FAR or the DOD or NASA FAR Supplement.
- * Unpublished-- rights reserved under the copyright laws of the
- * United States.  Contractor/manufacturer is Silicon Graphics,
- * Inc., 2011 N.  Shoreline Blvd., Mountain View, CA 94039-7311.
- *
- * OpenGL(TM) is a trademark of Silicon Graphics, Inc.
- */
-
- /*
-  * 1992 David G Yu -- Silicon Graphics Computer Systems
-  */
-
-// # Headers 
+/** Headers **/
 #include "../headers/pch.h"
+#include "../headers/Cube.h"
+#include <stdio.h>
+#include <tchar.h>
+#include <string>
+
+using namespace std;
 
 static int frame_time = 0;
 
@@ -65,6 +27,8 @@ static int moving = 1;
 #define MAGENTA	5
 #define YELLOW	6
 #define BLACK	7
+
+Cube *cube = new Cube(0,0,0, 2,1,1);
 
 static float materialColor[8][4] =
 {
@@ -278,7 +242,7 @@ drawCube(int color)
 	int i;
 
 	setColor(color);
-
+	
 	for (i = 0; i < 6; ++i) {
 		glNormal3fv(&cube_normals[i][0]);
 		glBegin(GL_POLYGON);
@@ -457,6 +421,30 @@ keyboard(unsigned char ch, int x, int y)
 	}
 }
 
+GLvoid glPrint(GLuint glfontlist, GLfloat x, GLfloat y, const char* fmt, ...)
+{
+	if (glIsList(glfontlist) == GL_FALSE) {
+		// Error Report?
+		return;
+	}
+
+	glRasterPos2f(x, y);
+
+	char text[256];
+	va_list ap;
+
+	if (fmt == NULL) return;
+
+	va_start(ap, fmt);
+	vsprintf_s(text, fmt, ap);
+	va_end(ap);
+
+	glPushAttrib(GL_LIST_BIT);
+	glListBase(glfontlist - 32);
+	glCallLists(strlen(text), GL_UNSIGNED_BYTE, text);
+	glPopAttrib();
+}
+
 void
 display(void)
 {
@@ -488,16 +476,16 @@ display(void)
 	glScalef(1.0, 2.0, 1.0);
 	glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat*)cubeXform);
 
-	drawCube(RED);        /* draw cube */
+	//drawCube(RED);        /* draw cube */
+	setColor(RED);
+	cube->z = -1;
+	cube->draw();
+	//glutSolidCube(1);
 	glPopMatrix();
+	
 
 	glDepthMask(GL_FALSE);
-	if (useRGB) {
-		glEnable(GL_BLEND);
-	}
-	else {
-		glEnable(GL_POLYGON_STIPPLE);
-	}
+	glEnable(GL_BLEND);
 	if (useFog) {
 		glDisable(GL_FOG);
 	}
@@ -517,13 +505,12 @@ display(void)
 	drawCube(BLACK);      /* draw back shadow */
 	glPopMatrix();
 
+	int fps = glutGet(GLUT_ELAPSED_TIME);
+	std::string s_fps = "FPS: " + std::to_string(fps);
+	//glPrint(1, 1.0f, 500.0f, "FPS: %s", s_fps);
+
 	glDepthMask(GL_TRUE);
-	if (useRGB) {
-		glDisable(GL_BLEND);
-	}
-	else {
-		glDisable(GL_POLYGON_STIPPLE);
-	}
+	glDisable(GL_BLEND);
 	if (useFog) {
 		glEnable(GL_FOG);
 	}
@@ -533,8 +520,7 @@ display(void)
 	else {
 		glFlush();
 	}
-
-	int fps = glutGet(GLUT_ELAPSED_TIME);
+	
 }
 
 void
@@ -589,7 +575,7 @@ visible(int state)
 int
 main(int argc, char** argv)
 {
-	int width = 350, height = 350;
+	int width = 700, height = 700;
 	int i;
 	char* name;
 	int fog_menu;
@@ -715,7 +701,7 @@ main(int argc, char** argv)
 		glPolygonStipple((const GLubyte*)shadowPattern);
 	}
 
-	glClearColor(0.0, 0.0, 0.0, 1);
+	glClearColor(0.2, 0.2, 0.2, 1);
 	glClearIndex(0);
 	glClearDepth(1);
 
