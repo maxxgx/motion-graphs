@@ -20,7 +20,8 @@ public:
 	/*Draw Cube and saves the cube x form matrix to draw shadows*/
 	void Drawable::draw();
 
-	void drawShadow(Scene scene);
+	/*Draws shadows on ground plane and back plane*/
+	void drawShadow(Scene *scene);
 	
 
 	~Cube();

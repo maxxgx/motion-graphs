@@ -5,6 +5,95 @@ Scene::Scene()
 {
 }
 
+Scene::Scene(char* name)
+{
+	this->name = name;
+}
+
+void Scene::setup()
+{
+	static char* windowNameRGBDB = (char*)"shadow cube (OpenGL RGB DB)";
+	static char* windowNameRGB = (char*)"shadow cube (OpenGL RGB)";
+	static char* windowNameIndexDB = (char*)"shadow cube (OpenGL Index DB)";
+	static char* windowNameIndex = (char*)"shadow cube (OpenGL Index)";
+	/* choose visual */
+	if (useRGB) {
+		if (useDB) {
+			glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+			name = windowNameRGBDB;
+		}
+		else {
+			glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB | GLUT_DEPTH);
+			name = windowNameRGB;
+		}
+	}
+	else {
+		if (useDB) {
+			glutInitDisplayMode(GLUT_DOUBLE | GLUT_INDEX | GLUT_DEPTH);
+			name = windowNameIndexDB;
+		}
+		else {
+			glutInitDisplayMode(GLUT_SINGLE | GLUT_INDEX | GLUT_DEPTH);
+			name = windowNameIndex;
+		}
+	}
+
+	glutCreateWindow(name);
+
+	buildColormap();	
+
+	/* setup context */
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 3.0);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glTranslatef(0.0, 0.0, -2.0);
+
+	glEnable(GL_DEPTH_TEST);
+
+	if (useLighting) {
+		glEnable(GL_LIGHTING);
+	}
+	glEnable(GL_LIGHT0);
+	glLightfv(GL_LIGHT0, GL_POSITION, lightPos);
+	glLightfv(GL_LIGHT0, GL_AMBIENT, lightAmb);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, lightDiff);
+	glLightfv(GL_LIGHT0, GL_SPECULAR, lightSpec);
+#if 0
+	glLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, lightDir);
+	glLightf(GL_LIGHT0, GL_SPOT_EXPONENT, 80);
+	glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, 25);
+#endif
+
+	glEnable(GL_NORMALIZE);
+
+	if (useFog) {
+		glEnable(GL_FOG);
+	}
+	glFogfv(GL_FOG_COLOR, fogColor);
+	glFogfv(GL_FOG_INDEX, fogIndex);
+	glFogf(GL_FOG_MODE, GL_EXP);
+	glFogf(GL_FOG_DENSITY, 0.5);
+	glFogf(GL_FOG_START, 1.0);
+	glFogf(GL_FOG_END, 3.0);
+
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+
+	glShadeModel(GL_SMOOTH);
+
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	if (useLogo) {
+		glPolygonStipple((const GLubyte*)sgiPattern);
+	}
+	else {
+		glPolygonStipple((const GLubyte*)shadowPattern);
+	}
+	printf("Scene setup... done\n");
+}
+
 void Scene::drawCheckPlane(int w, int h, int evenColor, int oddColor)
 {
 	static int initialized = 0;

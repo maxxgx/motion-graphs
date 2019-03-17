@@ -12,6 +12,7 @@
 class Scene
 {
 public:
+	char* name = (char*)"opengl";
 	int useRGB = 1;
 	int useLighting = 1;
 	int useFog = 0;
@@ -20,7 +21,9 @@ public:
 	int useQuads = 1;
 
 	Scene();
+	Scene(char* name);
 
+	void setup();
 	void drawCheckPlane(int w, int h, int evenColor, int oddColor);
 	
 
