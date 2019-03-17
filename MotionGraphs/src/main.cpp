@@ -1,6 +1,7 @@
 /** Headers **/
 #include "../headers/pch.h"
 #include "../headers/Cube.h"
+#include "../headers/Scene.h"
 #include <stdio.h>
 #include <tchar.h>
 #include <string>
@@ -9,150 +10,11 @@ using namespace std;
 
 static int frame_time = 0;
 
-static int useRGB = 1;
-static int useLighting = 1;
-static int useFog = 0;
-static int useDB = 1;
-static int useLogo = 0;
-static int useQuads = 1;
+Scene* scene = new Scene();
+Cube* cube = new Cube(0, 0, 0, 2, 1, 1);
 
 static int tick = -1;
 static int moving = 1;
-
-#define GREY	0
-#define RED		1
-#define GREEN	2
-#define BLUE	3
-#define CYAN	4
-#define MAGENTA	5
-#define YELLOW	6
-#define BLACK	7
-
-Cube *cube = new Cube(0,0,0, 2,1,1);
-
-static float materialColor[8][4] =
-{
-  {0.8, 0.8, 0.8, 1.0},
-  {0.8, 0.0, 0.0, 1.0},
-  {0.0, 0.8, 0.0, 1.0},
-  {0.0, 0.0, 0.8, 1.0},
-  {0.0, 0.8, 0.8, 1.0},
-  {0.8, 0.0, 0.8, 1.0},
-  {0.8, 0.8, 0.0, 1.0},
-  {0.0, 0.0, 0.0, 0.6},
-};
-
-static float lightPos[4] =
-{ 2.0, 4.0, 2.0, 1.0 };
-#if 0
-static float lightDir[4] =
-{ -2.0, -4.0, -2.0, 1.0 };
-#endif
-static float lightAmb[4] =
-{ 0.2, 0.2, 0.2, 1.0 };
-static float lightDiff[4] =
-{ 0.8, 0.8, 0.8, 1.0 };
-static float lightSpec[4] =
-{ 0.4, 0.4, 0.4, 1.0 };
-
-static float groundPlane[4] =
-{ 0.0, 1.0, 0.0, 1.499 };
-static float backPlane[4] =
-{ 0.0, 0.0, 1.0, 0.899 };
-
-static float fogColor[4] =
-{ 0.0, 0.0, 0.0, 0.0 };
-static float fogIndex[1] =
-{ 0.0 };
-
-static unsigned char shadowPattern[128] =
-{
-  0xaa, 0xaa, 0xaa, 0xaa, 0x55, 0x55, 0x55, 0x55,  /* 50% Grey */
-  0xaa, 0xaa, 0xaa, 0xaa, 0x55, 0x55, 0x55, 0x55,
-  0xaa, 0xaa, 0xaa, 0xaa, 0x55, 0x55, 0x55, 0x55,
-  0xaa, 0xaa, 0xaa, 0xaa, 0x55, 0x55, 0x55, 0x55,
-  0xaa, 0xaa, 0xaa, 0xaa, 0x55, 0x55, 0x55, 0x55,
-  0xaa, 0xaa, 0xaa, 0xaa, 0x55, 0x55, 0x55, 0x55,
-  0xaa, 0xaa, 0xaa, 0xaa, 0x55, 0x55, 0x55, 0x55,
-  0xaa, 0xaa, 0xaa, 0xaa, 0x55, 0x55, 0x55, 0x55,
-  0xaa, 0xaa, 0xaa, 0xaa, 0x55, 0x55, 0x55, 0x55,
-  0xaa, 0xaa, 0xaa, 0xaa, 0x55, 0x55, 0x55, 0x55,
-  0xaa, 0xaa, 0xaa, 0xaa, 0x55, 0x55, 0x55, 0x55,
-  0xaa, 0xaa, 0xaa, 0xaa, 0x55, 0x55, 0x55, 0x55,
-  0xaa, 0xaa, 0xaa, 0xaa, 0x55, 0x55, 0x55, 0x55,
-  0xaa, 0xaa, 0xaa, 0xaa, 0x55, 0x55, 0x55, 0x55,
-  0xaa, 0xaa, 0xaa, 0xaa, 0x55, 0x55, 0x55, 0x55,
-  0xaa, 0xaa, 0xaa, 0xaa, 0x55, 0x55, 0x55, 0x55
-};
-
-static unsigned char sgiPattern[128] =
-{
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,  /* SGI Logo */
-  0xff, 0xbd, 0xff, 0x83, 0xff, 0x5a, 0xff, 0xef,
-  0xfe, 0xdb, 0x7f, 0xef, 0xfd, 0xdb, 0xbf, 0xef,
-  0xfb, 0xdb, 0xdf, 0xef, 0xf7, 0xdb, 0xef, 0xef,
-  0xfb, 0xdb, 0xdf, 0xef, 0xfd, 0xdb, 0xbf, 0x83,
-  0xce, 0xdb, 0x73, 0xff, 0xb7, 0x5a, 0xed, 0xff,
-  0xbb, 0xdb, 0xdd, 0xc7, 0xbd, 0xdb, 0xbd, 0xbb,
-  0xbe, 0xbd, 0x7d, 0xbb, 0xbf, 0x7e, 0xfd, 0xb3,
-  0xbe, 0xe7, 0x7d, 0xbf, 0xbd, 0xdb, 0xbd, 0xbf,
-  0xbb, 0xbd, 0xdd, 0xbb, 0xb7, 0x7e, 0xed, 0xc7,
-  0xce, 0xdb, 0x73, 0xff, 0xfd, 0xdb, 0xbf, 0xff,
-  0xfb, 0xdb, 0xdf, 0x87, 0xf7, 0xdb, 0xef, 0xfb,
-  0xf7, 0xdb, 0xef, 0xfb, 0xfb, 0xdb, 0xdf, 0xfb,
-  0xfd, 0xdb, 0xbf, 0xc7, 0xfe, 0xdb, 0x7f, 0xbf,
-  0xff, 0x5a, 0xff, 0xbf, 0xff, 0xbd, 0xff, 0xc3,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
-};
-
-static float cube_vertexes[6][4][4] =
-{
-  {
-	{-1.0, -1.0, -1.0, 1.0},
-	{-1.0, -1.0, 1.0, 1.0},
-	{-1.0, 1.0, 1.0, 1.0},
-	{-1.0, 1.0, -1.0, 1.0}},
-
-  {
-	{1.0, 1.0, 1.0, 1.0},
-	{1.0, -1.0, 1.0, 1.0},
-	{1.0, -1.0, -1.0, 1.0},
-	{1.0, 1.0, -1.0, 1.0}},
-
-  {
-	{-1.0, -1.0, -1.0, 1.0},
-	{1.0, -1.0, -1.0, 1.0},
-	{1.0, -1.0, 1.0, 1.0},
-	{-1.0, -1.0, 1.0, 1.0}},
-
-  {
-	{1.0, 1.0, 1.0, 1.0},
-	{1.0, 1.0, -1.0, 1.0},
-	{-1.0, 1.0, -1.0, 1.0},
-	{-1.0, 1.0, 1.0, 1.0}},
-
-  {
-	{-1.0, -1.0, -1.0, 1.0},
-	{-1.0, 1.0, -1.0, 1.0},
-	{1.0, 1.0, -1.0, 1.0},
-	{1.0, -1.0, -1.0, 1.0}},
-
-  {
-	{1.0, 1.0, 1.0, 1.0},
-	{-1.0, 1.0, 1.0, 1.0},
-	{-1.0, -1.0, 1.0, 1.0},
-	{1.0, -1.0, 1.0, 1.0}}
-};
-
-static float cube_normals[6][4] =
-{
-  {-1.0, 0.0, 0.0, 0.0},
-  {1.0, 0.0, 0.0, 0.0},
-  {0.0, -1.0, 0.0, 0.0},
-  {0.0, 1.0, 0.0, 0.0},
-  {0.0, 0.0, -1.0, 0.0},
-  {0.0, 0.0, 1.0, 0.0}
-};
 
 static void
 usage(void)
@@ -176,193 +38,6 @@ usage(void)
 #define EXIT_FAILURE 1
 #endif
 	exit(EXIT_FAILURE);
-}
-
-void
-buildColormap(void)
-{
-	if (useRGB) {
-		return;
-	}
-	else {
-		int mapSize = 1 << glutGet(GLUT_WINDOW_BUFFER_SIZE);
-		int rampSize = mapSize / 8;
-		int entry;
-		int i;
-
-		for (entry = 0; entry < mapSize; ++entry) {
-			int hue = entry / rampSize;
-			GLfloat val = (entry % rampSize) * (1.0 / (rampSize - 1));
-			GLfloat red, green, blue;
-
-			red = (hue == 0 || hue == 1 || hue == 5 || hue == 6) ? val : 0;
-			green = (hue == 0 || hue == 2 || hue == 4 || hue == 6) ? val : 0;
-			blue = (hue == 0 || hue == 3 || hue == 4 || hue == 5) ? val : 0;
-
-			glutSetColor(entry, red, green, blue);
-		}
-
-		for (i = 0; i < 8; ++i) {
-			materialColor[i][0] = i * rampSize + 0.2 * (rampSize - 1);
-			materialColor[i][1] = i * rampSize + 0.8 * (rampSize - 1);
-			materialColor[i][2] = i * rampSize + 1.0 * (rampSize - 1);
-			materialColor[i][3] = 0.0;
-		}
-
-		fogIndex[0] = -0.2 * (rampSize - 1);
-	}
-}
-
-static void
-setColor(int c)
-{
-	if (useLighting) {
-		if (useRGB) {
-			glMaterialfv(GL_FRONT_AND_BACK,
-				GL_AMBIENT_AND_DIFFUSE, &materialColor[c][0]);
-		}
-		else {
-			glMaterialfv(GL_FRONT_AND_BACK,
-				GL_COLOR_INDEXES, &materialColor[c][0]);
-		}
-	}
-	else {
-		if (useRGB) {
-			glColor4fv(&materialColor[c][0]);
-		}
-		else {
-			glIndexf(materialColor[c][1]);
-		}
-	}
-}
-
-static void
-drawCube(int color)
-{
-	int i;
-
-	setColor(color);
-	
-	for (i = 0; i < 6; ++i) {
-		glNormal3fv(&cube_normals[i][0]);
-		glBegin(GL_POLYGON);
-		glVertex4fv(&cube_vertexes[i][0][0]);
-		glVertex4fv(&cube_vertexes[i][1][0]);
-		glVertex4fv(&cube_vertexes[i][2][0]);
-		glVertex4fv(&cube_vertexes[i][3][0]);
-		glEnd();
-	}
-}
-
-static void
-drawCheck(int w, int h, int evenColor, int oddColor)
-{
-	static int initialized = 0;
-	static int usedLighting = 0;
-	static GLuint checklist = 0;
-
-	if (!initialized || (usedLighting != useLighting)) {
-		static float square_normal[4] =
-		{ 0.0, 0.0, 1.0, 0.0 };
-		static float square[4][4];
-		int i, j;
-
-		if (!checklist) {
-			checklist = glGenLists(1);
-		}
-		glNewList(checklist, GL_COMPILE_AND_EXECUTE);
-
-		if (useQuads) {
-			glNormal3fv(square_normal);
-			glBegin(GL_QUADS);
-		}
-		for (j = 0; j < h; ++j) {
-			for (i = 0; i < w; ++i) {
-				square[0][0] = -1.0 + 2.0 / w * i;
-				square[0][1] = -1.0 + 2.0 / h * (j + 1);
-				square[0][2] = 0.0;
-				square[0][3] = 1.0;
-
-				square[1][0] = -1.0 + 2.0 / w * i;
-				square[1][1] = -1.0 + 2.0 / h * j;
-				square[1][2] = 0.0;
-				square[1][3] = 1.0;
-
-				square[2][0] = -1.0 + 2.0 / w * (i + 1);
-				square[2][1] = -1.0 + 2.0 / h * j;
-				square[2][2] = 0.0;
-				square[2][3] = 1.0;
-
-				square[3][0] = -1.0 + 2.0 / w * (i + 1);
-				square[3][1] = -1.0 + 2.0 / h * (j + 1);
-				square[3][2] = 0.0;
-				square[3][3] = 1.0;
-
-				if (i & 1 ^ j & 1) {
-					setColor(oddColor);
-				}
-				else {
-					setColor(evenColor);
-				}
-
-				if (!useQuads) {
-					glBegin(GL_POLYGON);
-				}
-				glVertex4fv(&square[0][0]);
-				glVertex4fv(&square[1][0]);
-				glVertex4fv(&square[2][0]);
-				glVertex4fv(&square[3][0]);
-				if (!useQuads) {
-					glEnd();
-				}
-			}
-		}
-
-		if (useQuads) {
-			glEnd();
-		}
-		glEndList();
-
-		initialized = 1;
-		usedLighting = useLighting;
-	}
-	else {
-		glCallList(checklist);
-	}
-}
-
-static void
-myShadowMatrix(float ground[4], float light[4])
-{
-	float dot;
-	float shadowMat[4][4];
-
-	dot = ground[0] * light[0] +
-		ground[1] * light[1] +
-		ground[2] * light[2] +
-		ground[3] * light[3];
-
-	shadowMat[0][0] = dot - light[0] * ground[0];
-	shadowMat[1][0] = 0.0 - light[0] * ground[1];
-	shadowMat[2][0] = 0.0 - light[0] * ground[2];
-	shadowMat[3][0] = 0.0 - light[0] * ground[3];
-
-	shadowMat[0][1] = 0.0 - light[1] * ground[0];
-	shadowMat[1][1] = dot - light[1] * ground[1];
-	shadowMat[2][1] = 0.0 - light[1] * ground[2];
-	shadowMat[3][1] = 0.0 - light[1] * ground[3];
-
-	shadowMat[0][2] = 0.0 - light[2] * ground[0];
-	shadowMat[1][2] = 0.0 - light[2] * ground[1];
-	shadowMat[2][2] = dot - light[2] * ground[2];
-	shadowMat[3][2] = 0.0 - light[2] * ground[3];
-
-	shadowMat[0][3] = 0.0 - light[3] * ground[0];
-	shadowMat[1][3] = 0.0 - light[3] * ground[1];
-	shadowMat[2][3] = 0.0 - light[3] * ground[2];
-	shadowMat[3][3] = dot - light[3] * ground[3];
-
-	glMultMatrixf((const GLfloat*)shadowMat);
 }
 
 static char* windowNameRGBDB = (char*)"shadow cube (OpenGL RGB DB)";
@@ -390,15 +65,15 @@ keyboard(unsigned char ch, int x, int y)
 		break;
 	case 'L':
 	case 'l':
-		useLighting = !useLighting;
-		useLighting ? glEnable(GL_LIGHTING) :
+		scene->useLighting = !scene->useLighting;
+		scene->useLighting ? glEnable(GL_LIGHTING) :
 			glDisable(GL_LIGHTING);
 		glutPostRedisplay();
 		break;
 	case 'F':
 	case 'f':
-		useFog = !useFog;
-		useFog ? glEnable(GL_FOG) : glDisable(GL_FOG);
+		scene->useFog = !scene->useFog;
+		scene->useFog ? glEnable(GL_FOG) : glDisable(GL_FOG);
 		glutPostRedisplay();
 		break;
 	case '1':
@@ -421,35 +96,10 @@ keyboard(unsigned char ch, int x, int y)
 	}
 }
 
-GLvoid glPrint(GLuint glfontlist, GLfloat x, GLfloat y, const char* fmt, ...)
-{
-	if (glIsList(glfontlist) == GL_FALSE) {
-		// Error Report?
-		return;
-	}
-
-	glRasterPos2f(x, y);
-
-	char text[256];
-	va_list ap;
-
-	if (fmt == NULL) return;
-
-	va_start(ap, fmt);
-	vsprintf_s(text, fmt, ap);
-	va_end(ap);
-
-	glPushAttrib(GL_LIST_BIT);
-	glListBase(glfontlist - 32);
-	glCallLists(strlen(text), GL_UNSIGNED_BYTE, text);
-	glPopAttrib();
-}
 
 void
 display(void)
 {
-	GLfloat cubeXform[4][4];
-
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glPushMatrix();
@@ -457,16 +107,17 @@ display(void)
 	glRotatef(-90.0, 1, 0, 0);
 	glScalef(2.0, 2.0, 2.0);
 
-	drawCheck(10, 10, BLUE, GREY);  /* draw ground */
+	scene->drawCheckPlane(10, 10, BLUE, GREY);  /* draw ground */
 	glPopMatrix();
 
 	glPushMatrix();
 	glTranslatef(0.0, 0.0, -0.9);
 	glScalef(2.0, 2.0, 2.0);
 
-	drawCheck(10, 10, BLUE, GREY);  /* draw back */
+	scene->drawCheckPlane(10, 10, BLUE, GREY);  /* draw back */
 	glPopMatrix();
 
+	/*Draw cube*/
 	glPushMatrix();
 	glTranslatef(0.0, 0.2, 0.0);
 	glScalef(0.3, 0.3, 0.3);
@@ -474,53 +125,37 @@ display(void)
 	glRotatef((360.0 / (30 * 2)) * tick, 0, 1, 0);
 	glRotatef((360.0 / (30 * 4)) * tick, 0, 0, 1);
 	glScalef(1.0, 2.0, 1.0);
-	glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat*)cubeXform);
 
 	//drawCube(RED);        /* draw cube */
-	setColor(RED);
+	scene->setColor(RED);
 	cube->z = -1;
 	cube->draw();
 	//glutSolidCube(1);
 	glPopMatrix();
-	
+
 
 	glDepthMask(GL_FALSE);
 	glEnable(GL_BLEND);
-	if (useFog) {
+	if (scene->useFog) {
 		glDisable(GL_FOG);
 	}
-	glPushMatrix();
-	myShadowMatrix(groundPlane, lightPos);
-	glTranslatef(0.0, 0.0, 2.0);
-	glMultMatrixf((const GLfloat*)cubeXform);
+	cube->drawShadow(scene);
 
-	drawCube(BLACK);      /* draw ground shadow */
-	glPopMatrix();
-
-	glPushMatrix();
-	myShadowMatrix(backPlane, lightPos);
-	glTranslatef(0.0, 0.0, 2.0);
-	glMultMatrixf((const GLfloat*)cubeXform);
-
-	drawCube(BLACK);      /* draw back shadow */
-	glPopMatrix();
 
 	int fps = glutGet(GLUT_ELAPSED_TIME);
 	std::string s_fps = "FPS: " + std::to_string(fps);
-	//glPrint(1, 1.0f, 500.0f, "FPS: %s", s_fps);
 
 	glDepthMask(GL_TRUE);
 	glDisable(GL_BLEND);
-	if (useFog) {
+	if (scene->useFog) {
 		glEnable(GL_FOG);
 	}
-	if (useDB) {
+	if (scene->useDB) {
 		glutSwapBuffers();
 	}
 	else {
 		glFlush();
 	}
-	
 }
 
 void
@@ -543,13 +178,13 @@ menu_select(int mode)
 		glutIdleFunc(NULL);
 		break;
 	case 3:
-		useFog = !useFog;
-		useFog ? glEnable(GL_FOG) : glDisable(GL_FOG);
+		scene->useFog = !scene->useFog;
+		scene->useFog ? glEnable(GL_FOG) : glDisable(GL_FOG);
 		glutPostRedisplay();
 		break;
 	case 4:
-		useLighting = !useLighting;
-		useLighting ? glEnable(GL_LIGHTING) :
+		scene->useLighting = !scene->useLighting;
+		scene->useLighting ? glEnable(GL_LIGHTING) :
 			glDisable(GL_LIGHTING);
 		glutPostRedisplay();
 		break;
@@ -575,67 +210,15 @@ visible(int state)
 int
 main(int argc, char** argv)
 {
-	int width = 700, height = 700;
+	int width = 800, height = 800;
 	int i;
 	char* name;
 	int fog_menu;
 
 	glutInitWindowSize(width, height);
 	glutInit(&argc, argv);
-	/* process commmand line args */
-	for (i = 1; i < argc; ++i) {
-		if (!strcmp("-c", argv[i])) {
-			useRGB = !useRGB;
-		}
-		else if (!strcmp("-l", argv[i])) {
-			useLighting = !useLighting;
-		}
-		else if (!strcmp("-f", argv[i])) {
-			useFog = !useFog;
-		}
-		else if (!strcmp("-db", argv[i])) {
-			useDB = !useDB;
-		}
-		else if (!strcmp("-logo", argv[i])) {
-			useLogo = !useLogo;
-		}
-		else if (!strcmp("-quads", argv[i])) {
-			useQuads = !useQuads;
-		}
-		else {
-			usage();
-		}
-	}
 
-	/* choose visual */
-	if (useRGB) {
-		if (useDB) {
-			glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-			name = windowNameRGBDB;
-		}
-		else {
-			glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB | GLUT_DEPTH);
-			name = windowNameRGB;
-		}
-	}
-	else {
-		if (useDB) {
-			glutInitDisplayMode(GLUT_DOUBLE | GLUT_INDEX | GLUT_DEPTH);
-			name = windowNameIndexDB;
-		}
-		else {
-			glutInitDisplayMode(GLUT_SINGLE | GLUT_INDEX | GLUT_DEPTH);
-			name = windowNameIndex;
-		}
-	}
-
-	glutCreateWindow(name);
-
-	buildColormap();
-
-	glutKeyboardFunc(keyboard);
-	glutDisplayFunc(display);
-	glutVisibilityFunc(visible);
+	scene->setup();
 
 	fog_menu = glutCreateMenu(fog_select);
 	glutAddMenuEntry("Linear fog", GL_LINEAR);
@@ -651,57 +234,12 @@ main(int argc, char** argv)
 	glutAddMenuEntry("Quit", 5);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
 
-	/* setup context */
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 3.0);
+	glutKeyboardFunc(keyboard);
+	glutDisplayFunc(display);
+	glutVisibilityFunc(visible);
 
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	glTranslatef(0.0, 0.0, -2.0);
-
-	glEnable(GL_DEPTH_TEST);
-
-	if (useLighting) {
-		glEnable(GL_LIGHTING);
-	}
-	glEnable(GL_LIGHT0);
-	glLightfv(GL_LIGHT0, GL_POSITION, lightPos);
-	glLightfv(GL_LIGHT0, GL_AMBIENT, lightAmb);
-	glLightfv(GL_LIGHT0, GL_DIFFUSE, lightDiff);
-	glLightfv(GL_LIGHT0, GL_SPECULAR, lightSpec);
-#if 0
-	glLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, lightDir);
-	glLightf(GL_LIGHT0, GL_SPOT_EXPONENT, 80);
-	glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, 25);
-#endif
-
-	glEnable(GL_NORMALIZE);
-
-	if (useFog) {
-		glEnable(GL_FOG);
-	}
-	glFogfv(GL_FOG_COLOR, fogColor);
-	glFogfv(GL_FOG_INDEX, fogIndex);
-	glFogf(GL_FOG_MODE, GL_EXP);
-	glFogf(GL_FOG_DENSITY, 0.5);
-	glFogf(GL_FOG_START, 1.0);
-	glFogf(GL_FOG_END, 3.0);
-
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
-
-	glShadeModel(GL_SMOOTH);
-
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	if (useLogo) {
-		glPolygonStipple((const GLubyte*)sgiPattern);
-	}
-	else {
-		glPolygonStipple((const GLubyte*)shadowPattern);
-	}
-
-	glClearColor(0.2, 0.2, 0.2, 1);
+	//Background color
+	glClearColor(0.4, 0.4, 0.4, 1);
 	glClearIndex(0);
 	glClearDepth(1);
 
