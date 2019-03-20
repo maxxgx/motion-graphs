@@ -1,0 +1,99 @@
+if $(OS) = NT {
+
+Echo Building for Windows! ;
+
+#CC = gcc ;
+#C++ = g++ ;
+#LINK = g++ ;
+
+#CCFLAGS = -I$(TOP) -Wall -Werror -g ;
+
+C++FLAGS = /EHsc /W3 /WX /MD /D_USE_MATH_DEFINES /DWINDOWS /I$(TOP) /GR /GS ;
+
+CCFLAGS = $(C++FLAGS) ;
+
+SDLDIR = C:/lib/SDL-1.2.11 ;
+
+SDLC++FLAGS = /I$(SDLDIR)/include ;
+
+LINKLIBS = kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib SDLmain.lib SDL.lib OpenGL32.lib GlU32.lib ;
+
+LINKFLAGS = /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /MACHINE:X86 /INCREMENTAL:NO /NOLOGO /LIBPATH:"$(SDLDIR)/lib" /NODEFAULTLIB:LIBC ;
+
+SDLLINKLIBS = ;
+
+} else {
+
+CC = gcc ;
+C++ = g++ ;
+LINK = g++ ;
+
+CCFLAGS = -I$(TOP) -Wall -Werror -g ;
+
+C++FLAGS = -I$(TOP) -Wall -Werror -g ;
+
+SDLC++FLAGS = `sdl-config --cflags` ;
+
+SDLLINKLIBS = `sdl-config --libs` ;
+
+MAGICKLDFLAGS = `Magick++-config --ldflags` ;
+
+MAGICKLINKLIBS = `Magick++-config --libs` ;
+
+if $(OS) = LINUX { SDLLINKLIBS += -lGL -lGLU ; Echo Building for Linux ; }
+
+if $(OS) = MACOSX {
+	C++FLAGS += -DBIG_ENDIAN -DMACOSX ;
+	SDLLINKLIBS += -framework OpenGL ;
+	Echo Building for MacOS (BIG_ENDIAN and MACOSX defined) ;
+}
+
+}
+
+rule MyObjects {
+	for FILE in $(1:S=$(SUFOBJ)) {
+		Depends $(FILE:D=$(SUBDIR)) : $(FILE:G=$(SOURCE_GRIST)) ;
+	}
+	Objects $(1) ;
+}
+
+#Below is from http://maillist.perforce.com/pipermail/jamming/2000-October/001065.html
+
+# Resource : builds a resource file
+#
+rule Resource
+{
+     SEARCH on $(>) = $(SEARCH_SOURCE) ;
+     MakeLocate $(<) : $(LOCATE_TARGET) ;
+
+     DEPENDS $(<) : $(>) ;
+     Clean clean : $(<) ;
+
+     RCFLAGS on $(<) = $(RCFLAGS) /d$(RCDEFINES) ;
+}
+
+actions Resource
+{
+     RC $(RCFLAGS) /Fo$(<) $(>)
+}
+
+#
+# LinkResource : Links the resource file into an executable
+#
+rule LinkResource
+{
+     local t r ;
+
+     if $(<:S)
+     {
+         t = $(<) ;
+     } else {
+         t = $(<:S=$(SUFEXE)) ;
+     }
+
+     r = $(>:S=.res) ;
+
+     DEPENDS $(t) : $(r) ;
+     NEEDLIBS on $(t) += $(r) ;
+}
+

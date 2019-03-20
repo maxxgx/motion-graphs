@@ -1,0 +1,11 @@
+TOP = .. ;
+
+SubDir TOP Browser ;
+
+NAMES = browser Mode BrowseMode ;
+
+BROWSER_OBJECTS = $(NAMES:D=$(SUBDIR):S=$(SUFOBJ)) ;
+
+ObjectC++Flags $(NAMES) : $(SDLC++FLAGS) ;
+
+MyObjects $(NAMES:S=.cpp) ;

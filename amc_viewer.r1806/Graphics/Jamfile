@@ -1,0 +1,46 @@
+TOP = .. ;
+
+SubDir TOP Graphics ;
+
+NAMES = Graphics GLExtensions Cache Font ;
+
+CNAMES = texfont ;
+
+GRAPHICS_LIBS = ;
+
+if $(GRAPHICS_USE_TEXTURE) {
+	Echo "Building with texture support" ;
+	NAMES += Texture ;
+	if $(OS) = NT {
+		PNGDIR = C:/lib/libpng-1.2.16 ;
+		ObjectC++Flags Texture : /I$(PNGDIR)/include ;
+		#no additional libs; handled in Jamrules.
+	} else {
+		ObjectC++Flags Texture : `libpng-config --cflags` ;
+		GRAPHICS_LIBS += `libpng-config --ldflags` ;
+	}
+}
+
+if $(GRAPHICS_USE_FRAME_DUMPER) {
+	Echo "Building with frame dumper support" ;
+	NAMES += FrameDumper ;
+}
+
+if $(GRAPHICS_USE_SHADER) {
+	Echo "Building with shader support" ;
+	NAMES += GLSLShader ;
+}
+
+if $(GRAPHICS_USE_SHADOW) {
+	Echo "Building with shadow stencil helpers" ;
+	NAMES += ShadowStencil ;
+}
+
+GRAPHICS_OBJECTS = $(NAMES:D=$(SUBDIR):S=$(SUFOBJ)) $(CNAMES:D=$(SUBDIR):S=$(SUFOBJ)) ;
+
+MyObjects $(NAMES:S=.cpp) $(CNAMES:S=.c) ;
+
+
+ObjectC++Flags $(NAMES) : $(SDLC++FLAGS) ;
+
+ObjectCcFlags $(CNAMES) : $(SDLC++FLAGS) ;

@@ -1,0 +1,21 @@
+TOP = . ;
+
+GRAPHICS_USE_SHADER = 1 ;
+LIBRARY_USE_VFILE = 1 ;
+SubInclude TOP Graphics ;
+SubInclude TOP Character ;
+SubInclude TOP Library ;
+SubInclude TOP Browser ;
+
+SubDir TOP ;
+
+LINKLIBS on dist/browser += $(SDLLINKLIBS) $(LIBRARYLINKLIBS) ;
+
+if $(OS) = NT {
+	Resource icons.res : icons/icons.rc ;
+	LinkResource dist/browser : icons.res ;
+}
+
+File dist/gentium.txf : Graphics/fonts/gentium.txf ; 
+
+MainFromObjects dist/browser : $(BROWSER_OBJECTS) $(GRAPHICS_OBJECTS) $(GRAPHICS_SHADER_OBJECTS) $(CHARACTER_OBJECTS) $(LIBRARY_OBJECTS) ;
