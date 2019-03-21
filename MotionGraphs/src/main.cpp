@@ -6,6 +6,8 @@
 #include <tchar.h>
 #include <string>
 
+#define FPS 120
+
 using namespace std;
 
 static int frame_time = 0;
@@ -48,7 +50,7 @@ static char* windowNameIndex = (char*)"shadow cube (OpenGL Index)";
 void
 idle(void)
 {
-	tick++;
+	//tick++;
 	if (tick >= 120) {
 		tick = 0;
 	}
@@ -98,7 +100,7 @@ keyboard(unsigned char ch, int x, int y)
 
 
 void
-display(void)
+display()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -207,6 +209,16 @@ visible(int state)
 	}
 }
 
+void update(int) {
+	//update params
+	tick = tick > 120 ? 0: ++tick;
+
+	glutPostRedisplay();
+
+	//Add adaptive wait
+	glutTimerFunc(1000 / FPS, update, 0);
+}
+
 int
 main(int argc, char** argv)
 {
@@ -236,12 +248,14 @@ main(int argc, char** argv)
 
 	glutKeyboardFunc(keyboard);
 	glutDisplayFunc(display);
-	glutVisibilityFunc(visible);
+	//glutVisibilityFunc(visible);
 
 	//Background color
 	glClearColor(0.4, 0.4, 0.4, 1);
 	glClearIndex(0);
 	glClearDepth(1);
+
+	glutTimerFunc(1000/FPS, update, 0);
 
 	glutMainLoop();
 	return 0;             /* ANSI C requires main to return int. */
