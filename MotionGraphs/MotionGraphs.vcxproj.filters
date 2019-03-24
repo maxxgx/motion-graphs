@@ -51,11 +51,41 @@
     <ClCompile Include="src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\Bone.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Skeleton.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pose.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
     <None Include="res\placeholder.blend" />
     <None Include="scripts\include_pch.py" />
+    <None Include="res\mocap\05\05.asf" />
+    <None Include="res\mocap\05\05_01.amc" />
+    <None Include="res\mocap\05\05_02.amc" />
+    <None Include="res\mocap\05\05_03.amc" />
+    <None Include="res\mocap\05\05_04.amc" />
+    <None Include="res\mocap\05\05_05.amc" />
+    <None Include="res\mocap\05\05_06.amc" />
+    <None Include="res\mocap\05\05_07.amc" />
+    <None Include="res\mocap\05\05_08.amc" />
+    <None Include="res\mocap\05\05_09.amc" />
+    <None Include="res\mocap\05\05_10.amc" />
+    <None Include="res\mocap\05\05_11.amc" />
+    <None Include="res\mocap\05\05_12.amc" />
+    <None Include="res\mocap\05\05_13.amc" />
+    <None Include="res\mocap\05\05_14.amc" />
+    <None Include="res\mocap\05\05_15.amc" />
+    <None Include="res\mocap\05\05_16.amc" />
+    <None Include="res\mocap\05\05_17.amc" />
+    <None Include="res\mocap\05\05_18.amc" />
+    <None Include="res\mocap\05\05_19.amc" />
+    <None Include="res\mocap\05\05_20.amc" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="headers\pch.h">
@@ -92,6 +122,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="headers\Scene.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\Bone.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\Pose.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\Skeleton.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

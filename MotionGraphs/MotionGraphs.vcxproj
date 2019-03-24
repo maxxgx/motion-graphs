@@ -223,6 +223,7 @@
     <ClCompile Include="common\text2D.cpp" />
     <ClCompile Include="common\texture.cpp" />
     <ClCompile Include="common\vboindexer.cpp" />
+    <ClCompile Include="src\Bone.cpp" />
     <ClCompile Include="src\Cube.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\pch.cpp">
@@ -233,7 +234,9 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\Pose.cpp" />
     <ClCompile Include="src\Scene.cpp" />
+    <ClCompile Include="src\Skeleton.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common\controls.hpp" />
@@ -244,13 +247,37 @@
     <ClInclude Include="common\text2D.hpp" />
     <ClInclude Include="common\texture.hpp" />
     <ClInclude Include="common\vboindexer.hpp" />
+    <ClInclude Include="headers\Bone.h" />
     <ClInclude Include="headers\Cube.h" />
     <ClInclude Include="headers\Drawable.h" />
+    <ClInclude Include="headers\Pose.h" />
     <ClInclude Include="headers\Scene.h" />
     <ClInclude Include="headers\pch.h" />
+    <ClInclude Include="headers\Skeleton.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="res\mocap\05\05.asf" />
+    <None Include="res\mocap\05\05_01.amc" />
+    <None Include="res\mocap\05\05_02.amc" />
+    <None Include="res\mocap\05\05_03.amc" />
+    <None Include="res\mocap\05\05_04.amc" />
+    <None Include="res\mocap\05\05_05.amc" />
+    <None Include="res\mocap\05\05_06.amc" />
+    <None Include="res\mocap\05\05_07.amc" />
+    <None Include="res\mocap\05\05_08.amc" />
+    <None Include="res\mocap\05\05_09.amc" />
+    <None Include="res\mocap\05\05_10.amc" />
+    <None Include="res\mocap\05\05_11.amc" />
+    <None Include="res\mocap\05\05_12.amc" />
+    <None Include="res\mocap\05\05_13.amc" />
+    <None Include="res\mocap\05\05_14.amc" />
+    <None Include="res\mocap\05\05_15.amc" />
+    <None Include="res\mocap\05\05_16.amc" />
+    <None Include="res\mocap\05\05_17.amc" />
+    <None Include="res\mocap\05\05_18.amc" />
+    <None Include="res\mocap\05\05_19.amc" />
+    <None Include="res\mocap\05\05_20.amc" />
     <None Include="res\placeholder.blend" />
     <None Include="scripts\include_pch.py" />
   </ItemGroup>
