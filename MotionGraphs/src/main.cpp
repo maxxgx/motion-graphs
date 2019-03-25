@@ -15,8 +15,13 @@ static int frame_time = 0;
 Scene* scene = new Scene();
 Cube* cube = new Cube(0, 0, 0, 2, 1, 1);
 
+//Loading mocap data: skeleton from .asf and animation (poses) from .amc
+Skeleton* sk = new Skeleton((char*)"res/mocap/05/05.asf", 1); 
+Animation* anim = new Animation((char*)"res/mocap/05/05_01.amc");
+
+Cube* test_cube = new Cube(1.01254, 16.5239, -34.8207, 1, 1, 1);
 static int tick = -1;
-static int moving = 1;
+static int moving = 0;
 
 static void
 usage(void)
@@ -61,6 +66,8 @@ idle(void)
 void
 keyboard(unsigned char ch, int x, int y)
 {
+	glm::mat4 view;
+	tuple<double, double, double> root_pos = sk->getPos();
 	switch (ch) {
 	case 27:             /* escape */
 		exit(0);
@@ -90,11 +97,26 @@ keyboard(unsigned char ch, int x, int y)
 		glFogf(GL_FOG_MODE, GL_EXP2);
 		glutPostRedisplay();
 		break;
+	case 'C':
+	case 'c':
+		cout << "c";
+		/*view = glm::lookAt(	glm::vec3(0.0f, 0.0f, 3.0f),
+							glm::vec3(0.0f, 0.0f, 0.0f),
+							glm::vec3(0.0f, 1.0f, 0.0f));*/
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		gluLookAt(-15.0f, 20.0f, 30.0f,
+			get<0>(root_pos), get<1>(root_pos), get<2>(root_pos),
+			0.0f, 1.0f, 0.0f);
+		glutPostRedisplay();
+		break;
+	case 'N':
+	case 'n':
+		sk->apply_pose(anim->getNextPose());
+
 	case ' ':
-		if (!moving) {
-			idle();
-			glutPostRedisplay();
-		}
+		moving = !moving;
+		glutPostRedisplay();
 	}
 }
 
@@ -104,20 +126,21 @@ display()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	float scale = 30;
 	glPushMatrix();
 	glTranslatef(0.0, -1.5, 0.0);
 	glRotatef(-90.0, 1, 0, 0);
-	glScalef(2.0, 2.0, 2.0);
+	glScalef(scale, scale, scale);
 
 	scene->drawCheckPlane(10, 10, BLUE, GREY);  /* draw ground */
 	glPopMatrix();
 
-	glPushMatrix();
-	glTranslatef(0.0, 0.0, -0.9);
-	glScalef(2.0, 2.0, 2.0);
+	//glPushMatrix();
+	//glTranslatef(0.0, 0.0, -9);
+	//glScalef(scale, scale, scale);
 
-	scene->drawCheckPlane(10, 10, BLUE, GREY);  /* draw back */
-	glPopMatrix();
+	//scene->drawCheckPlane(10, 10, BLUE, GREY);  /* draw back */
+	//glPopMatrix();
 
 	/*Draw cube*/
 	glPushMatrix();
@@ -131,9 +154,31 @@ display()
 	//drawCube(RED);        /* draw cube */
 	scene->setColor(RED);
 	cube->z = -1;
-	cube->draw();
+	//cube->draw();
 	//glutSolidCube(1);
 	glPopMatrix();
+
+	glPushMatrix();
+	glTranslatef(-scale/2, -1.2, -0.5);
+	glScalef(scale, scale, scale);
+	scene->drawAxis();
+	glPopMatrix();
+
+	////testcube 
+	//scene->setColor(GREEN);
+	//test_cube->draw();
+
+	// Draw Skeleton
+	scene->setColor(RED);
+	sk->draw();
+	if (moving == 1) {
+		if (anim->isOver()) {
+			anim->reset();
+			sk->resetAll();
+		}
+		sk->apply_pose(anim->getNextPose());
+	}
+
 
 
 	glDepthMask(GL_FALSE);
@@ -142,6 +187,7 @@ display()
 		glDisable(GL_FOG);
 	}
 	cube->drawShadow(scene);
+	//test_cube->drawShadow(scene);
 
 
 	int fps = glutGet(GLUT_ELAPSED_TIME);
@@ -211,7 +257,8 @@ visible(int state)
 
 void update(int) {
 	//update params
-	tick = tick > 120 ? 0: ++tick;
+	if (moving !=0) 
+		tick = tick > 120 ? 0: ++tick;
 
 	glutPostRedisplay();
 

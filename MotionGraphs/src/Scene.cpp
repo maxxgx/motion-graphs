@@ -45,7 +45,7 @@ void Scene::setup()
 	/* setup context */
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 3.0);
+	glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 30000.0);
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
@@ -228,4 +228,27 @@ void Scene::buildColormap(void)
 
 		fogIndex[0] = -0.2 * (rampSize - 1);
 	}
+}
+
+void Scene::drawAxis()
+{
+	GLfloat axisLength = 0.5f;
+	glBegin(GL_LINES);
+	// draw x axis in red, y axis in green, z axis in blue 
+	//glColor3f(1.0f, 0.2f, 0.2f);
+	this->setColor(RED);
+	glVertex3f(0.0f, 0.0f, 0.0f);
+	glVertex3f(axisLength, 0.0f, 0.0f);
+
+	this->setColor(GREEN);
+	//glColor3f(0.2f, 1.0f, 0.2f);
+	glVertex3f(0.0f, 0.0f, 0.0f);
+	glVertex3f(0.0f, axisLength, 0.0f);
+
+	this->setColor(BLUE);
+	//glColor3f(0.2f, 0.2f, 1.0f);
+	glVertex3f(0.0f, 0.0f, 0.0f);
+	glVertex3f(0.0f, 0.0f, axisLength);
+
+	glEnd();
 }

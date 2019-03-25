@@ -223,6 +223,7 @@
     <ClCompile Include="common\text2D.cpp" />
     <ClCompile Include="common\texture.cpp" />
     <ClCompile Include="common\vboindexer.cpp" />
+    <ClCompile Include="src\Animation.cpp" />
     <ClCompile Include="src\Bone.cpp" />
     <ClCompile Include="src\Cube.cpp" />
     <ClCompile Include="src\main.cpp" />
@@ -237,6 +238,7 @@
     <ClCompile Include="src\Pose.cpp" />
     <ClCompile Include="src\Scene.cpp" />
     <ClCompile Include="src\Skeleton.cpp" />
+    <ClCompile Include="tests\Source.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common\controls.hpp" />
@@ -247,6 +249,7 @@
     <ClInclude Include="common\text2D.hpp" />
     <ClInclude Include="common\texture.hpp" />
     <ClInclude Include="common\vboindexer.hpp" />
+    <ClInclude Include="headers\Animation.h" />
     <ClInclude Include="headers\Bone.h" />
     <ClInclude Include="headers\Cube.h" />
     <ClInclude Include="headers\Drawable.h" />
@@ -254,10 +257,13 @@
     <ClInclude Include="headers\Scene.h" />
     <ClInclude Include="headers\pch.h" />
     <ClInclude Include="headers\Skeleton.h" />
+    <ClInclude Include="headers\Utils.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="res\mocap\05\05.asf" />
+    <None Include="res\mocap\05\05.asf">
+      <FileType>Document</FileType>
+    </None>
     <None Include="res\mocap\05\05_01.amc" />
     <None Include="res\mocap\05\05_02.amc" />
     <None Include="res\mocap\05\05_03.amc" />
@@ -285,6 +291,8 @@
   <ImportGroup Label="ExtensionTargets">
     <Import Project="packages\nupengl.core.redist.0.1.0.1\build\native\nupengl.core.redist.targets" Condition="Exists('packages\nupengl.core.redist.0.1.0.1\build\native\nupengl.core.redist.targets')" />
     <Import Project="packages\nupengl.core.0.1.0.1\build\native\nupengl.core.targets" Condition="Exists('packages\nupengl.core.0.1.0.1\build\native\nupengl.core.targets')" />
+    <Import Project="packages\googletest.redist.1.8.3\build\native\googletest.redist.targets" Condition="Exists('packages\googletest.redist.1.8.3\build\native\googletest.redist.targets')" />
+    <Import Project="packages\googletest.1.8.3\build\native\googletest.targets" Condition="Exists('packages\googletest.1.8.3\build\native\googletest.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
@@ -292,5 +300,7 @@
     </PropertyGroup>
     <Error Condition="!Exists('packages\nupengl.core.redist.0.1.0.1\build\native\nupengl.core.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\nupengl.core.redist.0.1.0.1\build\native\nupengl.core.redist.targets'))" />
     <Error Condition="!Exists('packages\nupengl.core.0.1.0.1\build\native\nupengl.core.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\nupengl.core.0.1.0.1\build\native\nupengl.core.targets'))" />
+    <Error Condition="!Exists('packages\googletest.redist.1.8.3\build\native\googletest.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\googletest.redist.1.8.3\build\native\googletest.redist.targets'))" />
+    <Error Condition="!Exists('packages\googletest.1.8.3\build\native\googletest.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\googletest.1.8.3\build\native\googletest.targets'))" />
   </Target>
 </Project>

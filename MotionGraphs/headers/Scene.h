@@ -32,6 +32,8 @@ public:
 	void setColor(int c);
 	void buildColormap(void);
 
+	void drawAxis();
+
 	//vars
 	float materialColor[8][4] =
 	{

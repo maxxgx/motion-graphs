@@ -2,6 +2,10 @@
 #include "../headers/Bone.h"
 
 
+Bone::Bone()
+{
+}
+
 Bone::Bone(int id, string name, double dir_x, double dir_y, double dir_z,
 	double axis_x, double axis_y, double axis_z, double length, string dof, vector<pair<double, double>> limits)
 {
@@ -17,6 +21,8 @@ Bone::Bone(int id, string name, double dir_x, double dir_y, double dir_z,
 	this->dof[1] = dof.find("ry") != string::npos;
 	this->dof[2] = dof.find("rz") != string::npos;
 	this->limits = limits;
+
+	this->mesh = new Cube();
 }
 
 void Bone::draw()
@@ -24,9 +30,9 @@ void Bone::draw()
 	//Draw cube placeholder
 }
 
-void Bone::apply_pose(Pose pose)
+void Bone::apply_pose(Pose *pose)
 {
-	vector<double> trans = pose.getBoneTrans(this->name);
+	vector<double> trans = pose->getBoneTrans(this->name);
 	double rxyz[3] = { 0.0, 0.0, 0.0 };
 
 	for (int i = 0, j = 0; i < 3; i++) {
@@ -36,6 +42,25 @@ void Bone::apply_pose(Pose pose)
 		}
 	}
 	
+}
+
+void Bone::addParent(Bone* parent)
+{
+	this->parent = parent;
+}
+
+void Bone::reset()
+{
+	for (int i = 0; i < 3; i++) { 
+		dir[i] = copy_dir[i];
+		axis[i] = copy_axis[i];
+	}
+	length = copy_length;
+}
+
+string Bone::getName()
+{
+	return this->name;
 }
 
 Bone::~Bone()

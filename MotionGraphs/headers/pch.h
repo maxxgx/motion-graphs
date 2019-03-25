@@ -24,4 +24,11 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+//Always include
+#include "Animation.h"
+#include "Bone.h"
+#include "Pose.h"
+#include "Skeleton.h"
+#include "Utils.h"
+
 #endif //PCH_H

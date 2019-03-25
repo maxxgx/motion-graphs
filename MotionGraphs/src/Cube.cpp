@@ -22,6 +22,11 @@ Cube::Cube(float x, float y, float z, float xwidth, float ywidth, float zwidth)
 	Init(x, y, z, xwidth, ywidth, zwidth);
 }
 
+Cube::Cube(float length)
+{
+	Init(0.0f, 0.0f, 0.0f, length, 1.0f, 1.0f);
+}
+
 void Cube::draw()
 {
 	glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat*)cubeXform);

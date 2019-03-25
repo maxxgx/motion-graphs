@@ -11,11 +11,13 @@ using namespace std;
 class Pose
 {
 public:
-	Pose();
+	Pose(long frame);
 
 	vector<double> getBoneTrans(string bone);
 
 	int getPoseFrame();
+	
+	void addTransf(string bone, vector<double> transf);
 
 	~Pose();
 

@@ -16,6 +16,8 @@ public:
 	Cube(float x, float y, float z);
 	// Full constructor: basic + pos + dimens
 	Cube(float x, float y, float z, float xwidth, float ywidth, float  zwidth);
+	// Construct cube with length
+	Cube(float length);
 
 	/*Draw Cube and saves the cube x form matrix to draw shadows*/
 	void Drawable::draw();
