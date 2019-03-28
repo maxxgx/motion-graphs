@@ -65,6 +65,7 @@ Skeleton::Skeleton(char* asf_filename, double scale)
 				if (strContains(line, "end")) {
 					begin = false;
 					this->bones.push_back(new Bone(id, name, dir[0], dir[1], dir[2], axis[0], axis[1], axis[2], length, dof, limits));
+					dof = "";
 					cout << "===   added bone " << name << "\n";
 				}
 				if (begin) 
