@@ -32,24 +32,23 @@ void Cube::draw()
 	glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat*)cubeXform);
 
 	glPushMatrix();
-	glTranslatef(x,y,z);
+	glTranslatef(x, y, z);
 	glScalef(xwidth, ywidth, zwidth);
 
 	glutSolidCube(1);
-	glColor3f(1, 0, 1);
 	glPopMatrix();
 }
 
 
 
-void Cube::drawShadow(Scene *scene)
+void Cube::drawShadow(Scene* scene)
 {
 	//ground
 	glPushMatrix();
 	myShadowMatrix(scene->groundPlane, scene->lightPos);
 	glTranslatef(0.0, 0.0, 2.0);
 	glMultMatrixf((const GLfloat*)cubeXform);
-	
+
 	scene->setColor(BLACK);
 	this->draw();      /* draw ground shadow */
 	glPopMatrix();
@@ -63,6 +62,11 @@ void Cube::drawShadow(Scene *scene)
 	scene->setColor(BLACK);
 	this->draw();      /* draw ground shadow */
 	glPopMatrix();
+}
+
+void Cube::setPos(float x, float y, float z)
+{
+	this->x = x; this->y = y; this->z = z;
 }
 
 Cube::~Cube()

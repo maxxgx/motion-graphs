@@ -100,6 +100,7 @@ Skeleton::Skeleton(char* asf_filename, double scale)
 					for (int i = 1; i < toks.size(); i++) {
 						Bone* child = this->getByName(toks.at(i));
 						child->addParent(parent);
+						parent->addChild(child);
 					}
 				}
 			}
@@ -133,15 +134,26 @@ Bone* Skeleton::getByName(string name) {
 	}
 }
 
-void Skeleton::draw()
+void Skeleton::draw(Scene* scene)
 {
 	//Draw root first
 	glPushMatrix();
 	glRotatef(axis[0], 1, 0, 0);
 	glRotatef(axis[1], 0, 1, 0);
 	glRotatef(axis[2], 0, 0, 1);
-	mesh->x = dir[0]; mesh->y = dir[1]; mesh->z = dir[2];
+	glTranslatef(dir[0] * scale, dir[1] * scale, dir[2] * scale);
+	//mesh->x = dir[0]*scale; mesh->y = dir[1]*scale; mesh->z = dir[2]*scale;
+
+	scene->setColor(GREEN);
 	this->mesh->draw();
+	//DFS depth first search
+	cout << "------------------------START DRAWING---------------------------\n";
+	scene->setColor(RED);
+	for (Bone* direct_child : this->children)
+	{
+		direct_child->draw();
+	}
+	cout << "---------------------------------------------------\n";
 	glPopMatrix();
 }
 
@@ -176,9 +188,9 @@ void Skeleton::apply_pose(Pose* pose)
 			axis[i - 3] = ts.at(i);
 		}
 	}
-	/*for (auto& bone : this->bones) {
+	for (auto& bone : this->bones) {
 		bone->apply_pose(pose);
-	}*/
+	}
 }
 
 Skeleton::~Skeleton()

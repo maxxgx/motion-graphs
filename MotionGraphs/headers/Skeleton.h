@@ -8,6 +8,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include "Scene.h"
 
 using namespace std;
 
@@ -16,6 +17,7 @@ class Skeleton :
 {
 public:
 	//root bone
+	float scale = 1;
 	string order = "TX TY TZ RX RY RZ"; //default
 	string axiz_order = "XYZ"; //default
 
@@ -26,7 +28,7 @@ public:
 	Bone* getByName(string name);
 
 	void apply_pose(Pose* pose);
-	void draw();
+	void draw(Scene* scene);
 	tuple<double, double, double> getPos();
 	void resetAll();
 

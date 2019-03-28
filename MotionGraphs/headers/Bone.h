@@ -25,6 +25,8 @@ public:
 	void apply_pose(Pose* pose);
 
 	void addParent(Bone* parent);
+	void addChild(Bone* child);
+	vector<Bone*> getChildren();
 
 	void reset();
 
@@ -32,9 +34,9 @@ public:
 
 	~Bone();
 
-protected:
 	/** fields **/
 	Bone* parent=NULL;
+	vector<Bone*> children;
 	int id;
 	string name = "";
 	//direction
@@ -48,6 +50,7 @@ protected:
 
 	Cube* mesh;
 
+protected:
 	//Save a copy of values for reset
 	double copy_dir[3] = { 0.0, 0.0, 0.0 };
 	double copy_axis[3] = { 0.0, 0.0, 0.0 };

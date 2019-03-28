@@ -7,7 +7,7 @@ class Cube :
 {
 public:
 	float x = 0.0f, y = 0.0f, z = 0.0f;
-	float xwidth = 1.0f, ywidth = 1.0f, zwidth = 1.0f;
+	float xwidth = 0.5f, ywidth = 0.5f, zwidth = 0.5f;
 	GLfloat cubeXform[4][4];
 
 	// Basic constructor: 1-unit length, pos: 0,0,0
@@ -23,8 +23,10 @@ public:
 	void Drawable::draw();
 
 	/*Draws shadows on ground plane and back plane*/
-	void drawShadow(Scene *scene);
-	
+	void drawShadow(Scene* scene);
+
+	void setPos(float x, float y, float z);
+
 
 	~Cube();
 

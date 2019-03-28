@@ -97,15 +97,21 @@ keyboard(unsigned char ch, int x, int y)
 		glFogf(GL_FOG_MODE, GL_EXP2);
 		glutPostRedisplay();
 		break;
-	case 'C':
 	case 'c':
-		cout << "c";
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		gluLookAt(-15.0f, 10.0f, 35.0f,
+			get<0>(root_pos), get<1>(root_pos), get<2>(root_pos),
+			0.0f, 1.0f, 0.0f);
+		glutPostRedisplay();
+		break;
+	case 'C':
 		/*view = glm::lookAt(	glm::vec3(0.0f, 0.0f, 3.0f),
 							glm::vec3(0.0f, 0.0f, 0.0f),
 							glm::vec3(0.0f, 1.0f, 0.0f));*/
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
-		gluLookAt(-15.0f, 20.0f, 30.0f,
+		gluLookAt(-30.0f, 30.0f, 80.0f,
 			get<0>(root_pos), get<1>(root_pos), get<2>(root_pos),
 			0.0f, 1.0f, 0.0f);
 		glutPostRedisplay();
@@ -128,7 +134,7 @@ display()
 
 	float scale = 30;
 	glPushMatrix();
-	glTranslatef(0.0, -1.5, 0.0);
+	glTranslatef(0.0, -10, 0.0);
 	glRotatef(-90.0, 1, 0, 0);
 	glScalef(scale, scale, scale);
 
@@ -170,7 +176,7 @@ display()
 
 	// Draw Skeleton
 	scene->setColor(RED);
-	sk->draw();
+	sk->draw(scene);
 	if (moving == 1) {
 		if (anim->isOver()) {
 			anim->reset();
@@ -186,7 +192,7 @@ display()
 	if (scene->useFog) {
 		glDisable(GL_FOG);
 	}
-	cube->drawShadow(scene);
+	//cube->drawShadow(scene);
 	//test_cube->drawShadow(scene);
 
 
@@ -269,7 +275,7 @@ void update(int) {
 int
 main(int argc, char** argv)
 {
-	int width = 800, height = 800;
+	int width = 1000, height = 1000;
 	int i;
 	char* name;
 	int fog_menu;
@@ -296,6 +302,9 @@ main(int argc, char** argv)
 	glutKeyboardFunc(keyboard);
 	glutDisplayFunc(display);
 	//glutVisibilityFunc(visible);
+	gluLookAt(-15.0f, 10.0f, 20.0f,
+		0, 0, 0,
+		0.0f, 1.0f, 0.0f);
 
 	//Background color
 	glClearColor(0.4, 0.4, 0.4, 1);
