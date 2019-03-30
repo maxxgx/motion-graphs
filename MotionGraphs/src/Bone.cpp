@@ -36,11 +36,13 @@ void Bone::draw()
 	//cout << "--- drawing bone " << name << "\n";
 	//Draw cube placeholder
 	glPushMatrix();
+	//glRotatef(axis[0], axis[0] >= 0 ? 1 : -1, 0, 0);
+	//glRotatef(axis[1], 0, axis[1] >= 0 ? 1 : -1, 0);
+	//glRotatef(axis[2], 0, 0, axis[2] >= 0 ? 1 : -1);
 	glRotatef(axis[0], 1, 0, 0);
 	glRotatef(axis[1], 0, 1, 0);
 	glRotatef(axis[2], 0, 0, 1);
 	glTranslatef(dir[0] * length, dir[1] * length, dir[2] * length);
-	//mesh->x = dir[0] * length; mesh->y = dir[1] * length; mesh->z = dir[2] * length;
 	this->mesh->draw();
 
 	for (Bone* child : this->children) {

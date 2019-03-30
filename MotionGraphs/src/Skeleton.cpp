@@ -143,18 +143,17 @@ void Skeleton::draw(Scene* scene)
 	glRotatef(axis[1], 0, 1, 0);
 	glRotatef(axis[2], 0, 0, 1);
 	glTranslatef(dir[0] * scale, dir[1] * scale, dir[2] * scale);
-	//mesh->x = dir[0]*scale; mesh->y = dir[1]*scale; mesh->z = dir[2]*scale;
 
 	scene->setColor(GREEN);
 	this->mesh->draw();
 	//DFS depth first search
-	cout << "------------------------START DRAWING---------------------------\n";
+	cout << "drawing...";
 	scene->setColor(RED);
 	for (Bone* direct_child : this->children)
 	{
 		direct_child->draw();
 	}
-	cout << "---------------------------------------------------\n";
+	cout << " .\n";
 	glPopMatrix();
 }
 
