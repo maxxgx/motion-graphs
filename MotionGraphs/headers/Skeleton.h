@@ -17,7 +17,6 @@ class Skeleton :
 {
 public:
 	//root bone
-	float scale = 1;
 	string order = "TX TY TZ RX RY RZ"; //default
 	string axiz_order = "XYZ"; //default
 
@@ -35,6 +34,7 @@ public:
 	~Skeleton();
 
 protected:
+	float scale = 1;
 	//other bones
 	vector<Bone*> bones;
 

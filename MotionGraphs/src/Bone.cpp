@@ -39,9 +39,11 @@ void Bone::draw()
 	//glRotatef(axis[0], axis[0] >= 0 ? 1 : -1, 0, 0);
 	//glRotatef(axis[1], 0, axis[1] >= 0 ? 1 : -1, 0);
 	//glRotatef(axis[2], 0, 0, axis[2] >= 0 ? 1 : -1);
+	glTranslatef(dir[0] * length, dir[1] * length, dir[2] * length);
 	glRotatef(axis[0], 1, 0, 0);
 	glRotatef(axis[1], 0, 1, 0);
 	glRotatef(axis[2], 0, 0, 1);
+	glTranslatef(-dir[0] * length, -dir[1] * length, -dir[2] * length);
 	glTranslatef(dir[0] * length, dir[1] * length, dir[2] * length);
 	this->mesh->draw();
 

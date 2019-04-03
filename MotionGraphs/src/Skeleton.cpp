@@ -8,6 +8,7 @@ Skeleton::Skeleton()
 
 Skeleton::Skeleton(char* asf_filename, double scale)
 {
+	this->scale = scale;
 	this->mesh = new Cube();
 	this->name = "root";
 	bool begin = false;
@@ -64,7 +65,7 @@ Skeleton::Skeleton(char* asf_filename, double scale)
 				//} cout << "\n";
 				if (strContains(line, "end")) {
 					begin = false;
-					this->bones.push_back(new Bone(id, name, dir[0], dir[1], dir[2], axis[0], axis[1], axis[2], length, dof, limits));
+					this->bones.push_back(new Bone(id, name, dir[0], dir[1], dir[2], axis[0], axis[1], axis[2], length*scale, dof, limits));
 					dof = "";
 					cout << "===   added bone " << name << "\n";
 				}

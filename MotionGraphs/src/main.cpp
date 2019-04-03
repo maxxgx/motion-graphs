@@ -7,6 +7,7 @@
 #include <string>
 
 #define FPS 120
+#define CMU_SCALING 0.056444
 
 using namespace std;
 
@@ -16,7 +17,7 @@ Scene* scene = new Scene();
 Cube* cube = new Cube(0, 0, 0, 2, 1, 1);
 
 //Loading mocap data: skeleton from .asf and animation (poses) from .amc
-Skeleton* sk = new Skeleton((char*)"res/mocap/05/05.asf", 1); 
+Skeleton* sk = new Skeleton((char*)"res/mocap/05/05.asf", 0.8);
 Animation* anim = new Animation((char*)"res/mocap/05/05_01.amc");
 
 Cube* test_cube = new Cube(1.01254, 16.5239, -34.8207, 1, 1, 1);
