@@ -138,12 +138,17 @@ Bone* Skeleton::getByName(string name) {
 
 void Skeleton::draw(Scene* scene)
 {
+	glMatrixMode(GL_MODELVIEW);
 	//Draw root first
 	glPushMatrix();
+	glScalef(scale, scale, scale);
+	//glRotatef(this->copy_axis[0], 1, 0, 0);
+	//glRotatef(this->copy_axis[1], 0, 1, 0);
+	//glRotatef(this->copy_axis[2], 0, 0, 1);
 	glRotatef(axis[0], 1, 0, 0);
 	glRotatef(axis[1], 0, 1, 0);
 	glRotatef(axis[2], 0, 0, 1);
-	glTranslatef(dir[0] * scale, dir[1] * scale, dir[2] * scale);
+	glTranslatef(dir[0], dir[1], dir[2]);
 
 	scene->setColor(GREEN);
 	this->mesh->draw();

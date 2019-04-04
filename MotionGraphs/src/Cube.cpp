@@ -41,6 +41,18 @@ void Cube::draw()
 
 
 
+void Cube::draw(float x, float y, float z)
+{
+	glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat*)cubeXform);
+
+	glPushMatrix();
+	glScalef(x * length, y * length, z * length);
+	//glTranslatef(x, y, z);
+
+	glutSolidCube(1);
+	glPopMatrix();
+}
+
 void Cube::drawShadow(Scene* scene)
 {
 	//ground
@@ -105,4 +117,9 @@ void Cube::myShadowMatrix(float ground[4], float light[4])
 	shadowMat[3][3] = dot - light[3] * ground[3];
 
 	glMultMatrixf((const GLfloat*)shadowMat);
+}
+
+void Cube::setLength(float length) 
+{
+	this->length = length;
 }

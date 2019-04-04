@@ -14,15 +14,19 @@ using namespace std;
 static int frame_time = 0;
 
 Scene* scene = new Scene();
-Cube* cube = new Cube(0, 0, 0, 2, 1, 1);
+Cube* cube = new Cube(0, 0, 0, 1, 1, 1);
 
 //Loading mocap data: skeleton from .asf and animation (poses) from .amc
 Skeleton* sk = new Skeleton((char*)"res/mocap/05/05.asf", 0.8);
 Animation* anim = new Animation((char*)"res/mocap/05/05_01.amc");
 
-Cube* test_cube = new Cube(1.01254, 16.5239, -34.8207, 1, 1, 1);
+Cube* test_cube = new Cube(0, 0, 0, 1, 1, 1);
 static int tick = -1;
 static int moving = 0;
+static float cam_x = -40.0f;
+static float cam_y = 30.0f;
+static float cam_z = 50.0f;
+static float offset = 5.0f;
 
 static void
 usage(void)
@@ -98,24 +102,17 @@ keyboard(unsigned char ch, int x, int y)
 		glFogf(GL_FOG_MODE, GL_EXP2);
 		glutPostRedisplay();
 		break;
-	case 'c':
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		gluLookAt(-15.0f, 10.0f, 35.0f,
-			get<0>(root_pos), get<1>(root_pos), get<2>(root_pos),
-			0.0f, 1.0f, 0.0f);
-		glutPostRedisplay();
+	case 'w':
+		cam_y += offset;
 		break;
-	case 'C':
-		/*view = glm::lookAt(	glm::vec3(0.0f, 0.0f, 3.0f),
-							glm::vec3(0.0f, 0.0f, 0.0f),
-							glm::vec3(0.0f, 1.0f, 0.0f));*/
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		gluLookAt(-30.0f, 30.0f, 80.0f,
-			get<0>(root_pos), get<1>(root_pos), get<2>(root_pos),
-			0.0f, 1.0f, 0.0f);
-		glutPostRedisplay();
+	case 'a':
+		cam_x -= offset;
+		break;
+	case 's':
+		cam_y -= offset;
+		break;
+	case 'd':
+		cam_x += offset;
 		break;
 	case 'N':
 	case 'n':
@@ -125,6 +122,13 @@ keyboard(unsigned char ch, int x, int y)
 		moving = !moving;
 		glutPostRedisplay();
 	}
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	gluLookAt(cam_x, cam_y, cam_z,
+		get<0>(root_pos), get<1>(root_pos), get<2>(root_pos),
+		0.0f, 1.0f, 0.0f);
+	glutPostRedisplay();
 }
 
 
@@ -133,13 +137,13 @@ display()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	float scale = 30;
+	float scale = 100;
 	glPushMatrix();
-	glTranslatef(0.0, -10, 0.0);
+	glTranslatef(0.0, 0.0, 0.0);
 	glRotatef(-90.0, 1, 0, 0);
 	glScalef(scale, scale, scale);
 
-	scene->drawCheckPlane(10, 10, BLUE, GREY);  /* draw ground */
+	scene->drawCheckPlane(30, 30, BLUE, GREY);  /* draw ground */
 	glPopMatrix();
 
 	//glPushMatrix();
@@ -160,14 +164,13 @@ display()
 
 	//drawCube(RED);        /* draw cube */
 	scene->setColor(RED);
-	cube->z = -1;
 	//cube->draw();
 	//glutSolidCube(1);
 	glPopMatrix();
 
 	glPushMatrix();
-	glTranslatef(-scale/2, -1.2, -0.5);
-	glScalef(scale, scale, scale);
+	glTranslatef(-20, 1, -0.5);
+	glScalef(scale/3, scale/3, scale/3);
 	scene->drawAxis();
 	glPopMatrix();
 
@@ -185,6 +188,23 @@ display()
 		}
 		sk->apply_pose(anim->getNextPose());
 	}
+	//scene->setColor(RED);
+	//cube->draw();
+	//scene->setColor(CYAN);
+ /*
+direction -0.34202 -0.939693 0
+	 length 6.57875
+	 axis 0 0 -20   XYZ
+
+	 -23.3432 -9.63608 -22.465
+ */
+	/*float l = 6.57875f;
+	glPushMatrix();
+	glTranslatef(-0.34202 * l / 2, -0.939693 * l /2, 0);
+	glScalef(l, l, l);
+	test_cube->draw();
+
+	glPopMatrix();*/
 
 
 

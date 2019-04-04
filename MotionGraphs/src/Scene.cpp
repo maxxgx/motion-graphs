@@ -233,6 +233,7 @@ void Scene::buildColormap(void)
 void Scene::drawAxis()
 {
 	GLfloat axisLength = 0.5f;
+	glLineWidth(3.0f);
 	glBegin(GL_LINES);
 	// draw x axis in red, y axis in green, z axis in blue 
 	//glColor3f(1.0f, 0.2f, 0.2f);
