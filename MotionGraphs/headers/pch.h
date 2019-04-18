@@ -8,6 +8,8 @@
 #define PCH_H
 
 // add headers that you want to pre-compile here
+
+
 // Include GLEW
 #include <GL/glew.h>
 
@@ -17,6 +19,7 @@
 #include <string.h>
 #include <math.h>
 
+#include <glad/glad.h>
 // Include GLFW
 #include <GLFW/glfw3.h>
 
