@@ -1,6 +1,8 @@
 #pragma once
 #include "Drawable.h"
 #include "Scene.h"
+#include "Shader.h"
+#include <glm/glm.hpp>
 
 class Cube :
 	public Drawable
@@ -11,8 +13,13 @@ public:
 	float length = 1;
 	GLfloat cubeXform[4][4];
 
+	glm::vec3 pos = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec4 model;
+
 	// Basic constructor: 1-unit length, pos: 0,0,0
 	Cube();
+
+	//Deprecated
 	// Pos constructor: basic + pos
 	Cube(float x, float y, float z);
 	// Full constructor: basic + pos + dimens
@@ -28,6 +35,8 @@ public:
 	void drawShadow(Scene* scene);
 
 	void setPos(float x, float y, float z);
+	void setColor(glm::vec4);
+	void draw(glm::mat4 model, glm::mat4 view, glm::mat4 proj);
 
 	void setLength(float length);
 
@@ -37,5 +46,51 @@ public:
 private:
 	void Init(float x, float y, float z, float xwidth, float ywidth, float  zwidth);
 	void myShadowMatrix(float ground[4], float light[4]);
+	
+	unsigned int VBO, VAO;
+
+	float vertices[108] = {
+		-0.5f, -0.5f, -0.5f,
+		 0.5f, -0.5f, -0.5f,
+		 0.5f,  0.5f, -0.5f,
+		 0.5f,  0.5f, -0.5f,
+		-0.5f,  0.5f, -0.5f,
+		-0.5f, -0.5f, -0.5f,
+
+		-0.5f, -0.5f,  0.5f,
+		 0.5f, -0.5f,  0.5f,
+		 0.5f,  0.5f,  0.5f,
+		 0.5f,  0.5f,  0.5f,
+		-0.5f,  0.5f,  0.5f,
+		-0.5f, -0.5f,  0.5f,
+
+		-0.5f,  0.5f,  0.5f,
+		-0.5f,  0.5f, -0.5f,
+		-0.5f, -0.5f, -0.5f,
+		-0.5f, -0.5f, -0.5f,
+		-0.5f, -0.5f,  0.5f,
+		-0.5f,  0.5f,  0.5f,
+
+		 0.5f,  0.5f,  0.5f,
+		 0.5f,  0.5f, -0.5f,
+		 0.5f, -0.5f, -0.5f,
+		 0.5f, -0.5f, -0.5f,
+		 0.5f, -0.5f,  0.5f,
+		 0.5f,  0.5f,  0.5f,
+
+		-0.5f, -0.5f, -0.5f,
+		 0.5f, -0.5f, -0.5f,
+		 0.5f, -0.5f,  0.5f,
+		 0.5f, -0.5f,  0.5f,
+		-0.5f, -0.5f,  0.5f,
+		-0.5f, -0.5f, -0.5f,
+
+		-0.5f,  0.5f, -0.5f,
+		 0.5f,  0.5f, -0.5f,
+		 0.5f,  0.5f,  0.5f,
+		 0.5f,  0.5f,  0.5f,
+		-0.5f,  0.5f,  0.5f,
+		-0.5f,  0.5f, -0.5f
+	};
 };
 

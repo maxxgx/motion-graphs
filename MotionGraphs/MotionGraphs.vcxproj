@@ -104,7 +104,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\Users\hal\source\repos\motion-graphs\MotionGraphs\external;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\maxxi\source\repos\motion-graphs\MotionGraphs\external;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='test|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -227,6 +227,7 @@
     <ClCompile Include="src\Animation.cpp" />
     <ClCompile Include="src\Bone.cpp" />
     <ClCompile Include="src\Cube.cpp" />
+    <ClCompile Include="src\CubeCore.cpp" />
     <ClCompile Include="src\glad.c" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\pch.cpp">
@@ -254,10 +255,12 @@
     <ClInclude Include="headers\Animation.h" />
     <ClInclude Include="headers\Bone.h" />
     <ClInclude Include="headers\Cube.h" />
+    <ClInclude Include="headers\CubeCore.h" />
     <ClInclude Include="headers\Drawable.h" />
     <ClInclude Include="headers\Pose.h" />
     <ClInclude Include="headers\Scene.h" />
     <ClInclude Include="headers\pch.h" />
+    <ClInclude Include="headers\Shader.h" />
     <ClInclude Include="headers\Skeleton.h" />
     <ClInclude Include="headers\Utils.h" />
   </ItemGroup>
@@ -288,6 +291,10 @@
     <None Include="res\mocap\05\05_20.amc" />
     <None Include="res\placeholder.blend" />
     <None Include="scripts\include_pch.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="shaders\basic.fs" />
+    <Text Include="shaders\basic.vs" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
