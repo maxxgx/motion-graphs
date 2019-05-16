@@ -1,17 +1,25 @@
 #pragma once
 
-#include "Drawable.h"
-#include "Pose.h"
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #include <string>
 #include <vector>
 #include <utility>
 #include <tuple>
-#include "Cube.h"
+#include "Pose.h"
+#include "CubeCore.h"
+#include <Shader.h>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 using namespace std;
 
-class Bone:
-	public Drawable
+class Bone
 {
 public:
 
@@ -20,13 +28,15 @@ public:
 		double axis_x, double axis_y, double axis_z, double length, string dof, vector<pair<double, double>>);
 
 	/** Methods **/
-	void Drawable::draw();
 
 	void apply_pose(Pose* pose);
 
 	void addParent(Bone* parent);
 	void addChild(Bone* child);
 	vector<Bone*> getChildren();
+
+	glm::mat4 getTransMat();
+	glm::vec3 getPos();
 
 	void reset();
 
@@ -48,11 +58,14 @@ public:
 	vector<pair<double, double>> limits;
 	double length = 0;
 
-	Cube* mesh;
+	CubeCore* mesh;
 
 protected:
 	//Save a copy of values for reset
 	double copy_dir[3] = { 0.0, 0.0, 0.0 };
 	double copy_axis[3] = { 0.0, 0.0, 0.0 };
 	double copy_length = 0;
+
+	//transformation matrix
+	glm::mat4 modelMat = glm::mat4(1.0f);
 };

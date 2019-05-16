@@ -28,38 +28,7 @@ Bone::Bone(int id, string name, double dir_x, double dir_y, double dir_z,
 	this->dof[2] = dof.find("rz") != string::npos;
 	this->limits = limits;
 
-	this->mesh = new Cube();
-}
-
-void Bone::draw()
-{
-	//cout << "--- drawing bone " << name << "\n";
-	//Draw cube placeholder
-	glPushMatrix();
-	/*for (int i = 0; i < 3; i++) {
-		if (this->dof[i]) {
-			glRotatef(axis[i], this->copy_axis[0], this->copy_axis[1], this->copy_axis[2]);
-		}
-	}*/
-	glTranslatef(this->copy_axis[0], this->copy_axis[1], this->copy_axis[2]);
-	glRotatef(axis[0], this->copy_axis[0], this->copy_axis[1], this->copy_axis[2]);
-	glRotatef(axis[1], this->copy_axis[0], this->copy_axis[1], this->copy_axis[2]);
-	glRotatef(axis[2], this->copy_axis[0], this->copy_axis[1], this->copy_axis[2]);
-	glTranslatef(-this->copy_axis[0], -this->copy_axis[1], -this->copy_axis[2]);
-	//glRotatef(axis[0], 1, 0, 0);
-	//glRotatef(axis[1], 0, 1, 0);
-	//glRotatef(axis[2], 0, 0, 1);
-	glTranslatef(dir[0] * length, dir[1] * length, dir[2] * length);
-
-	//this->mesh->setLength(length/2);
-	//this->mesh->draw(dir[0], dir[1], dir[2]);
-	this->mesh->draw();
-
-	for (Bone* child : this->children) {
-		child->draw();
-	}
-
-	glPopMatrix();
+	this->mesh = new CubeCore();
 }
 
 void Bone::apply_pose(Pose *pose)
@@ -75,7 +44,7 @@ void Bone::apply_pose(Pose *pose)
 		else {
 			this->axis[i] = 0.0;
 		}
-	}	
+	}
 }
 
 void Bone::addParent(Bone* parent)
@@ -93,6 +62,36 @@ vector<Bone*> Bone::getChildren()
 	return this->children;
 }
 
+glm::mat4 Bone::getTransMat()
+{
+	//Apply transformation on model matrix
+	glm::mat4 M = glm::mat4(1.0f);
+
+	if (this->parent != NULL) {
+		M = this->parent->modelMat;
+	}
+
+	glm::vec3 axis = glm::vec3(this->copy_axis[0], this->copy_axis[1], this->copy_axis[2]);
+	glm::quat rot = glm::angleAxis((float)axis[0], axis);
+	glm::quat rx,ry,rz;
+
+	M = glm::translate(M, glm::vec3(dir[0]*this->length, dir[1]*this->length, dir[2]*this->length));
+	if (dof[2] && this->copy_axis[2] != 0.0f) rz = glm::angleAxis((float)axis[2], glm::vec3(0.0f, 0.0f, this->copy_axis[2]));
+	if (dof[1] && this->copy_axis[1] != 0.0f) ry = glm::angleAxis((float)axis[1], glm::vec3(0.0f, this->copy_axis[1], 0.0f));
+	if (dof[0] && this->copy_axis[0] != 0.0f) rx = glm::angleAxis((float)axis[0], glm::vec3(this->copy_axis[0], 0.0f, 0.0f));
+	
+	M = M * rx * ry * rz;
+
+	this->modelMat = M;
+
+	return M;
+}
+
+glm::vec3 Bone::getPos()
+{
+	return glm::vec3(dir[0] * this->length, dir[1] * this->length, dir[2] * this->length);
+}
+
 void Bone::reset()
 {
 	for (int i = 0; i < 3; i++) {
@@ -100,7 +99,7 @@ void Bone::reset()
 		this->axis[i] = copy_axis[i];
 	}
 	length = copy_length;
-	mesh->setPos(0.0, 0.0, 0.0);
+	mesh->pos = glm::vec3(0.0f);
 }
 
 string Bone::getName()

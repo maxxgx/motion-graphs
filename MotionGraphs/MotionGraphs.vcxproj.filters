@@ -72,6 +72,9 @@
     <ClCompile Include="src\CubeCore.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="tests\refac.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -193,10 +196,16 @@
     <ClInclude Include="headers\Utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="headers\Shader.h">
+    <ClInclude Include="headers\CubeCore.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="headers\CubeCore.h">
+    <ClInclude Include="include\Shader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Camera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\quaternion.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

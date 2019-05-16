@@ -6,10 +6,10 @@ Skeleton::Skeleton()
 
 }
 
-Skeleton::Skeleton(char* asf_filename, double scale)
+Skeleton::Skeleton(char* asf_filename, float scale)
 {
 	this->scale = scale;
-	this->mesh = new Cube();
+	this->mesh = new CubeCore();
 	this->name = "root";
 	bool begin = false;
 	bool root, bonedata, hierarchy; root = bonedata = hierarchy = false;
@@ -42,7 +42,6 @@ Skeleton::Skeleton(char* asf_filename, double scale)
 			/*	Loading data	*/
 			//cout << "loading line : " << line << "\n";
 			vector<string> toks = strSplit(line, ' ');
-			string::size_type sz;
 
 			//Loading root
 			if (root)
@@ -136,38 +135,6 @@ Bone* Skeleton::getByName(string name) {
 	}
 }
 
-void Skeleton::draw(Scene* scene)
-{
-	glMatrixMode(GL_MODELVIEW);
-	//Draw root first
-	glPushMatrix();
-	glScalef(scale, scale, scale);
-	//glRotatef(this->copy_axis[0], 1, 0, 0);
-	//glRotatef(this->copy_axis[1], 0, 1, 0);
-	//glRotatef(this->copy_axis[2], 0, 0, 1);
-	glRotatef(axis[0], 1, 0, 0);
-	glRotatef(axis[1], 0, 1, 0);
-	glRotatef(axis[2], 0, 0, 1);
-	glTranslatef(dir[0], dir[1], dir[2]);
-
-	scene->setColor(GREEN);
-	this->mesh->draw();
-	//DFS depth first search
-	cout << "drawing...";
-	scene->setColor(RED);
-	for (Bone* direct_child : this->children)
-	{
-		direct_child->draw();
-	}
-	cout << " .\n";
-	glPopMatrix();
-}
-
-tuple<double, double, double> Skeleton::getPos()
-{
-	return tuple<double, double, double>(dir[0], dir[1], dir[2]);
-}
-
 void Skeleton::resetAll()
 {
 	this->reset();
@@ -197,6 +164,33 @@ void Skeleton::apply_pose(Pose* pose)
 	for (auto& bone : this->bones) {
 		bone->apply_pose(pose);
 	}
+}
+
+glm::mat4 Skeleton::getTransMat()
+{
+	//Apply transformation on model matrix
+	glm::mat4 M = glm::mat4(1.0f);
+
+	M = glm::translate(M, glm::vec3(dir[0], dir[1], dir[2]));
+	//M = glm::translate(M, glm::vec3(0.0f, 0.0f, 5.0f));
+	if (this->copy_axis[0] != 0.0f) M = glm::rotate(M, (float)axis[0], glm::vec3(this->copy_axis[0], 0.0f, 0.0f));
+	if (this->copy_axis[1] != 0.0f) M = glm::rotate(M, (float)axis[1], glm::vec3(0.0f, this->copy_axis[1], 0.0f));
+	if (this->copy_axis[2] != 0.0f) M = glm::rotate(M, (float)axis[2], glm::vec3(0.0f, 0.0f, this->copy_axis[2]));
+	//M = glm::scale(M, glm::vec3(scale));
+	
+
+	this->modelMat = M;
+	return M;
+}
+
+glm::vec3 Skeleton::getPos()
+{
+	return glm::vec3(dir[0],dir[1],dir[2]);
+}
+
+vector<Bone*> Skeleton::getAllBones()
+{
+	return this->bones;
 }
 
 Skeleton::~Skeleton()

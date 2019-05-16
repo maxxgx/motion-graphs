@@ -9,6 +9,7 @@
 #include <fstream>
 #include <sstream>
 #include "Scene.h"
+#include <Shader.h>
 
 using namespace std;
 
@@ -22,13 +23,14 @@ public:
 
 
 	Skeleton();
-	Skeleton(char* asf_filename, double scale);
+	Skeleton(char* asf_filename, float scale);
 	
 	Bone* getByName(string name);
 
 	void apply_pose(Pose* pose);
-	void draw(Scene* scene);
-	tuple<double, double, double> getPos();
+	glm::mat4 getTransMat();
+	glm::vec3 getPos();
+	vector<Bone*> getAllBones();
 	void resetAll();
 
 	~Skeleton();
