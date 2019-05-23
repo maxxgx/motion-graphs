@@ -145,28 +145,24 @@ void Skeleton::resetAll()
 
 void Skeleton::apply_pose(Pose* pose)
 {
-	if (pose == NULL) {
+	if (pose != NULL) {
+		// new root coords
+		//cout << "getting pose name " << name << "\n";
+		vector<double> ts = pose->getBoneTrans(this->name);
+		for (int i = 0; i < ts.size(); i++) {
+			if (i < 3) {
+				dir[i] = ts.at(i);
+			}
+			else {
+				rot[i - 3] = ts.at(i); 
+			}
+		}
+	}
+	else {
 		cout << "--- NULL pose!" << "\n";
-		return; 
-	}
-	// new root coords
-	cout << "getting pose name " << name << "\n";
-	vector<double> ts = pose->getBoneTrans(this->name);
-	cout << "ts->size = " << ts.size() << "\n";
-	for (int i = 0; i < ts.size(); i++) {
-		if (i < 3) {
-			dir[i] = ts.at(i);
-		}
-		else {
-			rot[i - 3] = ts.at(i); 
-		}
-	}
-	// Apply the pose to every bone
-	for (auto& bone : this->bones) {
-		bone->apply_pose(pose);
 	}
 
-	// Breadth first traversal of the skeleton to update the model matrix
+	// Depth Traversal of the skeleton to update the model matrix
 	/// note: preorder traversal
 	vector<Bone*> stack;
 	stack.push_back(this);
@@ -176,6 +172,7 @@ void Skeleton::apply_pose(Pose* pose)
 		traverse = stack.back();
 		stack.pop_back();
 
+		traverse->apply_pose(pose);
 		traverse->updateModelMat();
 
 		for (auto& bone : traverse->getChildren()) {

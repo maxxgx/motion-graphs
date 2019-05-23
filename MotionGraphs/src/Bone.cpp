@@ -33,15 +33,18 @@ Bone::Bone(int id, string name, float dir_x, float dir_y, float dir_z,
 
 void Bone::apply_pose(Pose *pose)
 {
-	vector<double> trans = pose->getBoneTrans(this->name);
+	if (pose != NULL)
+	{
+		vector<double> trans = pose->getBoneTrans(this->name);
 
-	for (int i = 0, j = 0; i < 3 && j < trans.size(); i++) {
-		if (this->dof[i]) {
-			this->rot[i] = trans.at(j);
-			j++;
-		}
-		else {
-			this->rot[i] = 0.0f;
+		for (int i = 0, j = 0; i < 3 && j < trans.size(); i++) {
+			if (this->dof[i]) {
+				this->rot[i] = trans.at(j);
+				j++;
+			}
+			else {
+				this->rot[i] = 0.0f;
+			}
 		}
 	}
 	updateModelMat();

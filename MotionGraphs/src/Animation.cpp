@@ -67,7 +67,7 @@ Pose* Animation::getNextPose()
 	if (currentFrame > poses.size() - 1)
 		return NULL;
 	else {
-		cout << "--- Returning pose at frame " << currentFrame << "\n";
+		//cout << "--- Returning pose at frame " << currentFrame << "\n";
 		Pose* p = this->poses.at(currentFrame);
 		this->currentFrame++;
 		return p;

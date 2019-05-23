@@ -241,7 +241,6 @@
     <ClCompile Include="src\Pose.cpp" />
     <ClCompile Include="src\Scene.cpp" />
     <ClCompile Include="src\Skeleton.cpp" />
-    <ClCompile Include="tests\refac.cpp" />
     <ClCompile Include="tests\Source.cpp" />
   </ItemGroup>
   <ItemGroup>

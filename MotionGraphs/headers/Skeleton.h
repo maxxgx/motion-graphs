@@ -38,5 +38,4 @@ protected:
 	float scale = 1;
 	//other bones
 	vector<Bone*> bones;
-
 };
