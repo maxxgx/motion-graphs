@@ -28,7 +28,6 @@ public:
 	Bone* getByName(string name);
 
 	void apply_pose(Pose* pose);
-	glm::mat4 getTransMat();
 	glm::vec3 getPos();
 	vector<Bone*> getAllBones();
 	void resetAll();

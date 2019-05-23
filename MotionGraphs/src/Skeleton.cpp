@@ -15,8 +15,8 @@ Skeleton::Skeleton(char* asf_filename, float scale)
 	bool root, bonedata, hierarchy; root = bonedata = hierarchy = false;
 
 	//temp var for bones
-	int id = 0; string name = ""; double dir[3] = { 0.0, 0.0 ,0.0 }, axis[3] = { 0.0, 0.0 ,0.0 };
-	string dof = ""; vector<pair<double, double>> limits; double length = 1.0;
+	int id = 0; string name = ""; float dir[3] = { 0.0, 0.0 ,0.0 }, axis[3] = { 0.0, 0.0 ,0.0 };
+	string dof = ""; vector<pair<float, float>> limits; float length = 1.0;
 
 	string line;
 	ifstream myfile(asf_filename);
@@ -158,29 +158,31 @@ void Skeleton::apply_pose(Pose* pose)
 			dir[i] = ts.at(i);
 		}
 		else {
-			axis[i - 3] = ts.at(i);
+			rot[i - 3] = ts.at(i); 
 		}
 	}
+	// Apply the pose to every bone
 	for (auto& bone : this->bones) {
 		bone->apply_pose(pose);
 	}
-}
 
-glm::mat4 Skeleton::getTransMat()
-{
-	//Apply transformation on model matrix
-	glm::mat4 M = glm::mat4(1.0f);
+	// Breadth first traversal of the skeleton to update the model matrix
+	/// note: preorder traversal
+	vector<Bone*> stack;
+	stack.push_back(this);
+	Bone *traverse;
 
-	M = glm::translate(M, glm::vec3(dir[0], dir[1], dir[2]));
-	//M = glm::translate(M, glm::vec3(0.0f, 0.0f, 5.0f));
-	if (this->copy_axis[0] != 0.0f) M = glm::rotate(M, (float)axis[0], glm::vec3(this->copy_axis[0], 0.0f, 0.0f));
-	if (this->copy_axis[1] != 0.0f) M = glm::rotate(M, (float)axis[1], glm::vec3(0.0f, this->copy_axis[1], 0.0f));
-	if (this->copy_axis[2] != 0.0f) M = glm::rotate(M, (float)axis[2], glm::vec3(0.0f, 0.0f, this->copy_axis[2]));
-	//M = glm::scale(M, glm::vec3(scale));
-	
+	while (!stack.empty()) {
+		traverse = stack.back();
+		stack.pop_back();
 
-	this->modelMat = M;
-	return M;
+		traverse->updateModelMat();
+
+		for (auto& bone : traverse->getChildren()) {
+			stack.push_back(bone);
+		}
+	}
+	stack.clear();
 }
 
 glm::vec3 Skeleton::getPos()

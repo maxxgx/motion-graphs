@@ -16,6 +16,7 @@
 #include <Shader.h>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <glm/gtx/euler_angles.hpp>
 
 using namespace std;
 
@@ -24,12 +25,13 @@ class Bone
 public:
 
 	Bone();
-	Bone(int id, string name, double dir_x, double dir_y, double dir_z, 
-		double axis_x, double axis_y, double axis_z, double length, string dof, vector<pair<double, double>>);
+	Bone(int id, string name, float dir_x, float dir_y, float dir_z,
+		float axis_x, float axis_y, float axis_z, float length, string dof, vector<pair<float, float>> limits);
 
 	/** Methods **/
 
 	void apply_pose(Pose* pose);
+	void updateModelMat();
 
 	void addParent(Bone* parent);
 	void addChild(Bone* child);
@@ -50,21 +52,23 @@ public:
 	int id;
 	string name = "";
 	//direction
-	double dir[3] = { 0.0, 0.0, 0.0 };
+	float dir[3] = { 0.0, 0.0, 0.0 };
 	//axis
-	double axis[3] = { 0.0, 0.0, 0.0 };
+	float axis[3] = { 0.0, 0.0, 0.0 };
+	float rot[3] = { 0.0, 0.0, 0.0 };;
 
 	bool dof[3];
-	vector<pair<double, double>> limits;
-	double length = 0;
+	vector<pair<float, float>> limits;
+	float length = 0;
 
 	CubeCore* mesh;
 
 protected:
+
 	//Save a copy of values for reset
-	double copy_dir[3] = { 0.0, 0.0, 0.0 };
-	double copy_axis[3] = { 0.0, 0.0, 0.0 };
-	double copy_length = 0;
+	float copy_dir[3] = { 0.0, 0.0, 0.0 };
+	float copy_axis[3] = { 0.0, 0.0, 0.0 };
+	float copy_length = 0;
 
 	//transformation matrix
 	glm::mat4 modelMat = glm::mat4(1.0f);
