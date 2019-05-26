@@ -32,10 +32,11 @@ public:
 	vector<Bone*> getAllBones();
 	void resetAll();
 
+	void rescale(float scale);
+
 	~Skeleton();
 
 protected:
-	float scale = 1;
 	//other bones
 	vector<Bone*> bones;
 };

@@ -155,6 +155,8 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>../headers/pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>.\common\;.\include\glm-0.9.7.1;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <CallingConvention>Cdecl</CallingConvention>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -224,9 +226,9 @@
     <ClCompile Include="common\text2D.cpp" />
     <ClCompile Include="common\texture.cpp" />
     <ClCompile Include="common\vboindexer.cpp" />
+    <ClCompile Include="headers\PointLight.h" />
     <ClCompile Include="src\Animation.cpp" />
     <ClCompile Include="src\Bone.cpp" />
-    <ClCompile Include="src\Cube.cpp" />
     <ClCompile Include="src\CubeCore.cpp" />
     <ClCompile Include="src\glad.c" />
     <ClCompile Include="src\main.cpp" />
@@ -254,13 +256,14 @@
     <ClInclude Include="common\vboindexer.hpp" />
     <ClInclude Include="headers\Animation.h" />
     <ClInclude Include="headers\Bone.h" />
-    <ClInclude Include="headers\Cube.h" />
     <ClInclude Include="headers\CubeCore.h" />
     <ClInclude Include="headers\Drawable.h" />
     <ClInclude Include="headers\Pose.h" />
     <ClInclude Include="headers\Scene.h" />
     <ClInclude Include="headers\pch.h" />
     <ClInclude Include="include\Camera.h" />
+    <ClInclude Include="include\Mesh.h" />
+    <ClInclude Include="include\Model.h" />
     <ClInclude Include="include\quaternion.h" />
     <ClInclude Include="include\Shader.h" />
     <ClInclude Include="headers\Skeleton.h" />
@@ -293,6 +296,12 @@
     <None Include="res\mocap\05\05_20.amc" />
     <None Include="res\placeholder.blend" />
     <None Include="scripts\include_pch.py" />
+    <None Include="shaders\basic_lighting.fs" />
+    <None Include="shaders\basic_lighting.vs" />
+    <None Include="shaders\lamp.fs" />
+    <None Include="shaders\lamp.vs" />
+    <None Include="shaders\4.1.texture.fs" />
+    <None Include="shaders\4.1.texture.vs" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="shaders\basic.fs" />
@@ -304,6 +313,8 @@
     <Import Project="packages\nupengl.core.0.1.0.1\build\native\nupengl.core.targets" Condition="Exists('packages\nupengl.core.0.1.0.1\build\native\nupengl.core.targets')" />
     <Import Project="packages\googletest.redist.1.8.3\build\native\googletest.redist.targets" Condition="Exists('packages\googletest.redist.1.8.3\build\native\googletest.redist.targets')" />
     <Import Project="packages\googletest.1.8.3\build\native\googletest.targets" Condition="Exists('packages\googletest.1.8.3\build\native\googletest.targets')" />
+    <Import Project="packages\Assimp.redist.3.0.0\build\native\Assimp.redist.targets" Condition="Exists('packages\Assimp.redist.3.0.0\build\native\Assimp.redist.targets')" />
+    <Import Project="packages\Assimp.3.0.0\build\native\Assimp.targets" Condition="Exists('packages\Assimp.3.0.0\build\native\Assimp.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
@@ -313,5 +324,7 @@
     <Error Condition="!Exists('packages\nupengl.core.0.1.0.1\build\native\nupengl.core.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\nupengl.core.0.1.0.1\build\native\nupengl.core.targets'))" />
     <Error Condition="!Exists('packages\googletest.redist.1.8.3\build\native\googletest.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\googletest.redist.1.8.3\build\native\googletest.redist.targets'))" />
     <Error Condition="!Exists('packages\googletest.1.8.3\build\native\googletest.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\googletest.1.8.3\build\native\googletest.targets'))" />
+    <Error Condition="!Exists('packages\Assimp.redist.3.0.0\build\native\Assimp.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Assimp.redist.3.0.0\build\native\Assimp.redist.targets'))" />
+    <Error Condition="!Exists('packages\Assimp.3.0.0\build\native\Assimp.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Assimp.3.0.0\build\native\Assimp.targets'))" />
   </Target>
 </Project>

@@ -6,7 +6,7 @@
 
 using namespace std;
 
-static const vector<float> vertices = {
+static const vector<float> ver = {
 			-0.5f, -0.5f, -0.5f,
 			0.5f,  0.5f, -0.5f,
 			0.5f, -0.5f, -0.5f,

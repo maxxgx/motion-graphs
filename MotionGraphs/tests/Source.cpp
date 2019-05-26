@@ -5,14 +5,10 @@
 //#include <glm/gtc/matrix_transform.hpp>
 //#include <glm/gtc/type_ptr.hpp>
 //
-//#include <iostream>
-//
-//#include <glad/glad.h>
-//#include <GLFW/glfw3.h>
-//
+//#include <filesystem>
 //#include <Shader.h>
 //#include <Camera.h>
-//#include "../headers/CubeCore.h"
+//#include <Model.h>
 //
 //#include <iostream>
 //
@@ -25,15 +21,18 @@
 //const unsigned int SCR_WIDTH = 800;
 //const unsigned int SCR_HEIGHT = 600;
 //
-//// Camera
+//// camera
 //Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 //float lastX = SCR_WIDTH / 2.0f;
 //float lastY = SCR_HEIGHT / 2.0f;
 //bool firstMouse = true;
 //
 //// timing
-//float deltaTime = 0.0f;	// time between current frame and last frame
+//float deltaTime = 0.0f;
 //float lastFrame = 0.0f;
+//
+//// lighting
+//glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 //
 //int main()
 //{
@@ -77,28 +76,91 @@
 //	// -----------------------------
 //	glEnable(GL_DEPTH_TEST);
 //
-//	// build and compile our shader zprogram
-//	// ------------------------------------
-//	Shader ourShader("shaders/basic.vs", "shaders/basic.fs");
+//	// build and compile shaders
+//	// -------------------------
+//	Shader ourShader("shaders/2.2.basic_lighting.vs", "shaders/2.2.basic_lighting.fs");
+//	Shader lampShader("shaders/2.2.lamp.vs", "shaders/2.2.lamp.fs");
 //
-//	CubeCore cubes[] = {
-//		CubeCore(0.0f,  0.0f,  0.0f),
-//		CubeCore(2.0f,  5.0f, -15.0f),
-//		CubeCore(-1.5f, -2.2f, -2.5f),
-//		CubeCore(-3.8f, -2.0f, -12.3f),
-//		CubeCore(2.4f, -0.4f, -3.5f),
-//		CubeCore(-1.7f,  3.0f, -7.5f),
-//		CubeCore(1.3f, -2.0f, -2.5f),
-//		CubeCore(1.5f,  2.0f, -2.5f),
-//		CubeCore(1.5f,  0.2f, -1.5f),
-//		CubeCore(-1.3f,  1.0f, -1.5f)
+//	// load models
+//	// -----------
+//	Model ourModel(std::filesystem::current_path().string().append("\\res\\planet\\planet.obj"));
+//
+//		// set up vertex data (and buffer(s)) and configure vertex attributes
+//	// ------------------------------------------------------------------
+//	float vertices[] = {
+//		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+//		 0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,-
+//		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+//		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+//		-0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+//		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+//
+//		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+//		 0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+//		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+//		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+//		-0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+//		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+//
+//		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+//		-0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+//		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+//		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+//		-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+//		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+//
+//		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+//		 0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+//		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+//		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+//		 0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+//		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+//
+//		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+//		 0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+//		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+//		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+//		-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+//		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+//
+//		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+//		 0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+//		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+//		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+//		-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+//		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
 //	};
+//	// first, configure the cube's VAO (and VBO)
+//	unsigned int VBO, cubeVAO;
+//	glGenVertexArrays(1, &cubeVAO);
+//	glGenBuffers(1, &VBO);
 //
-//	
-//	// tell opengl for each sampler to which texture unit it belongs to (only has to be done once)
-//	// -------------------------------------------------------------------------------------------
-//	ourShader.use();
+//	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+//	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 //
+//	glBindVertexArray(cubeVAO);
+//
+//	// position attribute
+//	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+//	glEnableVertexAttribArray(0);
+//	// normal attribute
+//	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+//	glEnableVertexAttribArray(1);
+//
+//
+//	// second, configure the light's VAO (VBO stays the same; the vertices are the same for the light object which is also a 3D cube)
+//	unsigned int lightVAO;
+//	glGenVertexArrays(1, &lightVAO);
+//	glBindVertexArray(lightVAO);
+//
+//	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+//	// note that we update the lamp's position attribute's stride to reflect the updated buffer data
+//	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+//	glEnableVertexAttribArray(0);
+//
+//
+//	// draw in wireframe
+//	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 //
 //	// render loop
 //	// -----------
@@ -117,46 +179,47 @@
 //		// render
 //		// ------
 //		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-//		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
+//		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 //
-//
-//		// activate shader
+//		// don't forget to enable shader before setting uniforms
 //		ourShader.use();
+//		// be sure to activate shader when setting uniforms/drawing objects
+//		ourShader.use();
+//		ourShader.setVec3("objectColor", 1.0f, 0.5f, 0.31f);
+//		ourShader.setVec3("lightColor", 1.0f, 1.0f, 1.0f);
+//		ourShader.setVec3("lightPos", lightPos);
+//		ourShader.setVec3("viewPos", camera.Position);
 //
-//		// pass projection matrix to shader (note that in this case it could change every frame)
+//		// view/projection transformations
 //		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-//		ourShader.setMat4("projection", projection);
-//
-//		// camera/view transformation
 //		glm::mat4 view = camera.GetViewMatrix();
-//
+//		ourShader.setMat4("projection", projection);
 //		ourShader.setMat4("view", view);
 //
-//		// render boxes
-//		cubes[0].setBuffers();
-//		glBindVertexArray(cubes[0].VAO);
-//		for (unsigned int i = 0; i < 10; i++)
-//		{
-//			// calculate the model matrix for each object and pass it to shader before drawing
-//			glm::mat4 model = glm::mat4(1.0f);
-//			model = glm::translate(model, cubes[i].pos);
-//			float angle = 20.0f * i;
-//			model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-//			ourShader.setMat4("model", model);
+//		// render the loaded model
+//		glm::mat4 model = glm::mat4(1.0f);
+//		model = glm::translate(model, glm::vec3(0.0f, -1.75f, 0.0f)); // translate it down so it's at the center of the scene
+//		model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));	// it's a bit too big for our scene, so scale it down
+//		ourShader.setMat4("model", model);
+//		ourModel.Draw(ourShader);
 //
-//			glDrawArrays(GL_TRIANGLES, 0, 36);
-//		}
+//		// also draw the lamp object
+//		lampShader.use();
+//		lampShader.setMat4("projection", projection);
+//		lampShader.setMat4("view", view);
+//		model = glm::mat4(1.0f);
+//		model = glm::translate(model, lightPos);
+//		model = glm::scale(model, glm::vec3(0.2f)); // a smaller cube
+//		lampShader.setMat4("model", model);
+//
+//		glBindVertexArray(lightVAO);
+//		glDrawArrays(GL_TRIANGLES, 0, 36);
+//
 //
 //		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 //		// -------------------------------------------------------------------------------
 //		glfwSwapBuffers(window);
 //		glfwPollEvents();
-//	}
-//
-//	// optional: de-allocate all resources once they've outlived their purpose:
-//	// ------------------------------------------------------------------------
-//	for (int i = 0; i < 10; i++) {
-//		cubes[i].~CubeCore();
 //	}
 //
 //	// glfw: terminate, clearing all previously allocated GLFW resources.
@@ -180,10 +243,6 @@
 //		camera.ProcessKeyboard(LEFT, deltaTime);
 //	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 //		camera.ProcessKeyboard(RIGHT, deltaTime);
-//	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-//		camera.ProcessKeyboard(DOWN, deltaTime);
-//	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-//		camera.ProcessKeyboard(UP, deltaTime);
 //}
 //
 //// glfw: whenever the window size changed (by OS or user resize) this callback function executes
@@ -194,7 +253,6 @@
 //	// height will be significantly larger than specified on retina displays.
 //	glViewport(0, 0, width, height);
 //}
-//
 //
 //// glfw: whenever the mouse moves, this callback is called
 //// -------------------------------------------------------

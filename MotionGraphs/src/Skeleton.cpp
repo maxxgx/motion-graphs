@@ -9,7 +9,6 @@ Skeleton::Skeleton()
 Skeleton::Skeleton(char* asf_filename, float scale)
 {
 	this->scale = scale;
-	this->mesh = new CubeCore();
 	this->name = "root";
 	bool begin = false;
 	bool root, bonedata, hierarchy; root = bonedata = hierarchy = false;
@@ -64,7 +63,7 @@ Skeleton::Skeleton(char* asf_filename, float scale)
 				//} cout << "\n";
 				if (strContains(line, "end")) {
 					begin = false;
-					this->bones.push_back(new Bone(id, name, dir[0], dir[1], dir[2], axis[0], axis[1], axis[2], length*scale, dof, limits));
+					this->bones.push_back(new Bone(id, name, dir[0], dir[1], dir[2], axis[0], axis[1], axis[2], length, dof, limits, scale));
 					dof = "";
 					cout << "===   added bone " << name << "\n";
 				}
@@ -140,6 +139,14 @@ void Skeleton::resetAll()
 	this->reset();
 	for (Bone *b : this->bones) {
 		b->reset();
+	}
+}
+
+void Skeleton::rescale(float scale)
+{
+	this->scale = scale;
+	for (auto& bone : this->getAllBones()) {
+		bone->scale = scale;
 	}
 }
 

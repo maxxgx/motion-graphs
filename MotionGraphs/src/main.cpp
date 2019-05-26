@@ -7,17 +7,18 @@
 
 #include <iostream>
 
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-
 #include <Shader.h>
 #include <Camera.h>
+#include <Model.h>
+#include <filesystem>
+
 #include "../headers/CubeCore.h"
 #include "../headers/Skeleton.h"
 #include "../headers/Animation.h"
 #include "../headers/Bone.h"
+#include "../headers/PointLight.h"
 
-#include <iostream>
+
 
 #define FPS 120
 
@@ -36,6 +37,9 @@ float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
 
+// Lights
+PointLight lamp = PointLight();
+
 // timing
 float deltaTime = 0.0f;	// time between current frame and last frame
 float lastFrame = 0.0f;
@@ -43,6 +47,8 @@ float lastFrame = 0.0f;
 // Controls
 bool play = false;
 bool lock_view = true;
+
+float scale = 0.25f;
 
 int main()
 {
@@ -88,11 +94,18 @@ int main()
 
 	// build and compile our shader zprogram
 	// ------------------------------------
-	Shader ourShader("shaders/basic.vs", "shaders/basic.fs");
+	Shader ourShader("shaders/basic_lighting.vs", "shaders/basic_lighting.fs");
+	Shader lampShader("shaders/lamp.vs", "shaders/lamp.fs");
+
+	// load .obj 3D models
+	Model sphere(std::filesystem::current_path().string().append("\\res\\planet\\planet.obj"));
+	
+	// Lights buffers
+	lamp.setBuffers();
 
 	// Loading mocap data: skeleton from .asf and animation (poses) from .amc
 	// ----------
-	Skeleton* sk = new Skeleton((char*)"res/mocap/05/05.asf", 1);
+	Skeleton* sk = new Skeleton((char*)"res/mocap/05/05.asf", scale);
 
 	cout << sk->getName();
 	vector<Bone*> s = sk->getAllBones();
@@ -107,8 +120,7 @@ int main()
 	}
 
 
-
-	Animation* anim = new Animation((char*)"res/mocap/05/05_01.amc");
+	Animation* anim = new Animation((char*)"res/mocap/05/05_02.amc");
 	sk->apply_pose(anim->getNextPose());
 	CubeCore cube = CubeCore();
 
@@ -151,6 +163,10 @@ int main()
 
 		// activate shader
 		ourShader.use();
+		ourShader.setVec3("objectColor", 1.0f, 0.1f, 0.1f);
+		ourShader.setVec3("lightColor", 1.0f, 1.0f, 1.0f);
+		ourShader.setVec3("lightPos", lamp.Position);
+		ourShader.setVec3("viewPos", camera.Position);
 
 		// pass projection matrix to shader (note that in this case it could change every frame)
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
@@ -165,21 +181,33 @@ int main()
 		}
 
 		// render Skeleton, root first
-		cube.setBuffers();
-		glBindVertexArray(cube.VAO);
+		float render_scale = 0.05f;
+		glm::mat4 model = glm::scale(sk->getTransMat(), glm::vec3(render_scale));
+		ourShader.setMat4("model", model);
+		//glDrawArrays(GL_TRIANGLES, 0, 36);
+		sphere.Draw(ourShader);
 
-		float scale = 0.1f;
-		//model = glm::scale(model, glm::vec3(scale));
-		ourShader.setMat4("model", sk->getTransMat());
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-
+		ourShader.setVec3("objectColor", 1.0f, 0.5f, 0.31f);
 		for (Bone* bone : sk->getAllBones())
 		{
 			// calculate the model matrix for each object and pass it to shader before drawing
-
-			ourShader.setMat4("model", bone->getTransMat());
-			glDrawArrays(GL_TRIANGLES, 0, 36);
+			model = glm::scale(bone->getTransMat(), glm::vec3(render_scale));
+			ourShader.setMat4("model", model);
+			//glDrawArrays(GL_TRIANGLES, 0, 36);
+			sphere.Draw(ourShader);
 		}
+
+		// Draw Lights
+		lampShader.use();
+		lampShader.setMat4("projection", projection);
+		lampShader.setMat4("view", camera.GetViewMatrix());
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, lamp.Position);
+		model = glm::scale(model, glm::vec3(0.2f)); // a smaller cube
+		lampShader.setMat4("model", model);
+
+		glBindVertexArray(lamp.VAO);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
 
 		float draw_time = glfwGetTime() - currentFrame;
 		//cout << "Draw time (ms) = " << draw_time * 1000.f << endl;
@@ -223,6 +251,21 @@ void processInput(GLFWwindow *window)
 		camera.ProcessKeyboard(DOWN, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
 		camera.ProcessKeyboard(UP, deltaTime);
+
+	// Lights control
+	float light_offset = 1.f;
+	if (glfwGetKey(window, GLFW_KEY_KP_8) == GLFW_PRESS)
+		lamp.Position += glm::vec3(0.f, light_offset, 0.f);
+	if (glfwGetKey(window, GLFW_KEY_KP_5) == GLFW_PRESS)
+		lamp.Position += glm::vec3(0.f, -light_offset, 0.f);
+	if (glfwGetKey(window, GLFW_KEY_KP_4) == GLFW_PRESS)
+		lamp.Position += glm::vec3(-light_offset, 0.f, 0.f);
+	if (glfwGetKey(window, GLFW_KEY_KP_6) == GLFW_PRESS)
+		lamp.Position += glm::vec3(light_offset, 0.f, 0.f);
+	if (glfwGetKey(window, GLFW_KEY_KP_7) == GLFW_PRESS)
+		lamp.Position += glm::vec3(0.f, 0.f, -light_offset);
+	if (glfwGetKey(window, GLFW_KEY_KP_9) == GLFW_PRESS)
+		lamp.Position += glm::vec3(0.f, 0.f, light_offset);
 
 	// Play button
 	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)

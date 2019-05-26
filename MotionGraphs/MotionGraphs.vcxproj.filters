@@ -42,9 +42,6 @@
     <ClCompile Include="common\vboindexer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Cube.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\Scene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -70,6 +67,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\CubeCore.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="headers\PointLight.h">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -140,6 +140,12 @@
     <None Include="res\mocap\05\05_19.amc">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="shaders\4.1.texture.fs" />
+    <None Include="shaders\4.1.texture.vs" />
+    <None Include="shaders\basic_lighting.fs" />
+    <None Include="shaders\basic_lighting.vs" />
+    <None Include="shaders\lamp.fs" />
+    <None Include="shaders\lamp.vs" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="headers\pch.h">
@@ -172,9 +178,6 @@
     <ClInclude Include="headers\Drawable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="headers\Cube.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="headers\Scene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -203,6 +206,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\quaternion.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Mesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Model.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

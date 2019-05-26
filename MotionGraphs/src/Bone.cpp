@@ -7,7 +7,7 @@ Bone::Bone()
 }
 
 Bone::Bone(int id, string name, float dir_x, float dir_y, float dir_z,
-	float axis_x, float axis_y, float axis_z, float length, string dof, vector<pair<float, float>> limits)
+	float axis_x, float axis_y, float axis_z, float length, string dof, vector<pair<float, float>> limits, float scale)
 {
 	this->id = id;
 	this->name = name;
@@ -28,7 +28,7 @@ Bone::Bone(int id, string name, float dir_x, float dir_y, float dir_z,
 	this->dof[2] = dof.find("rz") != string::npos;
 	this->limits = limits;
 
-	this->mesh = new CubeCore();
+	this->scale = scale;
 }
 
 void Bone::apply_pose(Pose *pose)
@@ -58,7 +58,7 @@ void Bone::updateModelMat()
 		//Apply transformation on model matrix
 		glm::mat4 B = glm::mat4(1.0f);
 
-		B = glm::translate(B, glm::vec3(dir[0], dir[1], dir[2]));
+		B = glm::translate(B, glm::vec3(dir[0]*scale, dir[1]*scale, dir[2]*scale));
 		//M = glm::scale(M, glm::vec3(scale));
 
 		glm::mat4 C = glm::eulerAngleXYZ(glm::radians(axis[0]), glm::radians(axis[1]), glm::radians(axis[2]));
@@ -91,7 +91,7 @@ void Bone::updateModelMat()
 		glm::mat4 Cinv = glm::inverse(C);
 
 		/// B matrix == the translation offset from the segment parent
-		glm::vec3 parent_offset = glm::vec3(dir[0] * length, dir[1] * length, dir[2] * length);
+		glm::vec3 parent_offset = glm::vec3(dir[0] * length * scale, dir[1] * length * scale, dir[2] * length * scale);
 		glm::mat4 B = glm::mat4(1.f);
 		B = glm::translate(parent_mat, parent_offset);
 
@@ -131,7 +131,6 @@ void Bone::reset()
 		this->axis[i] = copy_axis[i];
 	}
 	length = copy_length;
-	mesh->pos = glm::vec3(0.0f);
 }
 
 string Bone::getName()

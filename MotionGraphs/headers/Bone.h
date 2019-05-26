@@ -12,7 +12,6 @@
 #include <utility>
 #include <tuple>
 #include "Pose.h"
-#include "CubeCore.h"
 #include <Shader.h>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -26,7 +25,7 @@ public:
 
 	Bone();
 	Bone(int id, string name, float dir_x, float dir_y, float dir_z,
-		float axis_x, float axis_y, float axis_z, float length, string dof, vector<pair<float, float>> limits);
+		float axis_x, float axis_y, float axis_z, float length, string dof, vector<pair<float, float>> limits, float scale);
 
 	/** Methods **/
 
@@ -61,7 +60,7 @@ public:
 	vector<pair<float, float>> limits;
 	float length = 0;
 
-	CubeCore* mesh;
+	float scale = 1.f;
 
 protected:
 
