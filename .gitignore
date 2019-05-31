@@ -328,3 +328,7 @@ ASALocalRun/
 
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
+
+
+# Resource files (mocap and 3D obj)
+!/MotionGraphs/res/*
