@@ -55,7 +55,7 @@ class PointLight
 {
 public:
 	unsigned int VBO, VAO;
-	glm::vec3 Position = glm::vec3(-100.2f, 1.0f, 100.0f);
+	glm::vec3 Position = glm::vec3(-100.2f, 50.0f, 100.0f);
 
 	PointLight() {
 

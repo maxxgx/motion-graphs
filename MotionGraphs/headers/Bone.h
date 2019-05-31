@@ -36,7 +36,8 @@ public:
 	void addChild(Bone* child);
 	vector<Bone*> getChildren();
 
-	glm::mat4 getTransMat();
+	glm::mat4 getJointMat();
+	glm::mat4 getSegMat();
 	glm::vec3 getPos();
 
 	void reset();
@@ -70,5 +71,6 @@ protected:
 	float copy_length = 0;
 
 	//transformation matrix
-	glm::mat4 modelMat = glm::mat4(1.0f);
+	glm::mat4 JointMat = glm::mat4(1.0f);
+	glm::mat4 SegMat = glm::mat4(1.f);
 };

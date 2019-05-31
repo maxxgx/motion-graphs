@@ -70,10 +70,10 @@ void Bone::updateModelMat()
 		//glm::mat4 M = glm::eulerAngleXYZ(rot[0], rot[1], rot[2]);
 		glm::mat4 M = transformX * transformY * transformZ;
 
-		this->modelMat = B * C * M * Cinv;
+		this->JointMat = B * C * M * Cinv;
 	}
 	else { // Other bones
-		glm::mat4 parent_mat = this->parent->getTransMat();
+		glm::mat4 parent_mat = this->parent->getJointMat();
 
 		/// Creating the Rotation matrix R (or M?)
 		glm::mat4 transformX = dof[0] ? glm::eulerAngleX(glm::radians(rot[0])) : glm::mat4(1.f);
@@ -95,7 +95,24 @@ void Bone::updateModelMat()
 		glm::mat4 B = glm::mat4(1.f);
 		B = glm::translate(parent_mat, parent_offset);
 
-		this->modelMat = B * C * M * Cinv;
+		this->JointMat = B * C * M * Cinv;
+
+		// Segment matrix, only B mat is changing
+		glm::vec3 parent_half_offset = parent_offset / glm::vec3(2.f);
+		B = glm::mat4(1.f);
+		B = glm::translate(parent_mat, parent_half_offset);
+
+		this->SegMat = B;
+
+		//glm::vec3 a = glm::vec3(parent->dir[0], parent->dir[1], parent->dir[2]);
+
+		//float angle = glm::acos(glm::dot(a, b));
+		//glm::vec3 ax = glm::normalize(glm::cross(a,b));
+
+		//SegMat = glm::rotate(SegMat, angle, ax);
+
+		glm::vec3 b = glm::normalize(glm::vec3(dir[0], dir[1], dir[2]));
+		SegMat = glm::scale(SegMat, b*10.f);
 	}
 }
 
@@ -114,9 +131,14 @@ vector<Bone*> Bone::getChildren()
 	return this->children;
 }
 
-glm::mat4 Bone::getTransMat()
+glm::mat4 Bone::getJointMat()
 {
-	return this->modelMat;
+	return this->JointMat;
+}
+
+glm::mat4 Bone::getSegMat()
+{
+	return this->SegMat;
 }
 
 glm::vec3 Bone::getPos()

@@ -98,7 +98,10 @@ int main()
 	Shader lampShader("shaders/lamp.vs", "shaders/lamp.fs");
 
 	// load .obj 3D models
-	Model sphere(std::filesystem::current_path().string().append("\\res\\planet\\planet.obj"));
+	string current_path = std::filesystem::current_path().string();
+	Model sphere(current_path.append("\\res\\planet\\planet.obj"));
+	Model cylinder(current_path.append("\\res\\cylinder\\cylinder.obj"));
+	Model plane(current_path.append("\\res\\plane\\plane.obj"));
 	
 	// Lights buffers
 	lamp.setBuffers();
@@ -120,9 +123,10 @@ int main()
 	}
 
 
-	Animation* anim = new Animation((char*)"res/mocap/05/05_02.amc");
+	Animation* anim = new Animation((char*)"res/mocap/05/05_01.amc");
 	sk->apply_pose(anim->getNextPose());
 	CubeCore cube = CubeCore();
+	cube.setBuffers();
 
 
 	// tell opengl for each sampler to which texture unit it belongs to (only has to be done once)
@@ -163,7 +167,6 @@ int main()
 
 		// activate shader
 		ourShader.use();
-		ourShader.setVec3("objectColor", 1.0f, 0.1f, 0.1f);
 		ourShader.setVec3("lightColor", 1.0f, 1.0f, 1.0f);
 		ourShader.setVec3("lightPos", lamp.Position);
 		ourShader.setVec3("viewPos", camera.Position);
@@ -180,19 +183,37 @@ int main()
 			ourShader.setMat4("view", camera.GetViewMatrix());
 		}
 
+		// floor
+		ourShader.setVec3("objectColor", .9f, 0.9f, 0.9f);
+		glm::mat4 model = glm::mat4(1.0f);
+		model = glm::scale(model, glm::vec3(50.f, 0.001f, 50.f));
+		ourShader.setMat4("model", model);
+		glBindVertexArray(cube.VAO);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+
+
 		// render Skeleton, root first
 		float render_scale = 0.05f;
-		glm::mat4 model = glm::scale(sk->getTransMat(), glm::vec3(render_scale));
+		model = glm::scale(sk->getJointMat(), glm::vec3(render_scale));
+		ourShader.setVec3("objectColor", 1.0f, 0.1f, 0.1f);
 		ourShader.setMat4("model", model);
 		//glDrawArrays(GL_TRIANGLES, 0, 36);
 		sphere.Draw(ourShader);
 
-		ourShader.setVec3("objectColor", 1.0f, 0.5f, 0.31f);
 		for (Bone* bone : sk->getAllBones())
 		{
+			ourShader.setVec3("objectColor", 0.31f, 1.f, 0.31f);
 			// calculate the model matrix for each object and pass it to shader before drawing
-			model = glm::scale(bone->getTransMat(), glm::vec3(render_scale));
+			model = glm::scale(bone->getJointMat(), glm::vec3(render_scale));
 			ourShader.setMat4("model", model);
+			//glDrawArrays(GL_TRIANGLES, 0, 36);
+			sphere.Draw(ourShader);
+
+			// Draw segment
+			ourShader.setVec3("objectColor", .6f, 0.6f, 0.6f);
+			model = glm::scale(bone->getSegMat(), glm::vec3(render_scale));
+			ourShader.setMat4("model", model);
+			//glBindVertexArray(cube.VAO);
 			//glDrawArrays(GL_TRIANGLES, 0, 36);
 			sphere.Draw(ourShader);
 		}
