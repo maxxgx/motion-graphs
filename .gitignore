@@ -331,4 +331,4 @@ ASALocalRun/
 
 
 # Resource files (mocap and 3D obj)
-!/MotionGraphs/res/*
+!MotionGraphs/res/*
