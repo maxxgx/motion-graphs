@@ -18,7 +18,7 @@
 #include "../headers/Bone.h"
 #include "../headers/PointLight.h"
 
-
+#define ROOT_DIR std::filesystem::current_path().string()
 
 #define FPS 120
 
@@ -98,10 +98,10 @@ int main()
 	Shader lampShader("shaders/lamp.vs", "shaders/lamp.fs");
 
 	// load .obj 3D models
-	string current_path = std::filesystem::current_path().string();
-	Model sphere(current_path.append("\\res\\planet\\planet.obj"));
-	Model cylinder(current_path.append("\\res\\cylinder\\cylinder.obj"));
-	Model plane(current_path.append("\\res\\plane\\plane.obj"));
+	Model sphere(ROOT_DIR.append("\\res\\planet\\planet.obj"));
+	Model cylinder(ROOT_DIR.append("\\res\\cylinder\\cylinder.obj"));
+	Model plane(ROOT_DIR.append("\\res\\plane\\plane.obj"));
+	Model monkey(ROOT_DIR.append("\\res\\monkey\\monkey.obj"));
 	
 	// Lights buffers
 	lamp.setBuffers();
@@ -188,12 +188,13 @@ int main()
 		glm::mat4 model = glm::mat4(1.0f);
 		model = glm::scale(model, glm::vec3(50.f, 0.001f, 50.f));
 		ourShader.setMat4("model", model);
-		glBindVertexArray(cube.VAO);
-		glDrawArrays(GL_TRIANGLES, 0, 36);
+		//glBindVertexArray(cube.VAO);
+		//glDrawArrays(GL_TRIANGLES, 0, 36);
+		plane.Draw(ourShader);
 
 
 		// render Skeleton, root first
-		float render_scale = 0.05f;
+		float render_scale = .15f;
 		model = glm::scale(sk->getJointMat(), glm::vec3(render_scale));
 		ourShader.setVec3("objectColor", 1.0f, 0.1f, 0.1f);
 		ourShader.setMat4("model", model);
@@ -206,8 +207,15 @@ int main()
 			// calculate the model matrix for each object and pass it to shader before drawing
 			model = glm::scale(bone->getJointMat(), glm::vec3(render_scale));
 			ourShader.setMat4("model", model);
-			//glDrawArrays(GL_TRIANGLES, 0, 36);
-			sphere.Draw(ourShader);
+			//if (bone->getName()._Starts_with("head"))
+			//{
+			//	model = glm::scale(model, glm::vec3(render_scale > 1 ? render_scale: 1 * 5));
+			//	ourShader.setMat4("model", model);
+			//	monkey.Draw(ourShader);
+			//}
+			//else
+			//	sphere.Draw(ourShader);
+			monkey.Draw(ourShader);
 
 			// Draw segment
 			ourShader.setVec3("objectColor", .6f, 0.6f, 0.6f);
@@ -215,7 +223,7 @@ int main()
 			ourShader.setMat4("model", model);
 			//glBindVertexArray(cube.VAO);
 			//glDrawArrays(GL_TRIANGLES, 0, 36);
-			sphere.Draw(ourShader);
+			cylinder.Draw(ourShader);
 		}
 
 		// Draw Lights

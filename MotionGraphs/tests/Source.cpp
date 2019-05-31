@@ -12,6 +12,8 @@
 //
 //#include <iostream>
 //
+//#define ROOT_DIR std::filesystem::current_path().string()
+//
 //void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 //void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 //void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
@@ -78,12 +80,17 @@
 //
 //	// build and compile shaders
 //	// -------------------------
-//	Shader ourShader("shaders/2.2.basic_lighting.vs", "shaders/2.2.basic_lighting.fs");
-//	Shader lampShader("shaders/2.2.lamp.vs", "shaders/2.2.lamp.fs");
+//	Shader ourShader("shaders/basic_lighting.vs", "shaders/basic_lighting.fs");
+//	Shader lampShader("shaders/lamp.vs", "shaders/lamp.fs");
 //
 //	// load models
 //	// -----------
-//	Model ourModel(std::filesystem::current_path().string().append("\\res\\planet\\planet.obj"));
+//	/*string s = std::filesystem::current_path().string().append("\\res\\monkey\\monkey.obj");
+//	Model ourModel(s);*/
+//	Model sphere(ROOT_DIR.append("\\res\\planet\\planet.obj"));
+//	Model cylinder(ROOT_DIR.append("\\res\\cylinder\\cylinder.obj"));
+//	Model plane(ROOT_DIR.append("\\res\\plane\\plane.obj"));
+//	Model monkey(ROOT_DIR.append("\\res\\monkey\\monkey.obj"));
 //
 //		// set up vertex data (and buffer(s)) and configure vertex attributes
 //	// ------------------------------------------------------------------
@@ -199,9 +206,9 @@
 //		// render the loaded model
 //		glm::mat4 model = glm::mat4(1.0f);
 //		model = glm::translate(model, glm::vec3(0.0f, -1.75f, 0.0f)); // translate it down so it's at the center of the scene
-//		model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));	// it's a bit too big for our scene, so scale it down
+//		model = glm::scale(model, glm::vec3(5.5f, 5.5f, 5.5f));	// it's a bit too big for our scene, so scale it down
 //		ourShader.setMat4("model", model);
-//		ourModel.Draw(ourShader);
+//		monkey.Draw(ourShader);
 //
 //		// also draw the lamp object
 //		lampShader.use();

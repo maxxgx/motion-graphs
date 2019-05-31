@@ -155,7 +155,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>../headers/pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>.\common\;.\include\glm-0.9.7.1;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
       <CallingConvention>Cdecl</CallingConvention>
     </ClCompile>
     <Link>
