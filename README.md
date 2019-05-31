@@ -1,2 +1,2 @@
 # motion-graphs
-Generating novel animations from motion capture using motion graphs.
+Human motion synthesis from motion capture data in OpenGL.
