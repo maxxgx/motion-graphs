@@ -194,7 +194,7 @@ int main()
 
 
 		// render Skeleton, root first
-		float render_scale = .15f;
+		float render_scale = .05f;
 		model = glm::scale(sk->getJointMat(), glm::vec3(render_scale));
 		ourShader.setVec3("objectColor", 1.0f, 0.1f, 0.1f);
 		ourShader.setMat4("model", model);
@@ -214,8 +214,8 @@ int main()
 			//	monkey.Draw(ourShader);
 			//}
 			//else
-			//	sphere.Draw(ourShader);
-			monkey.Draw(ourShader);
+			sphere.Draw(ourShader);
+			//monkey.Draw(ourShader);
 
 			// Draw segment
 			ourShader.setVec3("objectColor", .6f, 0.6f, 0.6f);

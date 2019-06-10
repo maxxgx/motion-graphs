@@ -98,7 +98,7 @@ void Bone::updateModelMat()
 		this->JointMat = B * C * M * Cinv;
 
 		// Segment matrix, only B mat is changing
-		glm::vec3 parent_half_offset = parent_offset / glm::vec3(2.f);
+		glm::vec3 parent_half_offset = glm::vec3(dir[0] * (length / 2.f) * scale, dir[1] * (length / 2.f)* scale, dir[2] * (length / 2.f)* scale);
 		B = glm::mat4(1.f);
 		B = glm::translate(parent_mat, parent_half_offset);
 
@@ -111,8 +111,17 @@ void Bone::updateModelMat()
 
 		//SegMat = glm::rotate(SegMat, angle, ax);
 
+		glm::mat4 m = glm::mat4(1.f);
+		m = glm::scale(m, glm::vec3(1.f, this->length, 1.f));
+
+		glm::mat4 r = glm::eulerAngleXYZ(glm::radians(dir[0]), glm::radians(dir[1]), glm::radians(dir[2]));
+
 		glm::vec3 b = glm::normalize(glm::vec3(dir[0], dir[1], dir[2]));
+
+
+
 		SegMat = glm::scale(SegMat, b*10.f);
+		SegMat = B * r * m;
 	}
 }
 
