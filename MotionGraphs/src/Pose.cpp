@@ -6,7 +6,7 @@ Pose::Pose(long frame)
 	this->frame = frame;
 }
 
-vector<double> Pose::getBoneTrans(string bone)
+vector<float> Pose::getBoneTrans(string bone)
 {
 	return this->transf[bone];
 }
@@ -16,9 +16,9 @@ int Pose::getPoseFrame()
 	return this->frame;
 }
 
-void Pose::addTransf(string bone, vector<double> transf)
+void Pose::addTransf(string bone, vector<float> transf)
 {
-	this->transf.insert(pair<string, vector<double>>(bone, transf));
+	this->transf.insert(pair<string, vector<float>>(bone, transf));
 }
 
 Pose::~Pose()

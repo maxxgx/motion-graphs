@@ -155,7 +155,7 @@ void Skeleton::apply_pose(Pose* pose)
 	if (pose != NULL) {
 		// new root coords
 		//cout << "getting pose name " << name << "\n";
-		vector<double> ts = pose->getBoneTrans(this->name);
+		vector<float> ts = pose->getBoneTrans(this->name);
 		for (int i = 0; i < ts.size(); i++) {
 			if (i < 3) {
 				dir[i] = ts.at(i);

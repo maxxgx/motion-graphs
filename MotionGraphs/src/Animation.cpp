@@ -37,7 +37,7 @@ Animation::Animation(char* amc_filename)
 			}
 			if (started && p_frame == -1) //if started and current line is not frame number
 			{
-				vector<double> t;
+				vector<float> t;
 				for (int i = 1; i < toks.size(); i++) {
 					t.push_back(stod(toks.at(i)));
 				}

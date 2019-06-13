@@ -59,7 +59,7 @@ public:
 
 	bool dof[3];
 	vector<pair<float, float>> limits;
-	float length = 0;
+	float length = 0.f;
 
 	float scale = 1.f;
 
@@ -73,4 +73,5 @@ protected:
 	//transformation matrix
 	glm::mat4 JointMat = glm::mat4(1.0f);
 	glm::mat4 SegMat = glm::mat4(1.f);
+	glm::mat4 TranMat = glm::mat4(1.f);
 };

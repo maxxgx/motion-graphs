@@ -11,6 +11,7 @@
 #include <Camera.h>
 #include <Model.h>
 #include <filesystem>
+#include <string.h>
 
 #include "../headers/CubeCore.h"
 #include "../headers/Skeleton.h"
@@ -25,14 +26,14 @@
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-void processInput(GLFWwindow *window);
+void keyboardInput(GLFWwindow *window);
 
 // settings
 const unsigned int SCR_WIDTH = 2000;
 const unsigned int SCR_HEIGHT = 1200;
 
 // Camera
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Camera camera(glm::vec3(0.0f, 0.0f, 8.f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -49,6 +50,11 @@ bool play = false;
 bool lock_view = true;
 
 float scale = 0.25f;
+
+// Animation & skeleton
+string file_asf = "res/mocap/02/02.asf";
+string file_amc = "res/mocap/02/02_0";
+Animation* anim = new Animation((char*)(file_amc + "1.amc").c_str());
 
 int main()
 {
@@ -98,7 +104,7 @@ int main()
 	Shader lampShader("shaders/lamp.vs", "shaders/lamp.fs");
 
 	// load .obj 3D models
-	Model sphere(ROOT_DIR.append("\\res\\planet\\planet.obj"));
+	Model sphere(ROOT_DIR.append("\\res\\sphere\\sphere.obj"));
 	Model cylinder(ROOT_DIR.append("\\res\\cylinder\\cylinder.obj"));
 	Model plane(ROOT_DIR.append("\\res\\plane\\plane.obj"));
 	Model monkey(ROOT_DIR.append("\\res\\monkey\\monkey.obj"));
@@ -108,7 +114,7 @@ int main()
 
 	// Loading mocap data: skeleton from .asf and animation (poses) from .amc
 	// ----------
-	Skeleton* sk = new Skeleton((char*)"res/mocap/05/05.asf", scale);
+	Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
 
 	cout << sk->getName();
 	vector<Bone*> s = sk->getAllBones();
@@ -122,8 +128,6 @@ int main()
 		cout << "\n";
 	}
 
-
-	Animation* anim = new Animation((char*)"res/mocap/05/05_01.amc");
 	sk->apply_pose(anim->getNextPose());
 	CubeCore cube = CubeCore();
 	cube.setBuffers();
@@ -152,12 +156,14 @@ int main()
 				anim->reset();
 				sk->resetAll();
 			}
-			sk->apply_pose(anim->getNextPose());
+			int frame = anim->getCurrentFrame();
+			sk->apply_pose(anim->getPoseAt(frame + 1));
+			anim->getNextPose();
 		}
 
 		// input
 		// -----
-		processInput(window);
+		keyboardInput(window);
 
 		// render
 		// ------
@@ -194,7 +200,7 @@ int main()
 
 
 		// render Skeleton, root first
-		float render_scale = .05f;
+		float render_scale = .08f;
 		model = glm::scale(sk->getJointMat(), glm::vec3(render_scale));
 		ourShader.setVec3("objectColor", 1.0f, 0.1f, 0.1f);
 		ourShader.setMat4("model", model);
@@ -204,6 +210,15 @@ int main()
 		for (Bone* bone : sk->getAllBones())
 		{
 			ourShader.setVec3("objectColor", 0.31f, 1.f, 0.31f);
+
+			bool highlight = !strcmp(bone->name.c_str(), "rtibia") || !strcmp(bone->name.c_str(), "ltibia")
+				|| !strcmp(bone->name.c_str(), "rradius") || !strcmp(bone->name.c_str(), "lradius")
+				|| !strcmp(bone->name.c_str(), "rclavicle") || !strcmp(bone->name.c_str(), "lclavicle")
+				//|| !strcmp(bone->name.c_str(), "rhumerus") || !strcmp(bone->name.c_str(), "lhumerus")
+			|| !strcmp(bone->name.c_str(), "lowerback");
+			if (highlight) {
+				ourShader.setVec3("objectColor", 0.31f, 0.31f, 1.f);
+			}
 			// calculate the model matrix for each object and pass it to shader before drawing
 			model = glm::scale(bone->getJointMat(), glm::vec3(render_scale));
 			ourShader.setMat4("model", model);
@@ -219,6 +234,9 @@ int main()
 
 			// Draw segment
 			ourShader.setVec3("objectColor", .6f, 0.6f, 0.6f);
+			if (highlight) {
+				ourShader.setVec3("objectColor", 0.31f, 0.31f, .6f);
+			}
 			model = glm::scale(bone->getSegMat(), glm::vec3(render_scale));
 			ourShader.setMat4("model", model);
 			//glBindVertexArray(cube.VAO);
@@ -263,7 +281,7 @@ int main()
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
-void processInput(GLFWwindow *window)
+void keyboardInput(GLFWwindow *window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
@@ -302,6 +320,26 @@ void processInput(GLFWwindow *window)
 		play = !play;
 		std::cout << "Play" << "\n";
 	}
+
+	// Switching animation 01-09
+	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+		anim = new Animation((char*)(file_amc + "1.amc").c_str());
+	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+		anim = new Animation((char*)(file_amc + "2.amc").c_str());
+	if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
+		anim = new Animation((char*)(file_amc + "3.amc").c_str());
+	if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
+		anim = new Animation((char*)(file_amc + "4.amc").c_str());
+	if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
+		anim = new Animation((char*)(file_amc + "5.amc").c_str());
+	if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
+		anim = new Animation((char*)(file_amc + "6.amc").c_str());
+	if (glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)
+		anim = new Animation((char*)(file_amc + "7.amc").c_str());
+	if (glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS)
+		anim = new Animation((char*)(file_amc + "8.amc").c_str());
+	if (glfwGetKey(window, GLFW_KEY_9) == GLFW_PRESS)
+		anim = new Animation((char*)(file_amc + "9.amc").c_str());
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
