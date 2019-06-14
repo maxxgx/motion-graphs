@@ -24,8 +24,8 @@
 #define FPS 120
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void mouse_callback(GLFWwindow* window, double xpos, double ypos);
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void mouse_movement(GLFWwindow* window, double xpos, double ypos);
+void mouse_scroll(GLFWwindow* window, double xoffset, double yoffset);
 void keyboardInput(GLFWwindow *window);
 
 // settings
@@ -51,28 +51,22 @@ bool lock_view = true;
 
 float scale = 0.25f;
 
-int skip_frame = 2;
+int skip_frame = 4;
 
 // Animation & skeleton
-string file_asf = "res/mocap/14/14.asf";
-string file_amc = "res/mocap/14/14_0";
+string file_asf = "res/mocap/02/02.asf";
+string file_amc = "res/mocap/02/02_0";
 Animation* anim = new Animation((char*)(file_amc + "1.amc").c_str());
 
 int main()
 {
-	// glfw: initialize and configure
-	// ------------------------------
+	/** GLFW initialization **/
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-#ifdef __APPLE__
-	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // uncomment this statement to fix compilation on OS X
-#endif
-
-	// glfw window creation
-	// --------------------
+	/** GLFW window **/
 	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
 	if (window == NULL)
 	{
@@ -81,31 +75,28 @@ int main()
 		return -1;
 	}
 	glfwMakeContextCurrent(window);
+	glfwSetScrollCallback(window, mouse_scroll);
+	glfwSetCursorPosCallback(window, mouse_movement);
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-	glfwSetCursorPosCallback(window, mouse_callback);
-	glfwSetScrollCallback(window, scroll_callback);
 
-	// tell GLFW to capture our mouse
+	/** GLFW capture mouse **/
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-	// glad: load all OpenGL function pointers
-	// ---------------------------------------
+	/** GLAD: loads the correct opengl functions **/
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
 		std::cout << "Failed to initialize GLAD" << std::endl;
 		return -1;
 	}
 
-	// configure global opengl state
-	// -----------------------------
+	/** configure global opengl state **/
 	glEnable(GL_DEPTH_TEST);
 
-	// build and compile our shader zprogram
-	// ------------------------------------
-	Shader ourShader("shaders/basic_lighting.vs", "shaders/basic_lighting.fs");
+	/** build and compile shaders **/
+	Shader diffShader("shaders/basic_lighting.vs", "shaders/basic_lighting.fs");
 	Shader lampShader("shaders/lamp.vs", "shaders/lamp.fs");
 
-	// load .obj 3D models
+	/** load .obj 3D models **/
 	Model sphere(ROOT_DIR.append("\\res\\sphere\\sphere.obj"));
 	Model cylinder(ROOT_DIR.append("\\res\\cylinder\\cylinder.obj"));
 	Model plane(ROOT_DIR.append("\\res\\plane\\plane.obj"));
@@ -115,37 +106,32 @@ int main()
 	lamp.setBuffers();
 
 	// Loading mocap data: skeleton from .asf and animation (poses) from .amc
-	// ----------
 	Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
 
 	cout << sk->getName();
 	vector<Bone*> s = sk->getAllBones();
 
-	for (Bone *b : s) {
-		cout << b->getName();
-		while (b->parent != NULL) {
-			b = b->parent;
-			cout << " --> " << b->getName();
-		}
-		cout << "\n";
-	}
+	// print hierarchy
+	//for (Bone *b : s) {
+	//	cout << b->getName();
+	//	while (b->parent != NULL) {
+	//		b = b->parent;
+	//		cout << " --> " << b->getName();
+	//	}
+	//	cout << "\n";
+	//}
 
 	sk->apply_pose(anim->getNextPose());
 	CubeCore cube = CubeCore();
 	cube.setBuffers();
 
+	// Set shader to use
+	diffShader.use();
 
-	// tell opengl for each sampler to which texture unit it belongs to (only has to be done once)
-	// -------------------------------------------------------------------------------------------
-	ourShader.use();
-
-
-	// render loop
-	// -----------
+	/** render loop **/
 	while (!glfwWindowShouldClose(window))
 	{
-		// per-frame time logic
-		// --------------------
+		// frame time
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
@@ -164,56 +150,60 @@ int main()
 				anim->getNextPose();
 			}
 		}
+		float pose_time = glfwGetTime() - currentFrame;
+		cout << "	Anim update time = " << pose_time * 1000.f << " ms" << endl;
 
 		// input
 		// -----
+		float input_start_time = glfwGetTime();
 		keyboardInput(window);
+		cout << "	Input time = " << (glfwGetTime() - input_start_time)* 1000 << " ms" << endl;
 
-		// render
-		// ------
+		/** Start Rendering **/
+		float render_start_time = glfwGetTime();
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
 
 
 		// activate shader
-		ourShader.use();
-		ourShader.setVec3("lightColor", 1.0f, 1.0f, 1.0f);
-		ourShader.setVec3("lightPos", lamp.Position);
-		ourShader.setVec3("viewPos", camera.Position);
+		diffShader.use();
+		diffShader.setVec3("lightColor", 1.0f, 1.0f, 1.0f);
+		diffShader.setVec3("lightPos", lamp.Position);
+		diffShader.setVec3("viewPos", camera.Position);
 
 		// pass projection matrix to shader (note that in this case it could change every frame)
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-		ourShader.setMat4("projection", projection);
+		diffShader.setMat4("projection", projection);
 
 		// camera/view transformation
 		if (!lock_view) {
-			ourShader.setMat4("view", glm::lookAt(camera.Position, sk->getPos(), camera.Up));
+			diffShader.setMat4("view", glm::lookAt(camera.Position, sk->getPos(), camera.Up));
 		}
 		else {
-			ourShader.setMat4("view", camera.GetViewMatrix());
+			diffShader.setMat4("view", camera.GetViewMatrix());
 		}
 
 		// floor
-		ourShader.setVec3("objectColor", .9f, 0.9f, 0.9f);
+		diffShader.setVec3("objectColor", .9f, 0.9f, 0.9f);
 		glm::mat4 model = glm::mat4(1.0f);
 		model = glm::scale(model, glm::vec3(50.f, 0.001f, 50.f));
-		ourShader.setMat4("model", model);
+		diffShader.setMat4("model", model);
 		//glBindVertexArray(cube.VAO);
 		//glDrawArrays(GL_TRIANGLES, 0, 36);
-		plane.Draw(ourShader);
+		plane.Draw(diffShader);
 
 
 		// render Skeleton, root first
 		float render_scale = .08f;
 		model = glm::scale(sk->getJointMat(), glm::vec3(render_scale));
-		ourShader.setVec3("objectColor", 1.0f, 0.1f, 0.1f);
-		ourShader.setMat4("model", model);
+		diffShader.setVec3("objectColor", 1.0f, 0.1f, 0.1f);
+		diffShader.setMat4("model", model);
 		//glDrawArrays(GL_TRIANGLES, 0, 36);
-		sphere.Draw(ourShader);
+		sphere.Draw(diffShader);
 
 		for (Bone* bone : sk->getAllBones())
 		{
-			ourShader.setVec3("objectColor", 0.31f, 1.f, 0.31f);
+			diffShader.setVec3("objectColor", 0.31f, 1.f, 0.31f);
 
 			bool highlight = !strcmp(bone->name.c_str(), "rtibia") || !strcmp(bone->name.c_str(), "ltibia")
 				|| !strcmp(bone->name.c_str(), "rradius") || !strcmp(bone->name.c_str(), "lradius")
@@ -221,11 +211,11 @@ int main()
 				//|| !strcmp(bone->name.c_str(), "rhumerus") || !strcmp(bone->name.c_str(), "lhumerus")
 			|| !strcmp(bone->name.c_str(), "lowerback");
 			if (highlight) {
-				ourShader.setVec3("objectColor", 0.31f, 0.31f, 1.f);
+				diffShader.setVec3("objectColor", 0.31f, 0.31f, 1.f);
 			}
 			// calculate the model matrix for each object and pass it to shader before drawing
 			model = glm::scale(bone->getJointMat(), glm::vec3(render_scale));
-			ourShader.setMat4("model", model);
+			diffShader.setMat4("model", model);
 			//if (bone->getName()._Starts_with("head"))
 			//{
 			//	model = glm::scale(model, glm::vec3(render_scale > 1 ? render_scale: 1 * 5));
@@ -233,19 +223,19 @@ int main()
 			//	monkey.Draw(ourShader);
 			//}
 			//else
-			sphere.Draw(ourShader);
+			sphere.Draw(diffShader);
 			//monkey.Draw(ourShader);
 
 			// Draw segment
-			ourShader.setVec3("objectColor", .6f, 0.6f, 0.6f);
+			diffShader.setVec3("objectColor", .6f, 0.6f, 0.6f);
 			if (highlight) {
-				ourShader.setVec3("objectColor", 0.31f, 0.31f, .6f);
+				diffShader.setVec3("objectColor", 0.31f, 0.31f, .6f);
 			}
 			model = glm::scale(bone->getSegMat(), glm::vec3(render_scale));
-			ourShader.setMat4("model", model);
+			diffShader.setMat4("model", model);
 			//glBindVertexArray(cube.VAO);
 			//glDrawArrays(GL_TRIANGLES, 0, 36);
-			cylinder.Draw(ourShader);
+			cylinder.Draw(diffShader);
 		}
 
 		// Draw Lights
@@ -260,9 +250,13 @@ int main()
 		glBindVertexArray(lamp.VAO);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 
+		float render_time = glfwGetTime() - render_start_time;
+		cout << "	render time = " << render_time * 1000 << " ms" << endl;
+		/** END RENDERING **/
+
 		float draw_time = glfwGetTime() - currentFrame;
-		//cout << "Draw time (ms) = " << draw_time * 1000.f << endl;
-		while (glfwGetTime() - lastFrame < 1.f / FPS) { ; } // wait for sync
+		cout << "	Draw time = " << draw_time * 1000.f << " ms" << endl << endl;
+		while (glfwGetTime() - currentFrame < 1.f / FPS) { ; } // wait for sync
 
 		//glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		//-------------------------------------------------------------------------------
@@ -271,20 +265,17 @@ int main()
 		glfwPollEvents();
 	}
 
-	// optional: de-allocate all resources once they've outlived their purpose:
-	// ------------------------------------------------------------------------
+	// de-allocation
 	cube.~CubeCore();
 	sk->~Skeleton();
 
-	// glfw: terminate, clearing all previously allocated GLFW resources.
-	// ------------------------------------------------------------------
+	// end glfw
 	glfwTerminate();
 	return 0;
 }
 
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
-// ---------------------------------------------------------------------------------------------------------
 void keyboardInput(GLFWwindow *window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -346,8 +337,7 @@ void keyboardInput(GLFWwindow *window)
 		anim = new Animation((char*)(file_amc + "9.amc").c_str());
 }
 
-// glfw: whenever the window size changed (by OS or user resize) this callback function executes
-// ---------------------------------------------------------------------------------------------
+// glfw: called when window is resized
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	// make sure the viewport matches the new window dimensions; note that width and 
@@ -356,9 +346,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 }
 
 
-// glfw: whenever the mouse moves, this callback is called
-// -------------------------------------------------------
-void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+// glfw: called when mouse moves
+void mouse_movement(GLFWwindow* window, double xpos, double ypos)
 {
 	if (firstMouse)
 	{
@@ -376,9 +365,8 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 	camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
-// glfw: whenever the mouse scroll wheel scrolls, this callback is called
-// ----------------------------------------------------------------------
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+// glfw: called when mouse wheel is used
+void mouse_scroll(GLFWwindow* window, double xoffset, double yoffset)
 {
 	camera.ProcessMouseScroll(yoffset);
 }
