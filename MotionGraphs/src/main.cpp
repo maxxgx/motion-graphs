@@ -51,9 +51,11 @@ bool lock_view = true;
 
 float scale = 0.25f;
 
+int skip_frame = 2;
+
 // Animation & skeleton
-string file_asf = "res/mocap/02/02.asf";
-string file_amc = "res/mocap/02/02_0";
+string file_asf = "res/mocap/14/14.asf";
+string file_amc = "res/mocap/14/14_0";
 Animation* anim = new Animation((char*)(file_amc + "1.amc").c_str());
 
 int main()
@@ -157,8 +159,10 @@ int main()
 				sk->resetAll();
 			}
 			int frame = anim->getCurrentFrame();
-			sk->apply_pose(anim->getPoseAt(frame + 1));
-			anim->getNextPose();
+			sk->apply_pose(anim->getPoseAt(frame + skip_frame));
+			for (int i = 0; i < skip_frame; i++) {
+				anim->getNextPose();
+			}
 		}
 
 		// input
