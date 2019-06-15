@@ -44,14 +44,16 @@ PointLight lamp = PointLight();
 // timing
 float deltaTime = 0.0f;	// time between current frame and last frame
 float lastFrame = 0.0f;
+long num_frames = 0;
+float agg_fps, agg_anim_time, agg_input_time, agg_render_time = 0.f; // for benchmarking
 
 // Controls
-bool play = false;
+bool play = true;
 bool lock_view = true;
 
 float scale = 0.25f;
 
-int skip_frame = 4;
+int skip_frame = 2;
 
 // Animation & skeleton
 string file_asf = "res/mocap/02/02.asf";
@@ -132,10 +134,14 @@ int main()
 	while (!glfwWindowShouldClose(window))
 	{
 		// frame time
+		num_frames++;
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
+		float last_fps = 1.f / deltaTime;
+		agg_fps += last_fps;
 		cout << "FPS : " << 1 / deltaTime << endl;
+
 
 		// Update animation
 		if (play)
@@ -151,13 +157,16 @@ int main()
 			}
 		}
 		float pose_time = glfwGetTime() - currentFrame;
+		agg_anim_time += pose_time;
 		cout << "	Anim update time = " << pose_time * 1000.f << " ms" << endl;
 
 		// input
 		// -----
 		float input_start_time = glfwGetTime();
 		keyboardInput(window);
-		cout << "	Input time = " << (glfwGetTime() - input_start_time)* 1000 << " ms" << endl;
+		float input_time = (glfwGetTime() - input_start_time);
+		agg_input_time += input_time;
+		cout << "	Input time = " << input_time * 1000 << " ms" << endl;
 
 		/** Start Rendering **/
 		float render_start_time = glfwGetTime();
@@ -209,7 +218,7 @@ int main()
 				|| !strcmp(bone->name.c_str(), "rradius") || !strcmp(bone->name.c_str(), "lradius")
 				|| !strcmp(bone->name.c_str(), "rclavicle") || !strcmp(bone->name.c_str(), "lclavicle")
 				//|| !strcmp(bone->name.c_str(), "rhumerus") || !strcmp(bone->name.c_str(), "lhumerus")
-			|| !strcmp(bone->name.c_str(), "lowerback");
+				|| !strcmp(bone->name.c_str(), "lowerback");
 			if (highlight) {
 				diffShader.setVec3("objectColor", 0.31f, 0.31f, 1.f);
 			}
@@ -251,6 +260,7 @@ int main()
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 
 		float render_time = glfwGetTime() - render_start_time;
+		agg_render_time += render_time;
 		cout << "	render time = " << render_time * 1000 << " ms" << endl;
 		/** END RENDERING **/
 
@@ -279,7 +289,15 @@ int main()
 void keyboardInput(GLFWwindow *window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+	{
+		cout << endl << "==========\tPerformance report:\t==========" << endl << endl;
+		cout << "\tAVG FPS: " << agg_fps / num_frames << endl;
+		cout << "\tAVG anim update time = " << agg_anim_time / num_frames * 1000.f << endl;
+		cout << "\tAVG input time = " << agg_input_time / num_frames * 1000.f << endl;
+		cout << "\tAVG render time = " << agg_render_time / num_frames * 1000.f << endl;
+		cout << endl << "==================================================" << endl;
 		glfwSetWindowShouldClose(window, true);
+	}
 
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 		camera.ProcessKeyboard(FORWARD, deltaTime);
