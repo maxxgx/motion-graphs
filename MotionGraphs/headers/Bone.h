@@ -49,7 +49,7 @@ public:
 	/** fields **/
 	Bone* parent=NULL;
 	vector<Bone*> children;
-	int id;
+	int id = 0;
 	string name = "";
 	//direction
 	float dir[3] = { 0.0, 0.0, 0.0 };

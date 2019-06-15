@@ -13,15 +13,15 @@ class Pose
 public:
 	Pose(long frame);
 
-	vector<float> getBoneTrans(string bone);
+	vector<float> getBoneTrans(int id);
 
 	int getPoseFrame();
 	
-	void addTransf(string bone, vector<float> transf);
+	void addTransf(int id, vector<float> transf);
 
 	~Pose();
 
 private:
 	int frame;
-	map<string, vector<float>> transf;
+	vector<vector<float>> transf;
 };

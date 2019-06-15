@@ -21,11 +21,12 @@ public:
 	string order = "TX TY TZ RX RY RZ"; //default
 	string axiz_order = "XYZ"; //default
 
-
 	Skeleton();
 	Skeleton(char* asf_filename, float scale);
 	
 	Bone* getByName(string name);
+	Bone* getById(int id);
+	int getIdByName(string name);
 
 	void apply_pose(Pose* pose);
 	glm::vec3 getPos();

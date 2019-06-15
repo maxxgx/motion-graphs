@@ -44,19 +44,24 @@ PointLight lamp = PointLight();
 // timing
 float deltaTime = 0.0f;	// time between current frame and last frame
 float lastFrame = 0.0f;
+long num_frames = 0;
+float agg_fps, agg_anim_time, agg_input_time, agg_render_time = 0.f; // for benchmarking
 
 // Controls
-bool play = false;
+bool play = true;
 bool lock_view = true;
 
 float scale = 0.25f;
 
-int skip_frame = 4;
+int skip_frame = 1;
 
 // Animation & skeleton
 string file_asf = "res/mocap/02/02.asf";
 string file_amc = "res/mocap/02/02_0";
-Animation* anim = new Animation((char*)(file_amc + "1.amc").c_str());
+
+// Loading mocap data: skeleton from .asf and animation (poses) from .amc
+Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
+Animation* anim = new Animation(sk, (char*)(file_amc + "1.amc").c_str());
 
 int main()
 {
@@ -89,6 +94,9 @@ int main()
 		return -1;
 	}
 
+	// Disable v-sync
+	glfwSwapInterval(0);
+
 	/** configure global opengl state **/
 	glEnable(GL_DEPTH_TEST);
 
@@ -105,11 +113,8 @@ int main()
 	// Lights buffers
 	lamp.setBuffers();
 
-	// Loading mocap data: skeleton from .asf and animation (poses) from .amc
-	Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
-
-	cout << sk->getName();
-	vector<Bone*> s = sk->getAllBones();
+	//cout << sk->getName();
+	//vector<Bone*> s = sk->getAllBones();
 
 	// print hierarchy
 	//for (Bone *b : s) {
@@ -132,10 +137,14 @@ int main()
 	while (!glfwWindowShouldClose(window))
 	{
 		// frame time
+		num_frames++;
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
+		float last_fps = 1.f / deltaTime;
+		agg_fps += last_fps;
 		cout << "FPS : " << 1 / deltaTime << endl;
+		
 
 		// Update animation
 		if (play)
@@ -151,13 +160,16 @@ int main()
 			}
 		}
 		float pose_time = glfwGetTime() - currentFrame;
+		agg_anim_time += pose_time;
 		cout << "	Anim update time = " << pose_time * 1000.f << " ms" << endl;
 
 		// input
 		// -----
 		float input_start_time = glfwGetTime();
 		keyboardInput(window);
-		cout << "	Input time = " << (glfwGetTime() - input_start_time)* 1000 << " ms" << endl;
+		float input_time = (glfwGetTime() - input_start_time);
+		agg_input_time += input_time;
+		cout << "	Input time = " << input_time* 1000 << " ms" << endl;
 
 		/** Start Rendering **/
 		float render_start_time = glfwGetTime();
@@ -251,6 +263,7 @@ int main()
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 
 		float render_time = glfwGetTime() - render_start_time;
+		agg_render_time += render_time;
 		cout << "	render time = " << render_time * 1000 << " ms" << endl;
 		/** END RENDERING **/
 
@@ -279,7 +292,15 @@ int main()
 void keyboardInput(GLFWwindow *window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+	{
+		cout << endl << "==========\tPerformance report:\t==========" << endl << endl;
+		cout << "\tAVG FPS: " << agg_fps / num_frames << endl;
+		cout << "\tAVG anim update time = " << agg_anim_time / num_frames * 1000.f<< endl;
+		cout << "\tAVG input time = " << agg_input_time / num_frames * 1000.f << endl;
+		cout << "\tAVG render time = " << agg_render_time / num_frames * 1000.f << endl;
+		cout << endl << "==================================================" << endl;
 		glfwSetWindowShouldClose(window, true);
+	}
 
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 		camera.ProcessKeyboard(FORWARD, deltaTime);
@@ -318,23 +339,23 @@ void keyboardInput(GLFWwindow *window)
 
 	// Switching animation 01-09
 	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-		anim = new Animation((char*)(file_amc + "1.amc").c_str());
-	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-		anim = new Animation((char*)(file_amc + "2.amc").c_str());
-	if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
-		anim = new Animation((char*)(file_amc + "3.amc").c_str());
-	if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
-		anim = new Animation((char*)(file_amc + "4.amc").c_str());
-	if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
-		anim = new Animation((char*)(file_amc + "5.amc").c_str());
-	if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
-		anim = new Animation((char*)(file_amc + "6.amc").c_str());
-	if (glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)
-		anim = new Animation((char*)(file_amc + "7.amc").c_str());
-	if (glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS)
-		anim = new Animation((char*)(file_amc + "8.amc").c_str());
-	if (glfwGetKey(window, GLFW_KEY_9) == GLFW_PRESS)
-		anim = new Animation((char*)(file_amc + "9.amc").c_str());
+		anim = new Animation(sk, (char*)(file_amc + "1.amc").c_str());
+	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)					
+		anim = new Animation(sk, (char*)(file_amc + "2.amc").c_str());
+	if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)					
+		anim = new Animation(sk, (char*)(file_amc + "3.amc").c_str());
+	if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)					
+		anim = new Animation(sk, (char*)(file_amc + "4.amc").c_str());
+	if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)					
+		anim = new Animation(sk, (char*)(file_amc + "5.amc").c_str());
+	if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)					
+		anim = new Animation(sk, (char*)(file_amc + "6.amc").c_str());
+	if (glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)					
+		anim = new Animation(sk, (char*)(file_amc + "7.amc").c_str());
+	if (glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS)					
+		anim = new Animation(sk, (char*)(file_amc + "8.amc").c_str());
+	if (glfwGetKey(window, GLFW_KEY_9) == GLFW_PRESS)					
+		anim = new Animation(sk, (char*)(file_amc + "9.amc").c_str());
 }
 
 // glfw: called when window is resized

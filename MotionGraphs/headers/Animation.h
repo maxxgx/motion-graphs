@@ -7,7 +7,7 @@
 class Animation 
 {
 public:
-	Animation(char *amc_filename);
+	Animation(Skeleton* sk, char *amc_filename);
 
 	Pose* getPoseAt(long frame);
 	Pose* getNextPose();

@@ -134,6 +134,32 @@ Bone* Skeleton::getByName(string name) {
 	}
 }
 
+Bone * Skeleton::getById(int id)
+{
+	if (id == this->id)
+		return this;
+	else {
+		for (auto &b : this->bones) {
+			if (b->id == id)
+				return b;
+		}
+	}
+	return nullptr;
+}
+
+int Skeleton::getIdByName(string name)
+{
+	if (strContains(name, this->name))
+		return this->id;
+	else {
+		for (auto &b : this->bones) {
+			if (strContains(name, b->name))
+				return b->id;
+		}
+	}
+	return -1;
+}
+
 void Skeleton::resetAll()
 {
 	this->reset();
@@ -155,7 +181,7 @@ void Skeleton::apply_pose(Pose* pose)
 	if (pose != NULL) {
 		// new root coords
 		//cout << "getting pose name " << name << "\n";
-		vector<float> ts = pose->getBoneTrans(this->name);
+		vector<float> ts = pose->getBoneTrans(this->id);
 		for (int i = 0; i < ts.size(); i++) {
 			if (i < 3) {
 				dir[i] = ts.at(i);

@@ -1,7 +1,7 @@
 #include "../headers/pch.h"
 #include "..\headers\Animation.h"
 
-Animation::Animation(char* amc_filename)
+Animation::Animation(Skeleton* sk, char* amc_filename)
 {
 	//initialize first pose to NULL (frame 0)
 	this->poses.push_back(NULL);
@@ -41,7 +41,8 @@ Animation::Animation(char* amc_filename)
 				for (int i = 1; i < toks.size(); i++) {
 					t.push_back(stod(toks.at(i)));
 				}
-				pose->addTransf(toks.at(0), t);
+				int id = sk->getIdByName(toks.at(0));
+				pose->addTransf(id, t);
 			}
 		}
 		//adding last frame/pose
@@ -56,6 +57,7 @@ Animation::Animation(char* amc_filename)
 
 Pose* Animation::getPoseAt(long frame)
 {
+	frame--;
 	if (this->poses.size() > frame && frame > 0)
 		return this->poses.at(frame);
 	else 

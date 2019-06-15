@@ -35,7 +35,7 @@ void Bone::apply_pose(Pose *pose)
 {
 	if (pose != NULL)
 	{
-		vector<float> trans = pose->getBoneTrans(this->name);
+		vector<float> trans = pose->getBoneTrans(this->id);
 
 		for (int i = 0, j = 0; i < 3 && j < trans.size(); i++) {
 			if (this->dof[i]) {
