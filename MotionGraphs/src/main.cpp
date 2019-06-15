@@ -299,6 +299,10 @@ void keyboardInput(GLFWwindow *window)
 		cout << "\tAVG input time = " << agg_input_time / num_frames * 1000.f << endl;
 		cout << "\tAVG render time = " << agg_render_time / num_frames * 1000.f << endl;
 		cout << endl << "==================================================" << endl;
+		cout << agg_fps / num_frames << endl
+			<< agg_anim_time / num_frames * 1000.f << endl
+			<< agg_input_time / num_frames * 1000.f << endl
+			<< agg_render_time / num_frames * 1000.f << endl;
 		glfwSetWindowShouldClose(window, true);
 	}
 
