@@ -91,6 +91,9 @@ int main()
 		return -1;
 	}
 
+	// Disable v-sync
+	glfwSwapInterval(0);
+
 	/** configure global opengl state **/
 	glEnable(GL_DEPTH_TEST);
 
