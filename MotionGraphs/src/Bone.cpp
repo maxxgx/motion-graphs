@@ -46,8 +46,8 @@ void Bone::apply_pose(Pose *pose)
 				this->rot[i] = 0.0f;
 			}
 		}
+		updateModelMat();
 	}
-	updateModelMat();
 }
 
 void Bone::updateModelMat()

@@ -205,8 +205,8 @@ void Skeleton::apply_pose(Pose* pose)
 		traverse = stack.back();
 		stack.pop_back();
 
+		// loads the pose and updates the transformation matrix
 		traverse->apply_pose(pose);
-		traverse->updateModelMat();
 
 		for (auto& bone : traverse->getChildren()) {
 			stack.push_back(bone);
