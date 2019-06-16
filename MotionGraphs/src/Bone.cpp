@@ -59,6 +59,7 @@ void Bone::updateModelMat()
 		glm::mat4 B = glm::mat4(1.0f);
 
 		B = glm::translate(B, glm::vec3(dir[0]*scale, dir[1]*scale, dir[2]*scale));
+		//B = glm::translate(B, glm::vec3(0.f, dir[1] * scale, 0.f)); // in-place movement
 
 		glm::mat4 ax = glm::eulerAngleX(glm::radians(axis[0]));
 		glm::mat4 ay = glm::eulerAngleY(glm::radians(axis[1]));
@@ -71,7 +72,6 @@ void Bone::updateModelMat()
 		glm::mat4 transformZ = glm::eulerAngleZ(glm::radians(rot[2]));
 		glm::mat4 M = transformZ * transformY * transformX;
 
-		this->TranMat = B;
 		this->JointMat = B * C * M * Cinv;
 	}
 	else { // Other bones
@@ -85,44 +85,31 @@ void Bone::updateModelMat()
 		transformY = dof[1] == true ? glm::eulerAngleY(glm::radians(rot[1])) : glm::mat4(1.f);
 		transformZ = dof[2] == true ? glm::eulerAngleZ(glm::radians(rot[2])) : glm::mat4(1.f);
 		M = transformZ * transformY * transformX;
-		//M = glm::eulerAngleXYZ(glm::radians(rot[0]), glm::radians(rot[1]), glm::radians(rot[2]));
 
 		/// C matrix == the axis, and its inverse
-		if (!strcmp(this->name.c_str(), "rradius"))
-		{ }
 		glm::mat4 ax = glm::eulerAngleX(glm::radians(axis[0]));
 		glm::mat4 ay = glm::eulerAngleY(glm::radians(axis[1]));
 		glm::mat4 az = glm::eulerAngleZ(glm::radians(axis[2]));
 		C = az * ay * ax;
-		//C = glm::eulerAngleXYZ(glm::radians(axis[0]), glm::radians(axis[1]), glm::radians(axis[2]));
 		Cinv = glm::inverse(C);
 
 		/// B matrix == the translation offset from the segment parent
-		float joint_offset = 0.f;
-		glm::vec3 joint_parent_offset = glm::vec3(1.f);
-		joint_offset = this->parent->length;
-		joint_parent_offset = glm::vec3(this->parent->dir[0] * joint_offset * scale,
+		float joint_offset = this->parent->length;
+		glm::vec3 joint_parent_offset = glm::vec3(this->parent->dir[0] * joint_offset * scale,
 			this->parent->dir[1] * joint_offset * scale,
 			this->parent->dir[2] * joint_offset * scale);
 
-		glm::mat4 B_joint = glm::mat4(1.f);
-		B_joint = glm::translate(parent_mat, joint_parent_offset);
+		glm::mat4 B_joint = glm::translate(this->parent->JointMat, joint_parent_offset);
 		
-		//this->TranMat = B_joint;
-		if (!strcmp(this->name.c_str(), "lclavicle") || !strcmp(this->name.c_str(), "rclavicle")) {
-			this->JointMat = B_joint;
-		} else 
-			this->JointMat = B_joint * C * M * Cinv;
-
-
+		this->JointMat = B_joint * C * M * Cinv;
+		
 		// Transformation matrix of the segment (bone)
 		//		- finds 2 adjacent joints points
 		//		- find direction and rotation matrix between the points
 		glm::vec3 bone_parent_offset = glm::vec3(dir[0] * length * scale, 
 													dir[1] * length * scale, 
 													dir[2] * length * scale);
-		glm::mat4 B = glm::mat4(1.f);
-		B = glm::translate(this->JointMat, bone_parent_offset);
+		glm::mat4 B = glm::translate(this->JointMat, bone_parent_offset);
 		
 		// p1: position at start of segment
 		// p2: position at end of segment
@@ -142,8 +129,6 @@ void Bone::updateModelMat()
 
 		glm::mat4 R = glm::mat4(1.f);
 		R = glm::rotate(R, glm::radians(angle), rot_ax); // rotation matrix from angle and axis
-		
-		//float l = glm::dot(p2, p1);
 
 		// translation to middle of the segment
 		glm::mat4 Bseg = glm::mat4(1.f);
@@ -151,7 +136,7 @@ void Bone::updateModelMat()
 		Bseg = glm::translate(Bseg, -diff / 2.f);
 
 		glm::mat4 S = glm::mat4(1.f);
-		S = glm::scale(S, glm::vec3(0.5f, length*1.5 , 0.5f));
+		S = glm::scale(S, glm::vec3(0.5f, length * 1.5f , 0.5f));
 		
 		this->SegMat = Bseg * R * S;
 	}
@@ -194,6 +179,7 @@ void Bone::reset()
 		this->axis[i] = copy_axis[i];
 	}
 	length = copy_length;
+	this->JointMat = this->SegMat = glm::mat4(1.f);
 }
 
 string Bone::getName()

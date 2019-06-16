@@ -73,5 +73,4 @@ protected:
 	//transformation matrix
 	glm::mat4 JointMat = glm::mat4(1.0f);
 	glm::mat4 SegMat = glm::mat4(1.f);
-	glm::mat4 TranMat = glm::mat4(1.f);
 };

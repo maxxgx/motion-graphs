@@ -143,8 +143,6 @@ int main()
 		lastFrame = currentFrame;
 		float last_fps = 1.f / deltaTime;
 		agg_fps += last_fps;
-		cout << "FPS : " << 1 / deltaTime << endl;
-		
 
 		// Update animation
 		if (play)
@@ -161,7 +159,6 @@ int main()
 		}
 		float pose_time = glfwGetTime() - currentFrame;
 		agg_anim_time += pose_time;
-		cout << "	Anim update time = " << pose_time * 1000.f << " ms" << endl;
 
 		// input
 		// -----
@@ -169,7 +166,6 @@ int main()
 		keyboardInput(window);
 		float input_time = (glfwGetTime() - input_start_time);
 		agg_input_time += input_time;
-		cout << "	Input time = " << input_time* 1000 << " ms" << endl;
 
 		/** Start Rendering **/
 		float render_start_time = glfwGetTime();
@@ -264,18 +260,15 @@ int main()
 
 		float render_time = glfwGetTime() - render_start_time;
 		agg_render_time += render_time;
-		cout << "	render time = " << render_time * 1000 << " ms" << endl;
 		/** END RENDERING **/
-
-		float draw_time = glfwGetTime() - currentFrame;
-		cout << "	Draw time = " << draw_time * 1000.f << " ms" << endl << endl;
-		while (glfwGetTime() - currentFrame < 1.f / FPS) { ; } // wait for sync
 
 		//glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		//-------------------------------------------------------------------------------
-
 		glfwSwapBuffers(window);
 		glfwPollEvents();
+
+		// wait for sync
+		while (glfwGetTime() - currentFrame < 1.f / FPS) { ; }
 	}
 
 	// de-allocation
