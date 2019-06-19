@@ -58,6 +58,8 @@ int skip_frame = 1;
 // Animation & skeleton
 string file_asf = "res/mocap/02/02.asf";
 string file_amc = "res/mocap/02/02_0";
+//string file_asf = "res/mocap/14/14.asf";
+//string file_amc = "res/mocap/14/14_0";
 
 // Loading mocap data: skeleton from .asf and animation (poses) from .amc
 Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
