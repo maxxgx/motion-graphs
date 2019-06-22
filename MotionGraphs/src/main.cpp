@@ -48,7 +48,7 @@ long num_frames = 0;
 float agg_fps, agg_anim_time, agg_input_time, agg_render_time = 0.f; // for benchmarking
 
 // Controls
-bool play = true;
+bool play = false;
 bool lock_view = true;
 
 float scale = 0.25f;
@@ -56,14 +56,14 @@ float scale = 0.25f;
 int skip_frame = 1;
 
 // Animation & skeleton
-string file_asf = "res/mocap/02/02.asf";
-string file_amc = "res/mocap/02/02_0";
-//string file_asf = "res/mocap/14/14.asf";
-//string file_amc = "res/mocap/14/14_0";
+//string file_asf = "res/mocap/02/02.asf";
+//string file_amc = "res/mocap/02/02_0";
+string file_asf = "res/mocap/14/14.asf";
+string file_amc = "res/mocap/14/14_0";
 
 // Loading mocap data: skeleton from .asf and animation (poses) from .amc
 Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
-Animation* anim = new Animation(sk, (char*)(file_amc + "1.amc").c_str());
+Animation* anim = new Animation(sk, (char*)(file_amc + "2.amc").c_str());
 
 int main()
 {
