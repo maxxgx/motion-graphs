@@ -2,7 +2,7 @@
 #define __khrplatform_h_
 
 /*
-** Copyright (c) 2008-2009 The Khronos Group Inc.
+** Copyright (c) 2008-2018 The Khronos Group Inc.
 **
 ** Permission is hereby granted, free of charge, to any person obtaining a
 ** copy of this software and/or associated documentation files (the
@@ -26,18 +26,16 @@
 
 /* Khronos platform-specific types and definitions.
  *
- * $Revision: 32517 $ on $Date: 2016-03-11 02:41:19 -0800 (Fri, 11 Mar 2016) $
+ * The master copy of khrplatform.h is maintained in the Khronos EGL
+ * Registry repository at https://github.com/KhronosGroup/EGL-Registry
+ * The last semantic modification to khrplatform.h was at commit ID:
+ *      67a3e0864c2d75ea5287b9f3d2eb74a745936692
  *
  * Adopters may modify this file to suit their platform. Adopters are
  * encouraged to submit platform specific modifications to the Khronos
  * group so that they can be included in future versions of this file.
- * Please submit changes by sending them to the public Khronos Bugzilla
- * (http://khronos.org/bugzilla) by filing a bug against product
- * "Khronos (general)" component "Registry".
- *
- * A predefined template which fills in some of the bug fields can be
- * reached using http://tinyurl.com/khrplatform-h-bugreport, but you
- * must create a Bugzilla login first.
+ * Please submit changes by filing pull requests or issues on
+ * the EGL Registry repository linked above.
  *
  *
  * See the Implementer's Guidelines for information about where this file
@@ -92,55 +90,54 @@
  *                                  int arg2) KHRONOS_APIATTRIBUTES;
  */
 
-/*-------------------------------------------------------------------------
- * Definition of KHRONOS_APICALL
- *-------------------------------------------------------------------------
- * This precedes the return type of the function in the function prototype.
- */
+ /*-------------------------------------------------------------------------
+  * Definition of KHRONOS_APICALL
+  *-------------------------------------------------------------------------
+  * This precedes the return type of the function in the function prototype.
+  */
 #if defined(_WIN32) && !defined(__SCITECH_SNAP__)
 #   define KHRONOS_APICALL __declspec(dllimport)
 #elif defined (__SYMBIAN32__)
 #   define KHRONOS_APICALL IMPORT_C
 #elif defined(__ANDROID__)
-#   include <sys/cdefs.h>
-#   define KHRONOS_APICALL __attribute__((visibility("default"))) __NDK_FPABI__
+#   define KHRONOS_APICALL __attribute__((visibility("default")))
 #else
 #   define KHRONOS_APICALL
 #endif
 
-/*-------------------------------------------------------------------------
- * Definition of KHRONOS_APIENTRY
- *-------------------------------------------------------------------------
- * This follows the return type of the function  and precedes the function
- * name in the function prototype.
- */
+  /*-------------------------------------------------------------------------
+   * Definition of KHRONOS_APIENTRY
+   *-------------------------------------------------------------------------
+   * This follows the return type of the function  and precedes the function
+   * name in the function prototype.
+   */
 #if defined(_WIN32) && !defined(_WIN32_WCE) && !defined(__SCITECH_SNAP__)
-    /* Win32 but not WinCE */
+   /* Win32 but not WinCE */
 #   define KHRONOS_APIENTRY __stdcall
 #else
 #   define KHRONOS_APIENTRY
 #endif
 
-/*-------------------------------------------------------------------------
- * Definition of KHRONOS_APIATTRIBUTES
- *-------------------------------------------------------------------------
- * This follows the closing parenthesis of the function prototype arguments.
- */
+   /*-------------------------------------------------------------------------
+	* Definition of KHRONOS_APIATTRIBUTES
+	*-------------------------------------------------------------------------
+	* This follows the closing parenthesis of the function prototype arguments.
+	*/
 #if defined (__ARMCC_2__)
 #define KHRONOS_APIATTRIBUTES __softfp
 #else
 #define KHRONOS_APIATTRIBUTES
 #endif
 
-/*-------------------------------------------------------------------------
- * basic type definitions
- *-----------------------------------------------------------------------*/
+	/*-------------------------------------------------------------------------
+	 * basic type definitions
+	 *-----------------------------------------------------------------------*/
 #if (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L) || defined(__GNUC__) || defined(__SCO__) || defined(__USLC__)
 
 
-/*
- * Using <stdint.h>
- */
+	 /*
+	  * Using <stdint.h>
+	  */
 #include <stdint.h>
 typedef int32_t                 khronos_int32_t;
 typedef uint32_t                khronos_uint32_t;
@@ -151,9 +148,9 @@ typedef uint64_t                khronos_uint64_t;
 
 #elif defined(__VMS ) || defined(__sgi)
 
-/*
- * Using <inttypes.h>
- */
+	 /*
+	  * Using <inttypes.h>
+	  */
 #include <inttypes.h>
 typedef int32_t                 khronos_int32_t;
 typedef uint32_t                khronos_uint32_t;
@@ -164,9 +161,9 @@ typedef uint64_t                khronos_uint64_t;
 
 #elif defined(_WIN32) && !defined(__SCITECH_SNAP__)
 
-/*
- * Win32
- */
+	 /*
+	  * Win32
+	  */
 typedef __int32                 khronos_int32_t;
 typedef unsigned __int32        khronos_uint32_t;
 typedef __int64                 khronos_int64_t;
@@ -176,9 +173,9 @@ typedef unsigned __int64        khronos_uint64_t;
 
 #elif defined(__sun__) || defined(__digital__)
 
-/*
- * Sun or Digital
- */
+	 /*
+	  * Sun or Digital
+	  */
 typedef int                     khronos_int32_t;
 typedef unsigned int            khronos_uint32_t;
 #if defined(__arch64__) || defined(_LP64)
@@ -193,9 +190,9 @@ typedef unsigned long long int  khronos_uint64_t;
 
 #elif 0
 
-/*
- * Hypothetical platform with no float or int64 support
- */
+	 /*
+	  * Hypothetical platform with no float or int64 support
+	  */
 typedef int                     khronos_int32_t;
 typedef unsigned int            khronos_uint32_t;
 #define KHRONOS_SUPPORT_INT64   0
@@ -203,9 +200,9 @@ typedef unsigned int            khronos_uint32_t;
 
 #else
 
-/*
- * Generic fallback
- */
+	 /*
+	  * Generic fallback
+	  */
 #include <stdint.h>
 typedef int32_t                 khronos_int32_t;
 typedef uint32_t                khronos_uint32_t;
@@ -270,16 +267,16 @@ typedef khronos_int64_t        khronos_stime_nanoseconds_t;
 #define KHRONOS_MAX_ENUM 0x7FFFFFFF
 #endif
 
-/*
- * Enumerated boolean type
- *
- * Values other than zero should be considered to be true.  Therefore
- * comparisons should not be made against KHRONOS_TRUE.
- */
+ /*
+  * Enumerated boolean type
+  *
+  * Values other than zero should be considered to be true.  Therefore
+  * comparisons should not be made against KHRONOS_TRUE.
+  */
 typedef enum {
-    KHRONOS_FALSE = 0,
-    KHRONOS_TRUE  = 1,
-    KHRONOS_BOOLEAN_ENUM_FORCE_SIZE = KHRONOS_MAX_ENUM
+	KHRONOS_FALSE = 0,
+	KHRONOS_TRUE = 1,
+	KHRONOS_BOOLEAN_ENUM_FORCE_SIZE = KHRONOS_MAX_ENUM
 } khronos_boolean_enum_t;
 
 #endif /* __khrplatform_h_ */

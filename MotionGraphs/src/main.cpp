@@ -14,7 +14,11 @@
 
 #include <learnopengl/Camera.h> // custom camera.h
 #include <learnopengl/shader.h>
-#include <learnopengl/model.h>
+#ifdef _WIN32 || _WIN64
+	#include <learnopengl/Model.h>
+#else
+	#include <learnopengl/model.h>
+#endif
 #include <learnopengl/filesystem.h>
 #include <string.h>
 
@@ -25,10 +29,7 @@
 #include "../headers/PointLight.h"
 #include "../headers/PointCloud.h"
 
-#ifdef _WIN32 || _WIN64
-    #include <filesystem>
-    #define ROOT_DIR std::filesystem::current_path().string()
-#endif
+#define ROOT_DIR FileSystem::getRoot()
 
 #define FPS 120
 
@@ -65,8 +66,7 @@ float scale = 0.25f;
 int skip_frame = 1;
 
 // Animation & skeleton
-string root = (string)FileSystem::getRoot();
-string res_path = root + "/resources/";
+string res_path = ROOT_DIR + "/resources/";
 string file_asf = res_path + "mocap/02/02.asf";
 string file_amc = res_path + "mocap/02/02_0";
 //string file_asf = "res/mocap/14/14.asf";
@@ -121,19 +121,19 @@ int main()
     #ifdef _WIN32 || _WIN64
         Shader diffShader("shaders/basic_lighting.vs", "shaders/basic_lighting.fs");
 	    Shader lampShader("shaders/lamp.vs", "shaders/lamp.fs");
-        Model sphere(ROOT_DIR.append("\\res\\sphere\\sphere.obj"));
-        Model cylinder(ROOT_DIR.append("\\res\\cylinder\\cylinder.obj"));
-        Model plane(ROOT_DIR.append("\\res\\plane\\plane.obj"));
-        Model monkey(ROOT_DIR.append("\\res\\monkey\\monkey.obj"));
-        Model cube(ROOT_DIR.append("\\res\\monkey\\monkey.obj"));
+		//string r = (string)ROOT_DIR;
+  //      Model sphere(r.append("\\res\\sphere\\sphere.obj"));
+  //      Model cylinder(r.append("\\res\\cylinder\\cylinder.obj"));
+  //      Model plane(r.append("\\res\\plane\\plane.obj"));
+  //      Model monkey(r.append("\\res\\monkey\\monkey.obj"));
     #else
-        Shader diffShader((root + "/shaders/basic_lighting.vs").c_str(), (root + "/shaders/basic_lighting.fs").c_str());
-	    Shader lampShader((root + "/shaders/lamp.vs").c_str(), (root + "/shaders/lamp.fs").c_str());
+        Shader diffShader((ROOT_DIR + "/shaders/basic_lighting.vs").c_str(), (ROOT_DIR + "/shaders/basic_lighting.fs").c_str());
+	    Shader lampShader((ROOT_DIR + "/shaders/lamp.vs").c_str(), (ROOT_DIR + "/shaders/lamp.fs").c_str());
+    #endif
         Model sphere(FileSystem::getPath("resources/objects/sphere/sphere.obj"));
         Model cylinder(FileSystem::getPath("resources/objects/cylinder/cylinder.obj"));
         Model plane(FileSystem::getPath("resources/objects/plane/plane.obj"));
         Model monkey(FileSystem::getPath("resources/objects/monkey/monkey.obj"));
-    #endif
 	
 	// Lights buffers
 	lamp.setBuffers();
