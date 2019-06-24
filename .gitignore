@@ -336,4 +336,4 @@ ASALocalRun/
 
 
 # Include 3D objs in res folder
-!*/resources/*/*.obj
+!*/resources/*/*/*.obj
