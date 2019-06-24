@@ -1,4 +1,4 @@
-#include "..\headers\CubeCore.h"
+#include "../headers/CubeCore.h"
 
 CubeCore::CubeCore()
 {

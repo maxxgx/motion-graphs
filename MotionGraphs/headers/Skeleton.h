@@ -1,5 +1,7 @@
 #pragma once
 
+#define GLM_ENABLE_EXPERIMENTAL
+
 #include "Bone.h"
 #include "Pose.h"
 #include <vector>
@@ -9,7 +11,7 @@
 #include <fstream>
 #include <sstream>
 #include "Scene.h"
-#include <Shader.h>
+#include "Utils.h"
 
 using namespace std;
 

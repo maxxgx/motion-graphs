@@ -1,4 +1,3 @@
-#include "../headers/pch.h"
 #include "../headers/Bone.h"
 
 

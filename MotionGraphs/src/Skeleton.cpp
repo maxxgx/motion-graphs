@@ -1,5 +1,4 @@
-#include "../headers/pch.h"
-#include "..\headers\Skeleton.h"
+#include "../headers/Skeleton.h"
 
 Skeleton::Skeleton()
 {

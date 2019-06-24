@@ -1,5 +1,4 @@
-#include "../headers/pch.h"
-#include "..\headers\Animation.h"
+#include "../headers/Animation.h"
 
 Animation::Animation(Skeleton* sk, char* amc_filename)
 {

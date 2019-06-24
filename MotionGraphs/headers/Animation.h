@@ -1,8 +1,17 @@
 #pragma once
 
+#define GLM_ENABLE_EXPERIMENTAL
+
 #include "Pose.h"
 #include "Skeleton.h"
 #include "Bone.h"
+#include "Utils.h"
+#include <vector>
+#include <string>
+#include <tuple>
+#include <iostream>
+#include <fstream>
+#include <sstream>
 
 class Animation 
 {

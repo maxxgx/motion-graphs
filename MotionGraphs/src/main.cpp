@@ -1,5 +1,10 @@
-#include <GLFW/glfw3.h>
-#include <glad/glad.h>
+#ifdef _WIN32 || _WIN64 // windows glad.h order is different?
+    #include <GLFW/glfw3.h>
+    #include <glad/glad.h>
+#else
+    #include <glad/glad.h>
+    #include <GLFW/glfw3.h>
+#endif
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -7,10 +12,10 @@
 
 #include <iostream>
 
-#include <Shader.h>
-#include <Camera.h>
-#include <Model.h>
-#include <filesystem>
+#include <learnopengl/Camera.h> // custom camera.h
+#include <learnopengl/shader.h>
+#include <learnopengl/model.h>
+#include <learnopengl/filesystem.h>
 #include <string.h>
 
 #include "../headers/CubeCore.h"
@@ -20,7 +25,10 @@
 #include "../headers/PointLight.h"
 #include "../headers/PointCloud.h"
 
-#define ROOT_DIR std::filesystem::current_path().string()
+#ifdef _WIN32 || _WIN64
+    #include <filesystem>
+    #define ROOT_DIR std::filesystem::current_path().string()
+#endif
 
 #define FPS 120
 
@@ -30,8 +38,8 @@ void mouse_scroll(GLFWwindow* window, double xoffset, double yoffset);
 void keyboardInput(GLFWwindow *window);
 
 // settings
-const unsigned int SCR_WIDTH = 2000;
-const unsigned int SCR_HEIGHT = 1200;
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
 
 // Camera
 Camera camera(glm::vec3(0.0f, 0.0f, 8.f));
@@ -57,14 +65,16 @@ float scale = 0.25f;
 int skip_frame = 1;
 
 // Animation & skeleton
-string file_asf = "res/mocap/02/02.asf";
-string file_amc = "res/mocap/02/02_0";
+string root = (string)FileSystem::getRoot();
+string res_path = root + "/resources/";
+string file_asf = res_path + "mocap/02/02.asf";
+string file_amc = res_path + "mocap/02/02_0";
 //string file_asf = "res/mocap/14/14.asf";
 //string file_amc = "res/mocap/14/14_0";
 
 // Loading mocap data: skeleton from .asf and animation (poses) from .amc
 Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
-Animation* anim = new Animation(sk, (char*)(file_amc + "2.amc").c_str());
+Animation* anim = new Animation(sk, (char *)(file_amc + "1.amc").c_str());
 
 int main()
 {
@@ -73,6 +83,10 @@ int main()
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    #ifdef __APPLE__
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // uncomment this statement to fix compilation on OS X
+    #endif
 
 	/** GLFW window **/
 	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Mocap", NULL, NULL);
@@ -103,32 +117,26 @@ int main()
 	/** configure global opengl state **/
 	glEnable(GL_DEPTH_TEST);
 
-	/** build and compile shaders **/
-	Shader diffShader("shaders/basic_lighting.vs", "shaders/basic_lighting.fs");
-	Shader lampShader("shaders/lamp.vs", "shaders/lamp.fs");
-
-	/** load .obj 3D models **/
-	Model sphere(ROOT_DIR.append("\\res\\sphere\\sphere.obj"));
-	Model cylinder(ROOT_DIR.append("\\res\\cylinder\\cylinder.obj"));
-	Model plane(ROOT_DIR.append("\\res\\plane\\plane.obj"));
-	Model monkey(ROOT_DIR.append("\\res\\monkey\\monkey.obj"));
-	//Model cube(ROOT_DIR.append("\\res\\monkey\\monkey.obj"));
+	/** build and compile shaders + load .obj 3D models**/
+    #ifdef _WIN32 || _WIN64
+        Shader diffShader("shaders/basic_lighting.vs", "shaders/basic_lighting.fs");
+	    Shader lampShader("shaders/lamp.vs", "shaders/lamp.fs");
+        Model sphere(ROOT_DIR.append("\\res\\sphere\\sphere.obj"));
+        Model cylinder(ROOT_DIR.append("\\res\\cylinder\\cylinder.obj"));
+        Model plane(ROOT_DIR.append("\\res\\plane\\plane.obj"));
+        Model monkey(ROOT_DIR.append("\\res\\monkey\\monkey.obj"));
+        Model cube(ROOT_DIR.append("\\res\\monkey\\monkey.obj"));
+    #else
+        Shader diffShader((root + "/shaders/basic_lighting.vs").c_str(), (root + "/shaders/basic_lighting.fs").c_str());
+	    Shader lampShader((root + "/shaders/lamp.vs").c_str(), (root + "/shaders/lamp.fs").c_str());
+        Model sphere(FileSystem::getPath("resources/objects/sphere/sphere.obj"));
+        Model cylinder(FileSystem::getPath("resources/objects/cylinder/cylinder.obj"));
+        Model plane(FileSystem::getPath("resources/objects/plane/plane.obj"));
+        Model monkey(FileSystem::getPath("resources/objects/monkey/monkey.obj"));
+    #endif
 	
 	// Lights buffers
 	lamp.setBuffers();
-
-	//cout << sk->getName();
-	//vector<Bone*> s = sk->getAllBones();
-
-	// print hierarchy
-	//for (Bone *b : s) {
-	//	cout << b->getName();
-	//	while (b->parent != NULL) {
-	//		b = b->parent;
-	//		cout << " --> " << b->getName();
-	//	}
-	//	cout << "\n";
-	//}
 
 	sk->apply_pose(NULL);
 	CubeCore cube = CubeCore();
@@ -228,15 +236,7 @@ int main()
 			// calculate the model matrix for each object and pass it to shader before drawing
 			model = glm::scale(bone->getJointMat(), glm::vec3(render_scale));
 			diffShader.setMat4("model", model);
-			//if (bone->getName()._Starts_with("head"))
-			//{
-			//	model = glm::scale(model, glm::vec3(render_scale > 1 ? render_scale: 1 * 5));
-			//	ourShader.setMat4("model", model);
-			//	monkey.Draw(ourShader);
-			//}
-			//else
 			monkey.Draw(diffShader);
-			//monkey.Draw(ourShader);
 
 			// Draw segment
 			diffShader.setVec3("objectColor", .6f, 0.6f, 0.6f);
@@ -306,7 +306,7 @@ int main()
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 void keyboardInput(GLFWwindow *window)
 {
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS)
 	{
 		cout << endl << "==========\tPerformance report:\t==========" << endl << endl;
 		cout << "\tAVG FPS: " << agg_fps / num_frames << endl;

@@ -1,5 +1,7 @@
 #pragma once
 
+#define GLM_ENABLE_EXPERIMENTAL
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
@@ -12,7 +14,6 @@
 #include <utility>
 #include <tuple>
 #include "Pose.h"
-#include <Shader.h>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/euler_angles.hpp>

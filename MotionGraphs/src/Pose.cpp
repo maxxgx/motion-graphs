@@ -1,5 +1,4 @@
-#include "../headers/pch.h"
-#include "..\headers\Pose.h"
+#include "../headers/Pose.h"
 
 Pose::Pose(long frame)
 {
