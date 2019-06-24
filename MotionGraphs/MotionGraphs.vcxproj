@@ -241,6 +241,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\PointCloud.cpp" />
     <ClCompile Include="src\Pose.cpp" />
     <ClCompile Include="src\Scene.cpp" />
     <ClCompile Include="src\Skeleton.cpp" />
@@ -259,6 +260,7 @@
     <ClInclude Include="headers\Bone.h" />
     <ClInclude Include="headers\CubeCore.h" />
     <ClInclude Include="headers\Drawable.h" />
+    <ClInclude Include="headers\PointCloud.h" />
     <ClInclude Include="headers\Pose.h" />
     <ClInclude Include="headers\Scene.h" />
     <ClInclude Include="headers\pch.h" />

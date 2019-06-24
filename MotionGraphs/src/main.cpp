@@ -18,6 +18,7 @@
 #include "../headers/Animation.h"
 #include "../headers/Bone.h"
 #include "../headers/PointLight.h"
+#include "../headers/PointCloud.h"
 
 #define ROOT_DIR std::filesystem::current_path().string()
 
@@ -56,10 +57,10 @@ float scale = 0.25f;
 int skip_frame = 1;
 
 // Animation & skeleton
-//string file_asf = "res/mocap/02/02.asf";
-//string file_amc = "res/mocap/02/02_0";
-string file_asf = "res/mocap/14/14.asf";
-string file_amc = "res/mocap/14/14_0";
+string file_asf = "res/mocap/02/02.asf";
+string file_amc = "res/mocap/02/02_0";
+//string file_asf = "res/mocap/14/14.asf";
+//string file_amc = "res/mocap/14/14_0";
 
 // Loading mocap data: skeleton from .asf and animation (poses) from .amc
 Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
@@ -111,6 +112,7 @@ int main()
 	Model cylinder(ROOT_DIR.append("\\res\\cylinder\\cylinder.obj"));
 	Model plane(ROOT_DIR.append("\\res\\plane\\plane.obj"));
 	Model monkey(ROOT_DIR.append("\\res\\monkey\\monkey.obj"));
+	//Model cube(ROOT_DIR.append("\\res\\monkey\\monkey.obj"));
 	
 	// Lights buffers
 	lamp.setBuffers();
@@ -128,7 +130,7 @@ int main()
 	//	cout << "\n";
 	//}
 
-	sk->apply_pose(anim->getNextPose());
+	sk->apply_pose(NULL);
 	CubeCore cube = CubeCore();
 	cube.setBuffers();
 
@@ -233,7 +235,7 @@ int main()
 			//	monkey.Draw(ourShader);
 			//}
 			//else
-			sphere.Draw(diffShader);
+			monkey.Draw(diffShader);
 			//monkey.Draw(ourShader);
 
 			// Draw segment
@@ -243,9 +245,27 @@ int main()
 			}
 			model = glm::scale(bone->getSegMat(), glm::vec3(render_scale));
 			diffShader.setMat4("model", model);
-			//glBindVertexArray(cube.VAO);
-			//glDrawArrays(GL_TRIANGLES, 0, 36);
 			cylinder.Draw(diffShader);
+
+			//Cloud point guideline
+			/*diffShader.setVec3("objectColor", 0.41f, 0.41f, .6f);
+			model = glm::scale(bone->cp_planez, glm::vec3(render_scale));
+			diffShader.setMat4("model", bone->cp_planez);
+			glBindVertexArray(cube.VAO);
+			glDrawArrays(GL_TRIANGLES, 0, 36);
+			diffShader.setVec3("objectColor", 6.0f, 0.41f, 0.41f);
+			model = glm::scale(bone->cp_planex, glm::vec3(render_scale));
+			diffShader.setMat4("model", bone->cp_planex);
+			glBindVertexArray(cube.VAO);
+			glDrawArrays(GL_TRIANGLES, 0, 36);*/
+
+			//Cloud points
+			diffShader.setVec3("objectColor", .8f, 0.8f, 0.8f);
+			for (auto p : bone->getLocalPointCloud()->points) {
+				model = glm::scale(bone->getLocalPointCloud()->getPointMat(p), glm::vec3(0.01f));
+				diffShader.setMat4("model", model);
+				sphere.Draw(diffShader);
+			}
 		}
 
 		// Draw Lights

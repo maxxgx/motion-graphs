@@ -72,6 +72,9 @@
     <ClCompile Include="headers\PointLight.h">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\PointCloud.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -212,6 +215,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\Model.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\PointCloud.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

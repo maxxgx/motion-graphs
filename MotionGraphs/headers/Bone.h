@@ -17,6 +17,8 @@
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/euler_angles.hpp>
 
+#include "PointCloud.h"
+
 using namespace std;
 
 class Bone
@@ -39,6 +41,7 @@ public:
 	glm::mat4 getJointMat();
 	glm::mat4 getSegMat();
 	glm::vec3 getPos();
+	PointCloud* getLocalPointCloud();
 
 	void reset();
 
@@ -62,9 +65,10 @@ public:
 	float length = 0.f;
 
 	float scale = 1.f;
+	glm::mat4 cp_planex = glm::mat4(1.f);
+	glm::mat4 cp_planez = glm::mat4(1.f);
 
 protected:
-
 	//Save a copy of values for reset
 	float copy_dir[3] = { 0.0, 0.0, 0.0 };
 	float copy_axis[3] = { 0.0, 0.0, 0.0 };
@@ -73,4 +77,12 @@ protected:
 	//transformation matrix
 	glm::mat4 JointMat = glm::mat4(1.0f);
 	glm::mat4 SegMat = glm::mat4(1.f);
+
+	// Local pointcloud for each bone
+	PointCloud *local_point_cloud = new PointCloud();
+
+private:
+	void updateJointMat();
+	void updateSegMat();
+	void addPointsAlongOffset(glm::vec3 diff, glm::vec3 p, float samples_along_line, glm::vec3 offset);
 };
