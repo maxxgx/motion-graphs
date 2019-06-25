@@ -7,6 +7,7 @@ The code is derived from the [LearnOpenGL](https://github.com/JoeyDeVries/LearnO
 Building on Mac OS X is fairly simple:
 ```
 brew install cmake assimp glm glfw
+cd MotionGraphs
 mkdir build
 cd build
 cmake ../.
