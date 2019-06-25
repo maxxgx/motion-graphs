@@ -231,9 +231,12 @@ void Bone::updateSegMat()
 	//	glm::mat4 temp = Bseg * off;
 	//	this->local_point_cloud->addPoint(glm::vec3(temp[3]));
 	//}
-	vector<glm::vec3> ep;
-	this->local_point_cloud->points = ep;
-
+	if (this->cloud_counter >= this->cloud_k) {
+		vector<glm::vec3> ep;
+		this->local_point_cloud->points = ep;
+		this->cloud_counter = 0;
+	}
+	this->cloud_counter++;
 	addPointsAlongOffset(diff, p1, samples_along_line, glm::vec3(0.f, 0.f, offset_normal));
 	addPointsAlongOffset(diff, p1, samples_along_line, glm::vec3(0.f, 0.f, -offset_normal));
 	addPointsAlongOffset(diff, p1, samples_along_line, glm::vec3(offset_normal, 0.f, 0.f));
