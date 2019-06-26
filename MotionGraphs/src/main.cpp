@@ -39,11 +39,15 @@ void mouse_scroll(GLFWwindow* window, double xoffset, double yoffset);
 void keyboardInput(GLFWwindow *window);
 
 // settings
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+unsigned int SCR_WIDTH = 1600;
+unsigned int SCR_HEIGHT = 1000;
+unsigned int FULL_SCR_WIDTH = SCR_WIDTH;
+unsigned int FULL_SCR_HEIGHT = SCR_HEIGHT;
+unsigned int WIND_SCR_WIDTH = SCR_WIDTH;
+unsigned int WIND_SCR_HEIGHT = SCR_HEIGHT;
 
 // Camera
-Camera camera(glm::vec3(0.0f, 0.0f, 8.f));
+Camera camera(glm::vec3(0.0f, 1.4f, 2.f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -59,9 +63,11 @@ float agg_fps, agg_anim_time, agg_input_time, agg_render_time = 0.f; // for benc
 
 // Controls
 bool play = false;
-bool lock_view = true;
+bool is_full_screen = false;
+bool lock_view = false;
+bool show_cloud = false;
 
-float scale = 0.25f;
+float scale = 0.056444f; //inches to meters
 
 int skip_frame = 1;
 
@@ -69,8 +75,9 @@ int skip_frame = 1;
 string res_path = ROOT_DIR + "/resources/";
 string file_asf = res_path + "mocap/02/02.asf";
 string file_amc = res_path + "mocap/02/02_0";
-//string file_asf = "res/mocap/14/14.asf";
-//string file_amc = "res/mocap/14/14_0";
+//string file_asf = res_path + "mocap/14/14.asf";
+//string file_amc = res_path + "mocap/14/14_0";
+map<string, Animation*> anim_cache;
 
 // Loading mocap data: skeleton from .asf and animation (poses) from .amc
 Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
@@ -87,6 +94,13 @@ int main()
     #ifdef __APPLE__
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // uncomment this statement to fix compilation on OS X
     #endif
+
+	GLFWvidmode *primary_mode = (GLFWvidmode*)glfwGetVideoMode(glfwGetPrimaryMonitor());
+	FULL_SCR_WIDTH = primary_mode->width; FULL_SCR_HEIGHT = primary_mode-> height;
+	SCR_WIDTH = FULL_SCR_WIDTH * .75f;	SCR_HEIGHT = FULL_SCR_HEIGHT * .75f;
+	WIND_SCR_WIDTH = SCR_WIDTH;			WIND_SCR_HEIGHT = SCR_HEIGHT;
+	cout << "Screen size: " << FULL_SCR_WIDTH << "x" << FULL_SCR_HEIGHT << endl;
+	cout << "Init window size: " << SCR_WIDTH << "x" << SCR_HEIGHT << endl;
 
 	/** GLFW window **/
 	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Mocap", NULL, NULL);
@@ -138,6 +152,8 @@ int main()
 	// Lights buffers
 	lamp.setBuffers();
 
+	// Add first anim to cache 
+	anim_cache.insert({ file_amc + "1.amc", anim });
 	sk->apply_pose(NULL);
 	CubeCore cube = CubeCore();
 	cube.setBuffers();
@@ -196,7 +212,7 @@ int main()
 		diffShader.setMat4("projection", projection);
 
 		// camera/view transformation
-		if (!lock_view) {
+		if (lock_view) {
 			diffShader.setMat4("view", glm::lookAt(camera.Position, sk->getPos(), camera.Up));
 		}
 		else {
@@ -204,7 +220,7 @@ int main()
 		}
 
 		// floor
-		diffShader.setVec3("objectColor", .9f, 0.9f, 0.9f);
+		diffShader.setVec3("objectColor", .95f, 0.95f, 0.95f);
 		glm::mat4 model = glm::mat4(1.0f);
 		model = glm::scale(model, glm::vec3(50.f, 0.001f, 50.f));
 		diffShader.setMat4("model", model);
@@ -214,7 +230,7 @@ int main()
 
 
 		// render Skeleton, root first
-		float render_scale = .08f;
+		float render_scale = .02f;
 		model = glm::scale(sk->getJointMat(), glm::vec3(render_scale));
 		diffShader.setVec3("objectColor", 1.0f, 0.1f, 0.1f);
 		diffShader.setMat4("model", model);
@@ -236,7 +252,7 @@ int main()
 			// calculate the model matrix for each object and pass it to shader before drawing
 			model = glm::scale(bone->getJointMat(), glm::vec3(render_scale));
 			diffShader.setMat4("model", model);
-			monkey.Draw(diffShader);
+			sphere.Draw(diffShader);
 
 			// Draw segment
 			diffShader.setVec3("objectColor", .6f, 0.6f, 0.6f);
@@ -260,12 +276,17 @@ int main()
 			glDrawArrays(GL_TRIANGLES, 0, 36);*/
 
 			//Cloud points
-			diffShader.setVec3("objectColor", .8f, 0.8f, 0.8f);
-			for (auto p : bone->getLocalPointCloud()->points) {
-				model = glm::scale(bone->getLocalPointCloud()->getPointMat(p), glm::vec3(0.01f));
-				diffShader.setMat4("model", model);
-				sphere.Draw(diffShader);
-			}
+			if (show_cloud) 
+			{
+				diffShader.setVec3("objectColor", .8f, 0.8f, 0.8f);
+				for (auto p : bone->getLocalPointCloud()->points) {
+					model = glm::scale(bone->getLocalPointCloud()->getPointMat(p), glm::vec3(0.01f));
+					diffShader.setMat4("model", model);
+					// sphere.Draw(diffShader);
+					glBindVertexArray(cube.VAO);
+					glDrawArrays(GL_TRIANGLES, 0, 36);
+				}
+			}			
 		}
 
 		// Draw Lights
@@ -296,6 +317,7 @@ int main()
 	// de-allocation
 	cube.~CubeCore();
 	sk->~Skeleton();
+	anim->~Animation();
 
 	// end glfw
 	glfwTerminate();
@@ -310,7 +332,7 @@ void keyboardInput(GLFWwindow *window)
 	{
 		cout << endl << "==========\tPerformance report:\t==========" << endl << endl;
 		cout << "\tAVG FPS: " << agg_fps / num_frames << endl;
-		cout << "\tAVG anim update time = " << agg_anim_time / num_frames * 1000.f<< endl;
+		cout << "\tAVG anim update time = " << agg_anim_time / num_frames * 1000.f << endl;
 		cout << "\tAVG input time = " << agg_input_time / num_frames * 1000.f << endl;
 		cout << "\tAVG render time = " << agg_render_time / num_frames * 1000.f << endl;
 		cout << endl << "==================================================" << endl;
@@ -318,8 +340,42 @@ void keyboardInput(GLFWwindow *window)
 			<< agg_anim_time / num_frames * 1000.f << endl
 			<< agg_input_time / num_frames * 1000.f << endl
 			<< agg_render_time / num_frames * 1000.f << endl;
+		cout << endl << "lamp pos = " << lamp.Position.x << ", " << lamp.Position.y <<
+			", " << lamp.Position.z;
 		glfwSetWindowShouldClose(window, true);
 	}
+
+	// TOGGLE: Play button
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+	{
+		play = !play;
+		std::cout << "Play" << "\n";
+	}
+	// TOGGLE: Fullscreen
+	if ((glfwGetKey(window, GLFW_KEY_F11) == GLFW_PRESS))
+	{
+		is_full_screen = !is_full_screen;
+		if (is_full_screen) {
+			glfwSetWindowSize(window, FULL_SCR_WIDTH, FULL_SCR_HEIGHT);
+			// upper left corner
+			glfwSetWindowPos(window, 0, 0);
+			SCR_WIDTH = FULL_SCR_WIDTH;
+			SCR_HEIGHT = FULL_SCR_HEIGHT;
+		}
+		else {
+			glfwSetWindowSize(window, WIND_SCR_WIDTH, WIND_SCR_HEIGHT);
+			glfwSetWindowPos(window, 0, 0);
+			SCR_WIDTH = WIND_SCR_WIDTH;
+			SCR_HEIGHT = WIND_SCR_HEIGHT;
+		}
+		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+	}
+	// TOGGLE: lock view
+	if ((glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS))
+		lock_view = !lock_view;
+	// TOGGLE: show cloud point
+	if ((glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS))
+		show_cloud = !show_cloud;
 
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 		camera.ProcessKeyboard(FORWARD, deltaTime);
@@ -349,32 +405,82 @@ void keyboardInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_KP_9) == GLFW_PRESS)
 		lamp.Position += glm::vec3(0.f, 0.f, light_offset);
 
-	// Play button
-	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-	{
-		play = !play;
-		std::cout << "Play" << "\n";
-	}
-
 	// Switching animation 01-09
-	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-		anim = new Animation(sk, (char*)(file_amc + "1.amc").c_str());
-	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)					
-		anim = new Animation(sk, (char*)(file_amc + "2.amc").c_str());
-	if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)					
-		anim = new Animation(sk, (char*)(file_amc + "3.amc").c_str());
-	if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)					
-		anim = new Animation(sk, (char*)(file_amc + "4.amc").c_str());
-	if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)					
-		anim = new Animation(sk, (char*)(file_amc + "5.amc").c_str());
-	if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)					
-		anim = new Animation(sk, (char*)(file_amc + "6.amc").c_str());
-	if (glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)					
-		anim = new Animation(sk, (char*)(file_amc + "7.amc").c_str());
-	if (glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS)					
-		anim = new Animation(sk, (char*)(file_amc + "8.amc").c_str());
-	if (glfwGetKey(window, GLFW_KEY_9) == GLFW_PRESS)					
-		anim = new Animation(sk, (char*)(file_amc + "9.amc").c_str());
+	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) {
+		string amc = file_amc + "1.amc";
+		if (anim_cache.count(amc)) // if anim already in cache exits
+			anim = anim_cache[amc];
+		else
+			anim = new Animation(sk, (char*)(amc).c_str());
+		anim_cache.insert({ amc, anim }); // insert only if not present
+	}
+	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS) {
+		string amc = file_amc + "2.amc";
+		amc = file_amc + "3.amc";
+		if (anim_cache.count(amc)) // if anim already in cache exits
+			anim = anim_cache[amc];
+		else
+			anim = new Animation(sk, (char*)(amc).c_str());
+		anim_cache.insert({ amc, anim }); // insert only if not present
+	}
+	if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS) {
+		string amc = file_amc + "3.amc";
+		amc = res_path + "mocap/14/14_02.amc";
+		if (anim_cache.count(amc)) // if anim already in cache exits
+			anim = anim_cache[amc];
+		else
+			anim = new Animation(sk, (char*)(amc).c_str());
+		anim_cache.insert({ amc, anim }); // insert only if not present
+	}
+	if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS) {
+		string amc = file_amc + "4.amc";
+		if (anim_cache.count(amc)) // if anim already in cache exits
+			anim = anim_cache[amc];
+		else
+			anim = new Animation(sk, (char*)(amc).c_str());
+		anim_cache.insert({ amc, anim }); // insert only if not present
+	}
+	if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS) {
+		string amc = file_amc + "5.amc";
+		amc = res_path + "mocap/14/14_06.amc";
+		if (anim_cache.count(amc)) // if anim already in cache exits
+			anim = anim_cache[amc];
+		else
+			anim = new Animation(sk, (char*)(amc).c_str());
+		anim_cache.insert({ amc, anim }); // insert only if not present
+	}
+	if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS) {
+		string amc = file_amc + "6.amc";
+		if (anim_cache.count(amc)) // if anim already in cache exits
+			anim = anim_cache[amc];
+		else
+			anim = new Animation(sk, (char*)(amc).c_str());
+		anim_cache.insert({ amc, anim }); // insert only if not present
+	}
+	if (glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS) {
+		string amc = file_amc + "7.amc";
+		if (anim_cache.count(amc)) // if anim already in cache exits
+			anim = anim_cache[amc];
+		else
+			anim = new Animation(sk, (char*)(amc).c_str());
+		anim_cache.insert({ amc, anim }); // insert only if not present
+	}
+	if (glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS) {
+		string amc = file_amc + "8.amc";
+		if (anim_cache.count(amc)) // if anim already in cache exits
+			anim = anim_cache[amc];
+		else
+			anim = new Animation(sk, (char*)(amc).c_str());
+		anim_cache.insert({ amc, anim }); // insert only if not present
+	}
+	if (glfwGetKey(window, GLFW_KEY_9) == GLFW_PRESS) {
+		string amc = file_amc + "9.amc";
+		if (anim_cache.count(amc)) // if anim already in cache exits
+			anim = anim_cache[amc];
+		else
+			anim = new Animation(sk, (char*)(amc).c_str());
+		anim_cache.insert({ amc, anim }); // insert only if not present
+	}
 }
 
 // glfw: called when window is resized
@@ -383,6 +489,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	// make sure the viewport matches the new window dimensions; note that width and 
 	// height will be significantly larger than specified on retina displays.
 	glViewport(0, 0, width, height);
+	SCR_WIDTH = width;
+	SCR_HEIGHT = height;
 }
 
 
