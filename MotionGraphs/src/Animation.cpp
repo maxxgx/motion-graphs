@@ -75,9 +75,28 @@ Pose* Animation::getNextPose()
 	}
 }
 
+vector<Pose*> Animation::getPosesInRange(unsigned int start, unsigned int end)
+{
+	vector<Pose*> ps;
+	if (start >= 0 && start <= this->poses.size() && end >= 0 && end <= this->poses.size()) {
+		for(int i = start; i <= end; i++) {
+			ps.push_back(this->getPoseAt(i));
+		}		
+	} else {
+		cout << "Animation::getPosesInRange: range error -> start = " 
+		<< start << ", end = " << end << ", size = " << this->poses.size() << endl;
+	}
+	return ps;
+}
+
 long Animation::getCurrentFrame()
 {
 	return this->currentFrame;
+}
+
+long Animation::getNumberOfFrames() 
+{
+	return this->poses.size();
 }
 
 bool Animation::isOver()

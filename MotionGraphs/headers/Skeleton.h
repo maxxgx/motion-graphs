@@ -10,6 +10,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <map>
 #include "Scene.h"
 #include "Utils.h"
 
@@ -36,6 +37,9 @@ public:
 	void resetAll();
 
 	void rescale(float scale);
+
+	map<string, PointCloud*> getBoneWindowPointCloud(vector<Pose*> poses);
+	PointCloud* getGlobalWindowPointCloud(vector<Pose*> poses);
 
 	~Skeleton();
 

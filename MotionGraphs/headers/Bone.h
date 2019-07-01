@@ -68,8 +68,8 @@ public:
 	float scale = 1.f;
 	glm::mat4 cp_planex = glm::mat4(1.f);
 	glm::mat4 cp_planez = glm::mat4(1.f);
-	unsigned int cloud_k = 40;
-	unsigned int cloud_counter = 0;
+	// unsigned int cloud_k = 40;
+	// unsigned int cloud_counter = 0;
 
 protected:
 	//Save a copy of values for reset

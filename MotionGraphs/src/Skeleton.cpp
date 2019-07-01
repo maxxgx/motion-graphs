@@ -214,6 +214,39 @@ void Skeleton::apply_pose(Pose* pose)
 	stack.clear();
 }
 
+map<string, PointCloud*> Skeleton::getBoneWindowPointCloud(vector<Pose*> poses)
+{
+	map<string, PointCloud*> pCloud_over_window;
+	for (auto &pose: poses) {
+		this->apply_pose(pose);
+		for(auto & bone: this->children) {
+			PointCloud* bone_pc = this->getByName(bone->name)->getLocalPointCloud();
+
+			if(pCloud_over_window.count(bone->name)) {
+				pCloud_over_window[bone->name]->addPointCloud(bone_pc);
+			} else { // map[elem] does not exist
+				pCloud_over_window[bone->name] = new PointCloud(bone_pc);
+			}
+		}
+	}
+	return pCloud_over_window;
+}
+
+PointCloud* Skeleton::getGlobalWindowPointCloud(vector<Pose*> poses)
+{
+	PointCloud* global;
+	for (auto &pose: poses) {
+		this->apply_pose(pose);
+		for(auto & bone: this->children) {
+			PointCloud* bone_pc = this->getByName(bone->name)->getLocalPointCloud();
+			global->addPointCloud(bone_pc);
+		}
+	}
+	return global;
+
+}
+
+
 glm::vec3 Skeleton::getPos()
 {
 	return glm::vec3(dir[0],dir[1],dir[2]);
