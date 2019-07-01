@@ -37,19 +37,19 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_movement(GLFWwindow* window, double xpos, double ypos);
 void mouse_scroll(GLFWwindow* window, double xoffset, double yoffset);
 void keyboardInput(GLFWwindow *window);
+Animation* get_anim(string amc);
+void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader);
 
 // settings
-unsigned int SCR_WIDTH = 1600;
-unsigned int SCR_HEIGHT = 1000;
-unsigned int FULL_SCR_WIDTH = SCR_WIDTH;
-unsigned int FULL_SCR_HEIGHT = SCR_HEIGHT;
-unsigned int WIND_SCR_WIDTH = SCR_WIDTH;
-unsigned int WIND_SCR_HEIGHT = SCR_HEIGHT;
+struct screen_size {
+	unsigned int width = 1600, height = 1000;
+	unsigned int posX = 0, posY = 0;
+} init_window, curr_window, fullscreen_window, region_a, region_b;
 
 // Camera
 Camera camera(glm::vec3(0.0f, 1.4f, 2.f));
-float lastX = SCR_WIDTH / 2.0f;
-float lastY = SCR_HEIGHT / 2.0f;
+float lastX = init_window.width / 2.0f;
+float lastY = init_window.height / 2.0f;
 bool firstMouse = true;
 
 // Lights
@@ -81,7 +81,8 @@ map<string, Animation*> anim_cache;
 
 // Loading mocap data: skeleton from .asf and animation (poses) from .amc
 Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
-Animation* anim = new Animation(sk, (char *)(file_amc + "1.amc").c_str());
+string anim_a = (file_amc + "1.amc");
+string anim_b = (file_amc + "2.amc");
 
 int main()
 {
@@ -96,14 +97,21 @@ int main()
     #endif
 
 	GLFWvidmode *primary_mode = (GLFWvidmode*)glfwGetVideoMode(glfwGetPrimaryMonitor());
-	FULL_SCR_WIDTH = primary_mode->width; FULL_SCR_HEIGHT = primary_mode-> height;
-	SCR_WIDTH = FULL_SCR_WIDTH * .75f;	SCR_HEIGHT = FULL_SCR_HEIGHT * .75f;
-	WIND_SCR_WIDTH = SCR_WIDTH;			WIND_SCR_HEIGHT = SCR_HEIGHT;
-	cout << "Screen size: " << FULL_SCR_WIDTH << "x" << FULL_SCR_HEIGHT << endl;
-	cout << "Init window size: " << SCR_WIDTH << "x" << SCR_HEIGHT << endl;
+	fullscreen_window.width = primary_mode->width; 
+	fullscreen_window.height = primary_mode-> height;
+	curr_window.width = fullscreen_window.width * .75f;
+	curr_window.height = fullscreen_window.height * .75f;
+	init_window = curr_window;
+	cout << "Screen size: " << fullscreen_window.width << "x" << fullscreen_window.height << endl;
+	cout << "Init window size: " << init_window.width << "x" << init_window.height << endl;
+	region_a.width = curr_window.width / 2;
+	region_a.height = curr_window.height;
+	region_b.width = curr_window.width / 2;
+	region_b.height = curr_window.height;
+	region_b.posX = curr_window.width/2;
 
 	/** GLFW window **/
-	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Mocap", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(curr_window.width, curr_window.height, "Mocap", NULL, NULL);
 	if (window == NULL)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -130,32 +138,33 @@ int main()
 
 	/** configure global opengl state **/
 	glEnable(GL_DEPTH_TEST);
-
-	/** build and compile shaders + load .obj 3D models**/
-    #ifdef _WIN32 || _WIN64
-        Shader diffShader("shaders/basic_lighting.vs", "shaders/basic_lighting.fs");
-	    Shader lampShader("shaders/lamp.vs", "shaders/lamp.fs");
-		//string r = (string)ROOT_DIR;
-  //      Model sphere(r.append("\\res\\sphere\\sphere.obj"));
-  //      Model cylinder(r.append("\\res\\cylinder\\cylinder.obj"));
-  //      Model plane(r.append("\\res\\plane\\plane.obj"));
-  //      Model monkey(r.append("\\res\\monkey\\monkey.obj"));
-    #else
-        Shader diffShader((ROOT_DIR + "/shaders/basic_lighting.vs").c_str(), (ROOT_DIR + "/shaders/basic_lighting.fs").c_str());
-	    Shader lampShader((ROOT_DIR + "/shaders/lamp.vs").c_str(), (ROOT_DIR + "/shaders/lamp.fs").c_str());
-    #endif
-        Model sphere(FileSystem::getPath("resources/objects/sphere/sphere.obj"));
-        Model cylinder(FileSystem::getPath("resources/objects/cylinder/cylinder.obj"));
-        Model plane(FileSystem::getPath("resources/objects/plane/plane.obj"));
-        Model monkey(FileSystem::getPath("resources/objects/monkey/monkey.obj"));
 	
+	/** build and compile shaders + load .obj 3D models**/
+#ifdef _WIN32 || _WIN64
+	Shader diffShader("shaders/basic_lighting.vs", "shaders/basic_lighting.fs");
+	Shader lampShader("shaders/lamp.vs", "shaders/lamp.fs");
+	//string r = (string)ROOT_DIR;
+//      Model sphere(r.append("\\res\\sphere\\sphere.obj"));
+//      Model cylinder(r.append("\\res\\cylinder\\cylinder.obj"));
+//      Model plane(r.append("\\res\\plane\\plane.obj"));
+//      Model monkey(r.append("\\res\\monkey\\monkey.obj"));
+#else
+	Shader diffShader((ROOT_DIR + "/shaders/basic_lighting.vs").c_str(), (ROOT_DIR + "/shaders/basic_lighting.fs").c_str());
+	Shader lampShader((ROOT_DIR + "/shaders/lamp.vs").c_str(), (ROOT_DIR + "/shaders/lamp.fs").c_str());
+#endif
+	Model sphere(FileSystem::getPath("resources/objects/sphere/sphere.obj"));
+	Model cylinder(FileSystem::getPath("resources/objects/cylinder/cylinder.obj"));
+	Model plane(FileSystem::getPath("resources/objects/plane/plane.obj"));
+	Model monkey(FileSystem::getPath("resources/objects/monkey/monkey.obj"));
+	CubeCore cube = CubeCore();
+
 	// Lights buffers
 	lamp.setBuffers();
 
 	// Add first anim to cache 
-	anim_cache.insert({ file_amc + "1.amc", anim });
+	get_anim(anim_a);
+	get_anim(anim_b);
 	sk->apply_pose(NULL);
-	CubeCore cube = CubeCore();
 	cube.setBuffers();
 
 	// Set shader to use
@@ -172,7 +181,8 @@ int main()
 		float last_fps = 1.f / deltaTime;
 		agg_fps += last_fps;
 
-		// Update animation
+		Animation* anim = get_anim(anim_a);
+		// Update animation 
 		if (play)
 		{
 			if (anim->isOver()) {
@@ -195,115 +205,28 @@ int main()
 		float input_time = (glfwGetTime() - input_start_time);
 		agg_input_time += input_time;
 
-		/** Start Rendering **/
-		float render_start_time = glfwGetTime();
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
 
+		glViewport(region_a.posX, region_a.posY, region_a.width, region_a.height);
+		draw(plane, sphere, cylinder, cube, diffShader, lampShader);
 
-		// activate shader
-		diffShader.use();
-		diffShader.setVec3("lightColor", 1.0f, 1.0f, 1.0f);
-		diffShader.setVec3("lightPos", lamp.Position);
-		diffShader.setVec3("viewPos", camera.Position);
-
-		// pass projection matrix to shader (note that in this case it could change every frame)
-		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-		diffShader.setMat4("projection", projection);
-
-		// camera/view transformation
-		if (lock_view) {
-			diffShader.setMat4("view", glm::lookAt(camera.Position, sk->getPos(), camera.Up));
-		}
-		else {
-			diffShader.setMat4("view", camera.GetViewMatrix());
-		}
-
-		// floor
-		diffShader.setVec3("objectColor", .95f, 0.95f, 0.95f);
-		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::scale(model, glm::vec3(50.f, 0.001f, 50.f));
-		diffShader.setMat4("model", model);
-		//glBindVertexArray(cube.VAO);
-		//glDrawArrays(GL_TRIANGLES, 0, 36);
-		plane.Draw(diffShader);
-
-
-		// render Skeleton, root first
-		float render_scale = .02f;
-		model = glm::scale(sk->getJointMat(), glm::vec3(render_scale));
-		diffShader.setVec3("objectColor", 1.0f, 0.1f, 0.1f);
-		diffShader.setMat4("model", model);
-		//glDrawArrays(GL_TRIANGLES, 0, 36);
-		sphere.Draw(diffShader);
-
-		for (Bone* bone : sk->getAllBones())
+		anim = get_anim(anim_b);
+		// Update animation 
+		if (play)
 		{
-			diffShader.setVec3("objectColor", 0.31f, 1.f, 0.31f);
-
-			bool highlight = !strcmp(bone->name.c_str(), "rtibia") || !strcmp(bone->name.c_str(), "ltibia")
-				|| !strcmp(bone->name.c_str(), "rradius") || !strcmp(bone->name.c_str(), "lradius")
-				|| !strcmp(bone->name.c_str(), "rclavicle") || !strcmp(bone->name.c_str(), "lclavicle")
-				//|| !strcmp(bone->name.c_str(), "rhumerus") || !strcmp(bone->name.c_str(), "lhumerus")
-			|| !strcmp(bone->name.c_str(), "lowerback");
-			if (highlight) {
-				diffShader.setVec3("objectColor", 0.31f, 0.31f, 1.f);
+			if (anim->isOver()) {
+				anim->reset();
+				sk->resetAll();
 			}
-			// calculate the model matrix for each object and pass it to shader before drawing
-			model = glm::scale(bone->getJointMat(), glm::vec3(render_scale));
-			diffShader.setMat4("model", model);
-			sphere.Draw(diffShader);
-
-			// Draw segment
-			diffShader.setVec3("objectColor", .6f, 0.6f, 0.6f);
-			if (highlight) {
-				diffShader.setVec3("objectColor", 0.31f, 0.31f, .6f);
+			int frame = anim->getCurrentFrame();
+			sk->apply_pose(anim->getPoseAt(frame + skip_frame));
+			for (int i = 0; i < skip_frame; i++) {
+				anim->getNextPose();
 			}
-			model = glm::scale(bone->getSegMat(), glm::vec3(render_scale));
-			diffShader.setMat4("model", model);
-			cylinder.Draw(diffShader);
-
-			//Cloud point guideline
-			/*diffShader.setVec3("objectColor", 0.41f, 0.41f, .6f);
-			model = glm::scale(bone->cp_planez, glm::vec3(render_scale));
-			diffShader.setMat4("model", bone->cp_planez);
-			glBindVertexArray(cube.VAO);
-			glDrawArrays(GL_TRIANGLES, 0, 36);
-			diffShader.setVec3("objectColor", 6.0f, 0.41f, 0.41f);
-			model = glm::scale(bone->cp_planex, glm::vec3(render_scale));
-			diffShader.setMat4("model", bone->cp_planex);
-			glBindVertexArray(cube.VAO);
-			glDrawArrays(GL_TRIANGLES, 0, 36);*/
-
-			//Cloud points
-			if (show_cloud) 
-			{
-				diffShader.setVec3("objectColor", .8f, 0.8f, 0.8f);
-				for (auto p : bone->getLocalPointCloud()->points) {
-					model = glm::scale(bone->getLocalPointCloud()->getPointMat(p), glm::vec3(0.01f));
-					diffShader.setMat4("model", model);
-					// sphere.Draw(diffShader);
-					glBindVertexArray(cube.VAO);
-					glDrawArrays(GL_TRIANGLES, 0, 36);
-				}
-			}			
 		}
-
-		// Draw Lights
-		lampShader.use();
-		lampShader.setMat4("projection", projection);
-		lampShader.setMat4("view", camera.GetViewMatrix());
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, lamp.Position);
-		model = glm::scale(model, glm::vec3(0.2f)); // a smaller cube
-		lampShader.setMat4("model", model);
-
-		glBindVertexArray(lamp.VAO);
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-
-		float render_time = glfwGetTime() - render_start_time;
-		agg_render_time += render_time;
-		/** END RENDERING **/
+		glViewport(region_b.posX, region_b.posY, region_b.width, region_b.height);
+		draw(plane, sphere, cylinder, cube, diffShader, lampShader);
 
 		//glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		//-------------------------------------------------------------------------------
@@ -317,11 +240,121 @@ int main()
 	// de-allocation
 	cube.~CubeCore();
 	sk->~Skeleton();
-	anim->~Animation();
+	// anim->~Animation();
 
 	// end glfw
 	glfwTerminate();
 	return 0;
+}
+
+void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader)
+{
+	/** Start Rendering **/
+	float render_start_time = glfwGetTime();
+
+	// activate shader
+	diffShader.use();
+	diffShader.setVec3("lightColor", 1.0f, 1.0f, 1.0f);
+	diffShader.setVec3("lightPos", lamp.Position);
+	diffShader.setVec3("viewPos", camera.Position);
+
+	// pass projection matrix to shader (note that in this case it could change every frame)
+	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)curr_window.width / (float)curr_window.height, 0.1f, 100.0f);
+	diffShader.setMat4("projection", projection);
+
+	// camera/view transformation
+	if (lock_view) {
+		diffShader.setMat4("view", glm::lookAt(camera.Position, sk->getPos(), camera.Up));
+	}
+	else {
+		diffShader.setMat4("view", camera.GetViewMatrix());
+	}
+
+	// floor
+	diffShader.setVec3("objectColor", .95f, 0.95f, 0.95f);
+	glm::mat4 model = glm::mat4(1.0f);
+	model = glm::scale(model, glm::vec3(50.f, 0.001f, 50.f));
+	diffShader.setMat4("model", model);
+	//glBindVertexArray(cube.VAO);
+	//glDrawArrays(GL_TRIANGLES, 0, 36);
+	plane.Draw(diffShader);
+
+
+	// render Skeleton, root first
+	float render_scale = .02f;
+	model = glm::scale(sk->getJointMat(), glm::vec3(render_scale));
+	diffShader.setVec3("objectColor", 1.0f, 0.1f, 0.1f);
+	diffShader.setMat4("model", model);
+	//glDrawArrays(GL_TRIANGLES, 0, 36);
+	sphere.Draw(diffShader);
+
+	for (Bone* bone : sk->getAllBones())
+	{
+		diffShader.setVec3("objectColor", 0.31f, 1.f, 0.31f);
+
+		bool highlight = !strcmp(bone->name.c_str(), "rtibia") || !strcmp(bone->name.c_str(), "ltibia")
+			|| !strcmp(bone->name.c_str(), "rradius") || !strcmp(bone->name.c_str(), "lradius")
+			|| !strcmp(bone->name.c_str(), "rclavicle") || !strcmp(bone->name.c_str(), "lclavicle")
+			//|| !strcmp(bone->name.c_str(), "rhumerus") || !strcmp(bone->name.c_str(), "lhumerus")
+		|| !strcmp(bone->name.c_str(), "lowerback");
+		if (highlight) {
+			diffShader.setVec3("objectColor", 0.31f, 0.31f, 1.f);
+		}
+		// calculate the model matrix for each object and pass it to shader before drawing
+		model = glm::scale(bone->getJointMat(), glm::vec3(render_scale));
+		diffShader.setMat4("model", model);
+		sphere.Draw(diffShader);
+
+		// Draw segment
+		diffShader.setVec3("objectColor", .6f, 0.6f, 0.6f);
+		if (highlight) {
+			diffShader.setVec3("objectColor", 0.31f, 0.31f, .6f);
+		}
+		model = glm::scale(bone->getSegMat(), glm::vec3(render_scale));
+		diffShader.setMat4("model", model);
+		cylinder.Draw(diffShader);
+
+		//Cloud point guideline
+		/*diffShader.setVec3("objectColor", 0.41f, 0.41f, .6f);
+		model = glm::scale(bone->cp_planez, glm::vec3(render_scale));
+		diffShader.setMat4("model", bone->cp_planez);
+		glBindVertexArray(cube.VAO);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		diffShader.setVec3("objectColor", 6.0f, 0.41f, 0.41f);
+		model = glm::scale(bone->cp_planex, glm::vec3(render_scale));
+		diffShader.setMat4("model", bone->cp_planex);
+		glBindVertexArray(cube.VAO);
+		glDrawArrays(GL_TRIANGLES, 0, 36);*/
+
+		//Cloud points
+		if (show_cloud) 
+		{
+			diffShader.setVec3("objectColor", .8f, 0.8f, 0.8f);
+			for (auto p : bone->getLocalPointCloud()->points) {
+				model = glm::scale(bone->getLocalPointCloud()->getPointMat(p), glm::vec3(0.01f));
+				diffShader.setMat4("model", model);
+				// sphere.Draw(diffShader);
+				glBindVertexArray(cube.VAO);
+				glDrawArrays(GL_TRIANGLES, 0, 36);
+			}
+		}			
+	}
+
+	// Draw Lights
+	lampShader.use();
+	lampShader.setMat4("projection", projection);
+	lampShader.setMat4("view", camera.GetViewMatrix());
+	model = glm::mat4(1.0f);
+	model = glm::translate(model, lamp.Position);
+	model = glm::scale(model, glm::vec3(0.1f)); // a smaller cube
+	lampShader.setMat4("model", model);
+
+	glBindVertexArray(lamp.VAO);
+	glDrawArrays(GL_TRIANGLES, 0, 36);
+
+	float render_time = glfwGetTime() - render_start_time;
+	agg_render_time += render_time;
+	/** END RENDERING **/
 }
 
 
@@ -356,19 +389,24 @@ void keyboardInput(GLFWwindow *window)
 	{
 		is_full_screen = !is_full_screen;
 		if (is_full_screen) {
-			glfwSetWindowSize(window, FULL_SCR_WIDTH, FULL_SCR_HEIGHT);
+			glfwSetWindowSize(window, fullscreen_window.width, fullscreen_window.height);
 			// upper left corner
 			glfwSetWindowPos(window, 0, 0);
-			SCR_WIDTH = FULL_SCR_WIDTH;
-			SCR_HEIGHT = FULL_SCR_HEIGHT;
+			curr_window.width = fullscreen_window.width;
+			curr_window.height = fullscreen_window.height;
 		}
 		else {
-			glfwSetWindowSize(window, WIND_SCR_WIDTH, WIND_SCR_HEIGHT);
+			glfwSetWindowSize(window, init_window.width, init_window.height);
 			glfwSetWindowPos(window, 0, 0);
-			SCR_WIDTH = WIND_SCR_WIDTH;
-			SCR_HEIGHT = WIND_SCR_HEIGHT;
+			curr_window.width = init_window.width;
+			curr_window.height = init_window.height;
 		}
-		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+		region_a.width = curr_window.width / 2;
+		region_a.height = curr_window.height;
+		region_b.width = curr_window.width / 2;
+		region_b.height = curr_window.height;
+		region_b.posX = curr_window.width/2;
+		glViewport(0, 0, curr_window.width, curr_window.height);
 	}
 	// TOGGLE: lock view
 	if ((glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS))
@@ -406,81 +444,46 @@ void keyboardInput(GLFWwindow *window)
 		lamp.Position += glm::vec3(0.f, 0.f, light_offset);
 
 	// Switching animation 01-09
-	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) {
-		string amc = file_amc + "1.amc";
-		if (anim_cache.count(amc)) // if anim already in cache exits
-			anim = anim_cache[amc];
-		else
-			anim = new Animation(sk, (char*)(amc).c_str());
-		anim_cache.insert({ amc, anim }); // insert only if not present
+	// if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) {
+	// 	change_anim(file_amc + "1.amc");
+	// }
+	// if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS) {
+	// 	// amc = file_amc + "3.amc"; //demo
+	// 	change_anim(file_amc + "2.amc");
+	// }
+	// if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS) {
+	// 	change_anim(file_amc + "3.amc");
+	// }
+	// if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS) {
+	// 	change_anim(file_amc + "4.amc");
+	// }
+	// if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS) {
+	// 	// amc = res_path + "mocap/14/14_06.amc"; //demo
+	// 	change_anim(file_amc + "5.amc");
+	// }
+	// if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS) {
+	// 	change_anim(file_amc + "6.amc");
+	// }
+	// if (glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS) {
+	// 	change_anim(file_amc + "7.amc");
+	// }
+	// if (glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS) {
+	// 	change_anim(file_amc + "8.amc");
+	// }
+	// if (glfwGetKey(window, GLFW_KEY_9) == GLFW_PRESS) {
+	// 	change_anim(file_amc + "9.amc");		
+	// }
+}
+
+// Get the animation from the cache, adds it if not present
+Animation* get_anim(string amc)
+{
+	if (!anim_cache.count(amc)) // if animation is NOT in cache exits
+	{
+		Animation* an = new Animation(sk, (char*)(amc).c_str());
+		anim_cache.insert({ amc, an }); // insert only if not present
 	}
-	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS) {
-		string amc = file_amc + "2.amc";
-		amc = file_amc + "3.amc";
-		if (anim_cache.count(amc)) // if anim already in cache exits
-			anim = anim_cache[amc];
-		else
-			anim = new Animation(sk, (char*)(amc).c_str());
-		anim_cache.insert({ amc, anim }); // insert only if not present
-	}
-	if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS) {
-		string amc = file_amc + "3.amc";
-		amc = res_path + "mocap/14/14_02.amc";
-		if (anim_cache.count(amc)) // if anim already in cache exits
-			anim = anim_cache[amc];
-		else
-			anim = new Animation(sk, (char*)(amc).c_str());
-		anim_cache.insert({ amc, anim }); // insert only if not present
-	}
-	if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS) {
-		string amc = file_amc + "4.amc";
-		if (anim_cache.count(amc)) // if anim already in cache exits
-			anim = anim_cache[amc];
-		else
-			anim = new Animation(sk, (char*)(amc).c_str());
-		anim_cache.insert({ amc, anim }); // insert only if not present
-	}
-	if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS) {
-		string amc = file_amc + "5.amc";
-		amc = res_path + "mocap/14/14_06.amc";
-		if (anim_cache.count(amc)) // if anim already in cache exits
-			anim = anim_cache[amc];
-		else
-			anim = new Animation(sk, (char*)(amc).c_str());
-		anim_cache.insert({ amc, anim }); // insert only if not present
-	}
-	if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS) {
-		string amc = file_amc + "6.amc";
-		if (anim_cache.count(amc)) // if anim already in cache exits
-			anim = anim_cache[amc];
-		else
-			anim = new Animation(sk, (char*)(amc).c_str());
-		anim_cache.insert({ amc, anim }); // insert only if not present
-	}
-	if (glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS) {
-		string amc = file_amc + "7.amc";
-		if (anim_cache.count(amc)) // if anim already in cache exits
-			anim = anim_cache[amc];
-		else
-			anim = new Animation(sk, (char*)(amc).c_str());
-		anim_cache.insert({ amc, anim }); // insert only if not present
-	}
-	if (glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS) {
-		string amc = file_amc + "8.amc";
-		if (anim_cache.count(amc)) // if anim already in cache exits
-			anim = anim_cache[amc];
-		else
-			anim = new Animation(sk, (char*)(amc).c_str());
-		anim_cache.insert({ amc, anim }); // insert only if not present
-	}
-	if (glfwGetKey(window, GLFW_KEY_9) == GLFW_PRESS) {
-		string amc = file_amc + "9.amc";
-		if (anim_cache.count(amc)) // if anim already in cache exits
-			anim = anim_cache[amc];
-		else
-			anim = new Animation(sk, (char*)(amc).c_str());
-		anim_cache.insert({ amc, anim }); // insert only if not present
-	}
+	return anim_cache[amc];
 }
 
 // glfw: called when window is resized
@@ -489,8 +492,13 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	// make sure the viewport matches the new window dimensions; note that width and 
 	// height will be significantly larger than specified on retina displays.
 	glViewport(0, 0, width, height);
-	SCR_WIDTH = width;
-	SCR_HEIGHT = height;
+	curr_window.width = width;
+	curr_window.height = height;
+	region_a.width = curr_window.width / 2;
+	region_a.height = curr_window.height;
+	region_b.width = curr_window.width / 2;
+	region_b.height = curr_window.height;
+	region_b.posX = curr_window.width/2;
 }
 
 
