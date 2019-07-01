@@ -4,14 +4,35 @@ PointCloud::PointCloud()
 {
 }
 
-float PointCloud::computeDistance(PointCloud cp)
+PointCloud::PointCloud(PointCloud* pc)
 {
-	return 0.f;
+	this->points = pc->points;
+}
+
+float PointCloud::computeDistance(PointCloud* cp)
+{
+	float sum = 0.0f;
+	if (this->points.size() == cp->points.size() && points.size() > 0) {
+		for (int i=0; i < this->points.size(); i++) {
+			glm::vec3 vec_diff = this->getPoint(i) - cp->getPoint(i);
+			float dist = glm::dot(vec_diff, vec_diff);
+			sum += pow(dist, 2);
+		}
+		return sum;
+	} else
+	{
+		return -1.f;
+	}
 }
 
 void PointCloud::addPoint(glm::vec3 p)
 {
 	this->points.push_back(p);
+}
+
+void PointCloud::addPointCloud(PointCloud* pc)
+{
+	this->points.insert(std::begin(points), std::begin(pc->points), std::end(pc->points));
 }
 
 glm::vec3 PointCloud::getPoint(int index)

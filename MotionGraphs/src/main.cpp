@@ -32,19 +32,19 @@
 #define ROOT_DIR FileSystem::getRoot()
 
 #define FPS 120
+// settings
+struct screen_size {
+	unsigned int width = 1600, height = 1000;
+	unsigned int posX = 0, posY = 0;
+} init_window, curr_window, fullscreen_window, region_a, region_b;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_movement(GLFWwindow* window, double xpos, double ypos);
 void mouse_scroll(GLFWwindow* window, double xoffset, double yoffset);
 void keyboardInput(GLFWwindow *window);
 Animation* get_anim(string amc);
-void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader);
+void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader, screen_size window_region);
 
-// settings
-struct screen_size {
-	unsigned int width = 1600, height = 1000;
-	unsigned int posX = 0, posY = 0;
-} init_window, curr_window, fullscreen_window, region_a, region_b;
 
 // Camera
 Camera camera(glm::vec3(0.0f, 1.4f, 2.f));
@@ -70,6 +70,7 @@ bool show_cloud = false;
 float scale = 0.056444f; //inches to meters
 
 int skip_frame = 1;
+int k = 40;
 
 // Animation & skeleton
 string res_path = ROOT_DIR + "/resources/";
@@ -82,7 +83,7 @@ map<string, Animation*> anim_cache;
 // Loading mocap data: skeleton from .asf and animation (poses) from .amc
 Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
 string anim_a = (file_amc + "1.amc");
-string anim_b = (file_amc + "2.amc");
+string anim_b = (file_amc + "3.amc");
 
 int main()
 {
@@ -170,6 +171,31 @@ int main()
 	// Set shader to use
 	diffShader.use();
 
+	// Calculating distance matrix
+	cout << "Calculating distance matrix" << endl;
+	int num_frames_a = get_anim(anim_a)->getNumberOfFrames();
+	int num_frames_b = get_anim(anim_b)->getNumberOfFrames();
+	for (int i = 1; i < num_frames_a; i++) {
+		for (int j = 1; j < num_frames_b; j++) {
+			float distance = -1.f;
+			if (i+k-1 <= num_frames_a && j-k+1 > 0) {
+				vector<Pose*> poses_a = get_anim(anim_a)->getPosesInRange(i, i+k-1);
+				cout<<"malaka" << endl;
+				vector<Pose*> poses_b = get_anim(anim_b)->getPosesInRange(j-k+1, j);
+				cout << "size of poses_a = " << poses_a.size() << ", poses_b =" << poses_b.size();
+				cout<<"malaka2" << endl;
+				PointCloud* cloud_a = sk->getGlobalWindowPointCloud(poses_a);
+				cout<<"malaka3" << endl;
+				PointCloud* cloud_b = sk->getGlobalWindowPointCloud(poses_b);
+				cout<<"malaka4" << endl;
+				distance = cloud_a->computeDistance(cloud_b);
+			}
+			cout << "| @"<<i<<"," <<j<<"\td="<<distance<<"\t"; 
+		}
+		cout <<endl;
+	}
+	
+
 	/** render loop **/
 	while (!glfwWindowShouldClose(window))
 	{
@@ -209,7 +235,7 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
 
 		glViewport(region_a.posX, region_a.posY, region_a.width, region_a.height);
-		draw(plane, sphere, cylinder, cube, diffShader, lampShader);
+		draw(plane, sphere, cylinder, cube, diffShader, lampShader, region_a);
 
 		anim = get_anim(anim_b);
 		// Update animation 
@@ -226,7 +252,7 @@ int main()
 			}
 		}
 		glViewport(region_b.posX, region_b.posY, region_b.width, region_b.height);
-		draw(plane, sphere, cylinder, cube, diffShader, lampShader);
+		draw(plane, sphere, cylinder, cube, diffShader, lampShader, region_b);
 
 		//glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		//-------------------------------------------------------------------------------
@@ -247,7 +273,7 @@ int main()
 	return 0;
 }
 
-void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader)
+void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader, screen_size window_region)
 {
 	/** Start Rendering **/
 	float render_start_time = glfwGetTime();
@@ -259,7 +285,7 @@ void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffS
 	diffShader.setVec3("viewPos", camera.Position);
 
 	// pass projection matrix to shader (note that in this case it could change every frame)
-	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)curr_window.width / (float)curr_window.height, 0.1f, 100.0f);
+	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)window_region.width / (float)window_region.height, 0.1f, 100.0f);
 	diffShader.setMat4("projection", projection);
 
 	// camera/view transformation
