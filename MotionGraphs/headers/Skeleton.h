@@ -40,6 +40,7 @@ public:
 
 	map<string, PointCloud*> getBoneWindowPointCloud(vector<Pose*> poses);
 	PointCloud* getGlobalWindowPointCloud(vector<Pose*> poses);
+	PointCloud* getGlobalPointCloud(Pose* pose);
 
 	~Skeleton();
 

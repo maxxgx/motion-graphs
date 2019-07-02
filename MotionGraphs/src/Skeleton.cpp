@@ -234,16 +234,23 @@ map<string, PointCloud*> Skeleton::getBoneWindowPointCloud(vector<Pose*> poses)
 
 PointCloud* Skeleton::getGlobalWindowPointCloud(vector<Pose*> poses)
 {
-	PointCloud* global;
+	PointCloud* global = new PointCloud();
 	for (auto &pose: poses) {
-		this->apply_pose(pose);
-		for(auto & bone: this->children) {
-			PointCloud* bone_pc = this->getByName(bone->name)->getLocalPointCloud();
-			global->addPointCloud(bone_pc);
-		}
+		global->addPointCloud(this->getGlobalPointCloud(pose));
 	}
 	return global;
 
+}
+
+PointCloud * Skeleton::getGlobalPointCloud(Pose * pose)
+{
+	PointCloud* global = new PointCloud();	
+	this->apply_pose(pose);
+	for (auto & bone : this->children) {
+		PointCloud* bone_pc = this->getByName(bone->name)->getLocalPointCloud();
+		global->addPointCloud(bone_pc);
+	}
+	return global;
 }
 
 

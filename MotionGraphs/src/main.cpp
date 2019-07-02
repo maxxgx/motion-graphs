@@ -21,6 +21,8 @@
 #endif
 #include <learnopengl/filesystem.h>
 #include <string.h>
+#include <algorithm>
+#include <limits>
 
 #include "../headers/CubeCore.h"
 #include "../headers/Skeleton.h"
@@ -82,7 +84,7 @@ map<string, Animation*> anim_cache;
 
 // Loading mocap data: skeleton from .asf and animation (poses) from .amc
 Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
-string anim_a = (file_amc + "1.amc");
+string anim_a = (file_amc + "2.amc");
 string anim_b = (file_amc + "3.amc");
 
 int main()
@@ -173,27 +175,51 @@ int main()
 
 	// Calculating distance matrix
 	cout << "Calculating distance matrix" << endl;
-	int num_frames_a = get_anim(anim_a)->getNumberOfFrames();
-	int num_frames_b = get_anim(anim_b)->getNumberOfFrames();
+	const int num_frames_a = get_anim(anim_a)->getNumberOfFrames();
+	const int num_frames_b = get_anim(anim_b)->getNumberOfFrames();
+	map<int, PointCloud*> cloud_a_to_frame;
+	map<int, PointCloud*> cloud_b_to_frame;
+
 	for (int i = 1; i < num_frames_a; i++) {
+		Pose* pose = get_anim(anim_a)->getPoseAt(i);
+		cloud_a_to_frame.insert({ i, sk->getGlobalPointCloud(pose) });
+	}
+	for (int i = 1; i < num_frames_b; i++) {
+		Pose* pose = get_anim(anim_b)->getPoseAt(i);
+		cloud_b_to_frame.insert({ i, sk->getGlobalPointCloud(pose) });
+	}
+
+	vector<vector<float>> distance_mat;
+	pair<int, int> min_dist_frames;
+	float min_dist = std::numeric_limits<float>::infinity();
+	for (int i = 1; i < num_frames_a; i++) {
+		PointCloud* cloud_a = new PointCloud();
+		std::for_each(cloud_a_to_frame.begin(), cloud_a_to_frame.end(), 
+			[&](pair<int, PointCloud*> p) { if(p.first >= i && p.first < i + k) cloud_a->addPointCloud(p.second); });
+
+		vector<float> dist_mat_row;
 		for (int j = 1; j < num_frames_b; j++) {
+			PointCloud* cloud_b = new PointCloud();
+			std::for_each(cloud_b_to_frame.begin(), cloud_b_to_frame.end(),
+				[&](pair<int, PointCloud*> p) { if (p.first > j-k && p.first <= j) cloud_b->addPointCloud(p.second); });
+
 			float distance = -1.f;
 			if (i+k-1 <= num_frames_a && j-k+1 > 0) {
-				vector<Pose*> poses_a = get_anim(anim_a)->getPosesInRange(i, i+k-1);
-				cout<<"malaka" << endl;
-				vector<Pose*> poses_b = get_anim(anim_b)->getPosesInRange(j-k+1, j);
-				cout << "size of poses_a = " << poses_a.size() << ", poses_b =" << poses_b.size();
-				cout<<"malaka2" << endl;
-				PointCloud* cloud_a = sk->getGlobalWindowPointCloud(poses_a);
-				cout<<"malaka3" << endl;
-				PointCloud* cloud_b = sk->getGlobalWindowPointCloud(poses_b);
-				cout<<"malaka4" << endl;
 				distance = cloud_a->computeDistance(cloud_b);
+				if (distance != -1.f && distance < min_dist) {
+					min_dist = distance;
+					min_dist_frames = { i,j };
+				}
 			}
-			cout << "| @"<<i<<"," <<j<<"\td="<<distance<<"\t"; 
+			//cout << "| @"<<i<<"," <<j<<"\td="<<distance<<"\t"; 
+			dist_mat_row.push_back(distance);
 		}
-		cout <<endl;
+		cout << "i = "<< i <<endl;
+		distance_mat.push_back(dist_mat_row);
 	}
+
+	cout << "Min distance at frames " << min_dist_frames.first << " - " << min_dist_frames.second << endl;
+	
 	
 
 	/** render loop **/
@@ -220,6 +246,9 @@ int main()
 			for (int i = 0; i < skip_frame; i++) {
 				anim->getNextPose();
 			}
+		}
+		else {
+			sk->apply_pose(get_anim(anim_a)->getPoseAt(min_dist_frames.first));
 		}
 		float pose_time = glfwGetTime() - currentFrame;
 		agg_anim_time += pose_time;
@@ -250,6 +279,9 @@ int main()
 			for (int i = 0; i < skip_frame; i++) {
 				anim->getNextPose();
 			}
+		}
+		else {
+			sk->apply_pose(get_anim(anim_b)->getPoseAt(min_dist_frames.second));
 		}
 		glViewport(region_b.posX, region_b.posY, region_b.width, region_b.height);
 		draw(plane, sphere, cylinder, cube, diffShader, lampShader, region_b);
