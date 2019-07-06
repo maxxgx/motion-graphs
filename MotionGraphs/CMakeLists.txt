@@ -15,7 +15,7 @@ endif(WIN32)
 
 link_directories(${CMAKE_SOURCE_DIR}/lib)
 
-list(APPEND CMAKE_CXX_FLAGS "-std=c++11")
+list(APPEND CMAKE_CXX_FLAGS "-std=c++17")
 
 # find the required packages
 find_package(GLM REQUIRED)
@@ -26,8 +26,9 @@ find_package(ASSIMP REQUIRED)
 message(STATUS "Found ASSIMP in ${ASSIMP_INCLUDE_DIR}")
 # find_package(SOIL REQUIRED)
 # message(STATUS "Found SOIL in ${SOIL_INCLUDE_DIR}")
-# find_package(GLEW REQUIRED)
-# message(STATUS "Found GLEW in ${GLEW_INCLUDE_DIR}")
+find_package(GLEW REQUIRED)
+message(STATUS "Found GLEW in ${GLEW_INCLUDE_DIR}")
+
 
 if(WIN32)
   set(LIBS glfw3 opengl32 assimp)
@@ -39,6 +40,7 @@ elseif(UNIX AND NOT APPLE)
   # note that the order is important for setting the libs
   # use pkg-config --libs $(pkg-config --print-requires --print-requires-private glfw3) in a terminal to confirm
   set(LIBS ${GLFW3_LIBRARY} X11 Xrandr Xinerama Xi Xxf86vm Xcursor GL dl pthread ${ASSIMP_LIBRARY})
+  # set(LIBS ${CMAKE_SOURCE_DIR}/src/imgui_impl_opengl3.cpp)
   set (CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -ldl")
 elseif(APPLE)
   INCLUDE_DIRECTORIES(/System/Library/Frameworks)
@@ -67,12 +69,22 @@ set(LIBS ${LIBS} STB_IMAGE)
 add_library(GLAD "src/glad.c")
 set(LIBS ${LIBS} GLAD)
 
+# add_library(IMGUI_GLFW STATIC "src/imgui_impl_glfw.cpp")
+# set(LIBS ${LIBS} IMGUI_GLFW)
+# add_library(IMGUI_OPENGL STATIC "src/imgui_impl_opengl3.cpp")
+# set(LIBS ${LIBS} IMGUI_OPENGL)
+
+# try to separate imgui files again????
+
 macro(makeLink src dest target)
   add_custom_command(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${src} ${dest}  DEPENDS  ${dest} COMMENT "mklink ${src} -> ${dest}")
 endmacro()
 
 
-file(GLOB PROJECT_HEADERS "headers/*.h")
+file(GLOB PROJECT_HEADERS 
+                  "headers/*.h"
+                  "includes/imgui/*.h"
+                  "includes/imgui/*.cpp")
 file(GLOB SOURCES
             "src/*.h"
             "src/*.cpp"
