@@ -81,7 +81,7 @@ void imgui_file_selector(string name, string root, string &filename);
 // CUSTOM
 Animation* get_anim(string amc);
 void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader, screen_size window_region);
-pair<vector<vector<float>>, pair<int,int>> compute_distance_matrix();
+pair<vector<vector<float>>, pair<float,float>> compute_distance_matrix();
 
 
 // Camera
@@ -233,9 +233,16 @@ int main()
     // Vars
     pair<int,int> selected_frames = {0,0};
 	pair<int, int> min_dist_frames = {2,2};
+	pair<float, float> dist_mat_range = {-1,-1};
     vector<vector<float>> dist_mat;
-    future<pair<vector<vector<float>>, pair<int,int>>> ftr;
+    future<pair<vector<vector<float>>, pair<float,float>>> ftr;
     bool compute_running = false;
+    bool show_selected_text, show_hoovered_text = false;
+
+	// lambda function to normalise [0,1] a float value
+	auto normalise = [](float val, float min, float max) {
+		return (val - min) / (max - min);
+	};
 
 	/** render loop **/
 	while (!glfwWindowShouldClose(window))
@@ -280,9 +287,9 @@ int main()
                 auto status = ftr.wait_for(0ms);
                 if(status == std::future_status::ready){
                     if (ftr.valid()) {
-                        pair<vector<vector<float>>, pair<int,int>> dist_mat_res = ftr.get();
+                        pair<vector<vector<float>>, pair<float, float>> dist_mat_res = ftr.get();
                         dist_mat = dist_mat_res.first;
-                        min_dist_frames = dist_mat_res.second;
+                        dist_mat_range = dist_mat_res.second;
 
                         // cout << "dist_mat_res.first.size() = " << dist_mat_res.first.size() << endl;
                     }
@@ -290,16 +297,17 @@ int main()
                 }
             }
             ImGui::Text("the dist_mat size is %d", dist_mat.size());
-            ImGui::Text("min distance %d-%d", min_dist_frames.first, min_dist_frames.second);
+            ImGui::Text("range distance %f-%f", dist_mat_range.first, dist_mat_range.second);
 
             ImGui::ProgressBar(progress, ImVec2(0.0f,0.0f));
-            static int btn_size = 7;
-            ImGui::SliderInt("Lines", &btn_size, 1, 100);
+            static int btn_size = 10;
+			static int lines = 10;
+            ImGui::SliderInt("Lines", &btn_size, 1, 300);
+			ImGui::SliderInt("Button size", &lines, 1, 50);
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 1.0f));
-            ImGui::BeginChild("scrolling", ImVec2(0, ImGui::GetFrameHeightWithSpacing() * 7 + 30), true, ImGuiWindowFlags_HorizontalScrollbar);
+            ImGui::BeginChild("scrolling", ImVec2(0, ImGui::GetFrameHeightWithSpacing() * lines), true, ImGuiWindowFlags_HorizontalScrollbar);
             pair<int,int> hoovered = {0,0};
-            bool show_selected_text, show_hoovered_text = false;
             for (int line = 0; line < dist_mat.size(); line++)
             {
                 vector<float> mat_line = dist_mat.at(line);
@@ -310,20 +318,24 @@ int main()
                     if (n > 0) ImGui::SameLine();
                     ImGui::PushID(n*line);
                     float hue = n*0.05f;
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImColor(n%255, 200, 200));
+					float dist = mat_line.at(n);
+					float normalised_val = normalise(dist, dist_mat_range.first, dist_mat_range.second);
+					ImVec4 btn_color = ImVec4(normalised_val, normalised_val, normalised_val, 1.f);
+                    ImGui::PushStyleColor(ImGuiCol_Button, btn_color);
                     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(hue, 0.7f, 0.7f));
                     ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(hue, 0.8f, 0.8f));
-                    char num_buf[16];
-                    sprintf(num_buf, "%d", line);
-                    if (ImGui::Button((const char*)num_buf, ImVec2( btn_size, btn_size)) ) {
+                    // char num_buf[16];
+                    // sprintf(num_buf, "%d", line);
+                    if (ImGui::Button("", ImVec2( btn_size, btn_size)) ) {
                         selected_frames = {line + 1, n + 1};
                         states.show_selected_frames = true;
-                    }
+                    }  
                     if (ImGui::IsItemHovered()) {
                         hoovered = {line + 1, n + 1};
                         selected_frames = {line + 1, n + 1};
                         show_hoovered_text = true;
-                    }
+                    } else 
+						show_hoovered_text = false;
                     ImGui::PopStyleColor(3);
                     ImGui::PopID();
                 }
@@ -345,8 +357,14 @@ int main()
             }
             ImGui::Spacing();
             ImGui::Checkbox("Show selected_frames", &states.show_selected_frames);
-            if (show_selected_text)
-                ImGui::Text("Selected frames A-B: %d-%d", selected_frames.first, selected_frames.second);
+            if (show_selected_text) {
+                ImGui::Text("Selected frames A-B: %d-%d", selected_frames.first, selected_frames.second); 
+				ImGui::SameLine();
+				// if (dist_mat.size() > 0) {
+					float dist = dist_mat.at(selected_frames.first).at(selected_frames.second);
+					ImGui::Text("| Distance: %.0f (%.0f)", dist, normalise(dist, dist_mat_range.first, dist_mat_range.second));
+				// }
+			}
             // if (show_hoovered_text) {
             //     ImGui::SameLine(); ImGui::Text("Hoovering on frames (A-B): %d-%d", hoovered.first, hoovered.second);
             // }
@@ -772,9 +790,8 @@ void imgui_file_selector(string name, string root, string &filename)
     }    
 }
 
-pair<vector<vector<float>>, pair<int,int>> compute_distance_matrix()
+pair<vector<vector<float>>, pair<float,float>> compute_distance_matrix()
 {
-    // Calculating distance matrix
 	cout << "Calculating distance matrix" << endl;
 	const int num_frames_a = get_anim(anim_a)->getNumberOfFrames();
 	const int num_frames_b = get_anim(anim_b)->getNumberOfFrames();
@@ -792,7 +809,7 @@ pair<vector<vector<float>>, pair<int,int>> compute_distance_matrix()
 
 	vector<vector<float>> distance_mat;
 	pair<int, int> min_dist_frames = {32,56};
-	float min_dist = std::numeric_limits<float>::infinity();
+	pair<float, float> range = {std::numeric_limits<float>::infinity(),-1};
 	for (int i = 1; i < num_frames_a; i++) {
 		PointCloud* cloud_a = new PointCloud();
 		std::for_each(cloud_a_to_frame.begin(), cloud_a_to_frame.end(), 
@@ -807,9 +824,12 @@ pair<vector<vector<float>>, pair<int,int>> compute_distance_matrix()
 			float distance = -1.f;
 			if (i+k-1 <= num_frames_a && j-k+1 > 0) {
 				distance = cloud_a->computeDistance(cloud_b);
-				if (distance != -1.f && distance < min_dist) {
-					min_dist = distance;
+				if (distance != -1.f && distance < range.first) {
+					range.first = distance;
 					min_dist_frames = { i,j };
+				}
+				if (distance > range.second) {
+					range.second = distance;
 				}
 			}
 			//cout << "| @"<<i<<"," <<j<<"\td="<<distance<<"\t"; 
@@ -824,5 +844,5 @@ pair<vector<vector<float>>, pair<int,int>> compute_distance_matrix()
     cout << distance_mat.size() << "== size of mat row" << endl;
 
 	cout << "Min distance at frames " << min_dist_frames.first << " - " << min_dist_frames.second << endl;
-    return {distance_mat, min_dist_frames};
+    return {distance_mat, range};
 }
