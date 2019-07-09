@@ -51,7 +51,7 @@ struct screen_size {
 struct state_flags {
     // Controls
     bool play = false;
-    bool is_full_screen = false;
+    bool is_full_screen = true;
     bool lock_view = false;
     bool show_cloud = false;
 
@@ -80,7 +80,8 @@ void imgui_file_selector(string name, string root, string &filename);
 
 // CUSTOM
 Animation* get_anim(string amc);
-void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader, screen_size window_region);
+void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader, 
+		screen_size window_region, Animation* anim, int frame, vector<PointCloud*> PC);
 pair<vector<vector<float>>, pair<float,float>> compute_distance_matrix();
 
 
@@ -110,11 +111,17 @@ map<string, Animation*> anim_cache;
 
 // Loading mocap data: skeleton from .asf and animation (poses) from .amc
 Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
-string anim_a = (file_amc + "2.amc");
+string anim_a = (file_amc + "3.amc");
 string anim_b = (file_amc + "3.amc");
+vector<PointCloud*> PCs_a;
+vector<PointCloud*> PCs_b;
 
 int main()
 {
+	/* Just trying some code in debug */
+	// #ifdef DEBUG
+	// compute_distance_matrix();
+	// #endif
 	/** GLFW initialization **/
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -231,17 +238,17 @@ int main()
 
 	
     // Vars
-    pair<int,int> selected_frames = {0,0};
-	pair<int, int> min_dist_frames = {2,2};
-	pair<float, float> dist_mat_range = {-1,-1};
-    vector<vector<float>> dist_mat;
+    static pair<int,int> selected_frames = {0,0};
+	static pair<int, int> min_dist_frames = {2,2};
+	static pair<float, float> dist_mat_range = {-1,-1};
+    static vector<vector<float>> dist_mat;
     future<pair<vector<vector<float>>, pair<float,float>>> ftr;
-    bool compute_running = false;
-    bool show_selected_text, show_hoovered_text = false;
+    static bool compute_running = false;
 
-	// lambda function to normalise [0,1] a float value
+	// lambda function to normalise [1,0] (!) a float value
 	auto normalise = [](float val, float min, float max) {
-		return (val - min) / (max - min);
+		if (val < 0  || val > max) return 0.0f;
+		return 1.0f - ((val - min) / (max - min));
 	};
 
 	/** render loop **/
@@ -266,14 +273,16 @@ int main()
             states.play = !states.play;   
         ImGui::Separator();
 
-        imgui_file_selector("Select motion A",res_path + "mocap/", anim_a);
-        ImGui::SameLine();
-        imgui_file_selector("Select motion B",res_path + "mocap/", anim_b);
         ImGui::BulletText( ("Motion A: " + anim_a.substr(anim_a.find_last_of("/"))).c_str());
         ImGui::SameLine();
+        imgui_file_selector("Select motion A",res_path + "mocap/", anim_a);
         ImGui::BulletText( ("Motion B: " + anim_b.substr(anim_b.find_last_of("/"))).c_str());
+        ImGui::SameLine();
+        imgui_file_selector("Select motion B",res_path + "mocap/", anim_b);
 
         ImGui::Separator();
+
+		ImGui::Checkbox("Show point cloud", &states.show_cloud);
 
         if(ImGui::TreeNode("Distance Matrix")) {
             /* - This button starts an async thread to do the distance matrix computation
@@ -281,6 +290,7 @@ int main()
             if (ImGui::Button("Compute distance matrix")) {
                 ftr = std::async(compute_distance_matrix);
                 compute_running = true;
+				states.show_selected_frames=false;
             }
             // Only tries to retrieve the return value of the thread compute, if it is has started.
             if (compute_running) {
@@ -302,8 +312,8 @@ int main()
             ImGui::ProgressBar(progress, ImVec2(0.0f,0.0f));
             static int btn_size = 10;
 			static int lines = 10;
-            ImGui::SliderInt("Lines", &btn_size, 1, 300);
-			ImGui::SliderInt("Button size", &lines, 1, 50);
+            ImGui::SliderInt("Lines", &lines, 1, 300);
+			ImGui::SliderInt("Button size", &btn_size, 1, 50);
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 1.0f));
             ImGui::BeginChild("scrolling", ImVec2(0, ImGui::GetFrameHeightWithSpacing() * lines), true, ImGuiWindowFlags_HorizontalScrollbar);
@@ -319,23 +329,22 @@ int main()
                     ImGui::PushID(n*line);
                     float hue = n*0.05f;
 					float dist = mat_line.at(n);
-					float normalised_val = normalise(dist, dist_mat_range.first, dist_mat_range.second);
+					float normalised_val = normalise(dist, dist_mat_range.first, 0.5);
 					ImVec4 btn_color = ImVec4(normalised_val, normalised_val, normalised_val, 1.f);
                     ImGui::PushStyleColor(ImGuiCol_Button, btn_color);
                     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(hue, 0.7f, 0.7f));
                     ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(hue, 0.8f, 0.8f));
-                    // char num_buf[16];
-                    // sprintf(num_buf, "%d", line);
-                    if (ImGui::Button("", ImVec2( btn_size, btn_size)) ) {
-                        selected_frames = {line + 1, n + 1};
+                    char num_buf[16];
+                    sprintf(num_buf, "", dist);
+                    if (ImGui::Button((const char*)num_buf, ImVec2( btn_size, btn_size)) ) {
+                        selected_frames = {line, n};
                         states.show_selected_frames = true;
                     }  
                     if (ImGui::IsItemHovered()) {
-                        hoovered = {line + 1, n + 1};
+                        hoovered = {line, n};
                         selected_frames = {line + 1, n + 1};
-                        show_hoovered_text = true;
-                    } else 
-						show_hoovered_text = false;
+						cout << "hovering: " << line+1 << "-" << n+1 << endl;
+                    }
                     ImGui::PopStyleColor(3);
                     ImGui::PopID();
                 }
@@ -357,17 +366,12 @@ int main()
             }
             ImGui::Spacing();
             ImGui::Checkbox("Show selected_frames", &states.show_selected_frames);
-            if (show_selected_text) {
+            if (states.show_selected_frames) {
                 ImGui::Text("Selected frames A-B: %d-%d", selected_frames.first, selected_frames.second); 
 				ImGui::SameLine();
-				// if (dist_mat.size() > 0) {
-					float dist = dist_mat.at(selected_frames.first).at(selected_frames.second);
-					ImGui::Text("| Distance: %.0f (%.0f)", dist, normalise(dist, dist_mat_range.first, dist_mat_range.second));
-				// }
+				float dist = dist_mat.at(selected_frames.first-1).at(selected_frames.second-1);
+				ImGui::Text("| Distance: %f (%.00f)", dist, normalise(dist, dist_mat_range.first, dist_mat_range.second));
 			}
-            // if (show_hoovered_text) {
-            //     ImGui::SameLine(); ImGui::Text("Hoovering on frames (A-B): %d-%d", hoovered.first, hoovered.second);
-            // }
 
             ImGui::TreePop();
         }
@@ -376,30 +380,9 @@ int main()
         ImGui::Separator();
         if (ImGui::Button("Exit"))
             break; //exit gameloop
-        ImGui::End();
+        ImGui::End();		
+		ImGui::ShowMetricsWindow();
 
-
-		Animation* anim = get_anim(anim_a);
-		// Update animation 
-		if (states.play)
-		{
-			if (anim->isOver()) {
-				anim->reset();
-				sk->resetAll();
-			}
-			int frame = anim->getCurrentFrame();
-			sk->apply_pose(anim->getPoseAt(frame + skip_frame));
-			for (int i = 0; i < skip_frame; i++) {
-				anim->getNextPose();
-			}
-		}
-		else {
-            if (states.show_selected_frames){
-			    sk->apply_pose(get_anim(anim_a)->getPoseAt(selected_frames.first));
-            }
-		}
-		float pose_time = glfwGetTime() - currentFrame;
-		timings.agg_anim += pose_time;
 
 		// input
 		// -----
@@ -408,40 +391,16 @@ int main()
 		float input_time = (glfwGetTime() - input_start_time);
 		timings.agg_input += input_time;
 
+		// Rendering
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
 
 		glViewport(region_a.posX, region_a.posY, region_a.width, region_a.height);
-		draw(plane, sphere, cylinder, cube, diffShader, lampShader, region_a);
+		draw(plane, sphere, cylinder, cube, diffShader, lampShader, region_a, get_anim(anim_a), selected_frames.first, PCs_a);
 
-		anim = get_anim(anim_b);
-		// Update animation 
-		if (states.play)
-		{
-			if (anim->isOver()) {
-				anim->reset();
-				sk->resetAll();
-			}
-			int frame = anim->getCurrentFrame();
-			sk->apply_pose(anim->getPoseAt(frame + skip_frame));
-			for (int i = 0; i < skip_frame; i++) {
-				anim->getNextPose();
-			}
-		}
-		else {
-			if (states.show_selected_frames){
-			    sk->apply_pose(get_anim(anim_b)->getPoseAt(selected_frames.second));
-            }
-		}
 		glViewport(region_b.posX, region_b.posY, region_b.width, region_b.height);
-		draw(plane, sphere, cylinder, cube, diffShader, lampShader, region_b);
-
-        {
-            ImGui::Begin("Another Window");   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-            ImGui::Text("Hello from another window!");
-            ImGui::End();
-        }
-
+		draw(plane, sphere, cylinder, cube, diffShader, lampShader, region_b, get_anim(anim_b), selected_frames.second, PCs_b);
+		// End Rendering
 
 		//glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		//-------------------------------------------------------------------------------
@@ -467,11 +426,31 @@ int main()
 
     glfwDestroyWindow(window);
     glfwTerminate();
-	return 0;
+	return -1;
 }
 
-void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader, screen_size window_region)
+void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader, 
+			screen_size window_region, Animation* anim, int frame, vector<PointCloud*> PC)
 {
+	// Update animation 
+	if (states.play)
+	{
+		if (anim->isOver()) {
+			anim->reset();
+			sk->resetAll();
+		}
+		int frame = anim->getCurrentFrame();
+		sk->apply_pose(anim->getPoseAt(frame + skip_frame));
+		for (int i = 0; i < skip_frame; i++) {
+			anim->getNextPose();
+		}
+	}
+	else {
+		if (states.show_selected_frames){
+			sk->apply_pose(anim->getPoseAt(frame));
+		}
+	}
+
 	/** Start Rendering **/
 	float render_start_time = glfwGetTime();
 
@@ -550,10 +529,11 @@ void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffS
 		glDrawArrays(GL_TRIANGLES, 0, 36);*/
 
 		//Cloud points
-		if (states.show_cloud) 
+		if (states.show_cloud && PC.size() > frame) 
 		{
+			PointCloud* w_pc = PC[frame]; // window frame
 			diffShader.setVec3("objectColor", .8f, 0.8f, 0.8f);
-			for (auto p : bone->getLocalPointCloud()->points) {
+			for (auto p : w_pc->points) {
 				model = glm::scale(bone->getLocalPointCloud()->getPointMat(p), glm::vec3(0.01f));
 				diffShader.setMat4("model", model);
 				// sphere.Draw(diffShader);
@@ -795,35 +775,69 @@ pair<vector<vector<float>>, pair<float,float>> compute_distance_matrix()
 	cout << "Calculating distance matrix" << endl;
 	const int num_frames_a = get_anim(anim_a)->getNumberOfFrames();
 	const int num_frames_b = get_anim(anim_b)->getNumberOfFrames();
-	map<int, PointCloud*> cloud_a_to_frame;
-	map<int, PointCloud*> cloud_b_to_frame;
+	vector<PointCloud*> cloud_a_total;
+	vector<PointCloud*> cloud_b_total;
 
+	// Pose starts at 1
 	for (int i = 1; i < num_frames_a; i++) {
 		Pose* pose = get_anim(anim_a)->getPoseAt(i);
-		cloud_a_to_frame.insert({ i, sk->getGlobalPointCloud(pose) });
+		cloud_a_total.push_back( sk->getGlobalPointCloud(pose) );
 	}
 	for (int i = 1; i < num_frames_b; i++) {
 		Pose* pose = get_anim(anim_b)->getPoseAt(i);
-		cloud_b_to_frame.insert({ i, sk->getGlobalPointCloud(pose) });
+		cloud_b_total.push_back( sk->getGlobalPointCloud(pose) );
 	}
+	int v_size = cloud_a_total.size();
+	int index = 0;
+	auto iter = cloud_a_total;
+
+	auto cumulative_pc = [&] (PointCloud* val) {
+			if(index + k < v_size) {
+				for (int i=index+1; i < index + k +1 ; i++) {
+					val->addPointCloud(iter[i]);
+				}
+			}
+				else
+					val = NULL;
+				index++;
+				return val;
+		};
+
+	std::transform(cloud_a_total.begin(), cloud_a_total.end(), cloud_a_total.begin(), cumulative_pc);
+	rotate(cloud_a_total.rbegin(), cloud_a_total.rbegin() + k/2, cloud_a_total.rend());
+
+	v_size = cloud_b_total.size();
+	index = 0;
+	iter = cloud_b_total;
+	std::transform(cloud_b_total.begin(), cloud_b_total.end(), cloud_b_total.begin(), cumulative_pc);
+	rotate(cloud_b_total.rbegin(), cloud_b_total.rbegin() + k/2, cloud_b_total.rend());
+
+	// for (int i = v_size -1; i >= 0; i--) {
+    //     if(i - k + 1 >= 0){
+    //         for (int j = i - 1; j > i - k; j--) {
+    //             cloud_b_total[i]->addPointCloud(cloud_b_total[j]);
+    //         }
+    //     } else 
+    //         cloud_b_total[i] = NULL;
+    // }
+	PCs_a = cloud_a_total;
+	PCs_b = cloud_b_total;
 
 	vector<vector<float>> distance_mat;
-	pair<int, int> min_dist_frames = {32,56};
+	pair<int, int> min_dist_frames = {-1,-1};
 	pair<float, float> range = {std::numeric_limits<float>::infinity(),-1};
-	for (int i = 1; i < num_frames_a; i++) {
-		PointCloud* cloud_a = new PointCloud();
-		std::for_each(cloud_a_to_frame.begin(), cloud_a_to_frame.end(), 
-			[&](pair<int, PointCloud*> p) { if(p.first >= i && p.first < i + k) cloud_a->addPointCloud(p.second); });
+
+	for (int i = 0; i < num_frames_a; i++) {
+		PointCloud* cloud_a = cloud_a_total[i];
 
 		vector<float> dist_mat_row;
-		for (int j = 1; j < num_frames_b; j++) {
-			PointCloud* cloud_b = new PointCloud();
-			std::for_each(cloud_b_to_frame.begin(), cloud_b_to_frame.end(),
-				[&](pair<int, PointCloud*> p) { if (p.first > j-k && p.first <= j) cloud_b->addPointCloud(p.second); });
+		for (int j = 0; j < num_frames_b; j++) {
+			PointCloud* cloud_b = cloud_b_total[j];
 
-			float distance = -1.f;
-			if (i+k-1 <= num_frames_a && j-k+1 > 0) {
+			float distance = -1.f; // default distance == -1
+			if (cloud_a != NULL && cloud_b != NULL) {
 				distance = cloud_a->computeDistance(cloud_b);
+				// cout << "assigning " << i << " - " << j << "dist = " << distance << endl;
 				if (distance != -1.f && distance < range.first) {
 					range.first = distance;
 					min_dist_frames = { i,j };
@@ -836,12 +850,14 @@ pair<vector<vector<float>>, pair<float,float>> compute_distance_matrix()
 			dist_mat_row.push_back(distance);
 		}
         progress = (float)i/(float)num_frames_a;
-		// cout << "i = "<< i <<endl;
+		cout << "i = "<< i <<endl;
         // cout << "progress = " << progress << endl;
 		distance_mat.push_back(dist_mat_row);
 	}
 
     cout << distance_mat.size() << "== size of mat row" << endl;
+
+	cout << "range: " << range.first << " to " << range.second << endl;
 
 	cout << "Min distance at frames " << min_dist_frames.first << " - " << min_dist_frames.second << endl;
     return {distance_mat, range};

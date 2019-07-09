@@ -12,6 +12,7 @@ class PointCloud
 public:
 	PointCloud();
 	PointCloud(PointCloud* pc);
+	PointCloud(vector<PointCloud*> vpc);
 
 	/*Returns the sum of squared distance*/
 	float computeDistance(PointCloud* cp);
