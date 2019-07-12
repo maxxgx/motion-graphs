@@ -37,6 +37,7 @@
 #include "../headers/Bone.h"
 #include "../headers/PointLight.h"
 #include "../headers/PointCloud.h"
+#include "../headers/Gui.h"
 
 #define ROOT_DIR FileSystem::getRoot()
 
@@ -82,7 +83,7 @@ void imgui_file_selector(string name, string root, string &filename);
 Animation* get_anim(string amc);
 void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader, 
 		screen_size window_region, Animation* anim, int frame, vector<PointCloud*> PC);
-pair<vector<vector<float>>, pair<float,float>> compute_distance_matrix();
+pair<vector<float>, pair<float,float>> compute_distance_matrix();
 
 
 // Camera
@@ -241,8 +242,8 @@ int main()
     static pair<int,int> selected_frames = {0,0};
 	static pair<int, int> min_dist_frames = {2,2};
 	static pair<float, float> dist_mat_range = {-1,-1};
-    static vector<vector<float>> dist_mat;
-    future<pair<vector<vector<float>>, pair<float,float>>> ftr;
+    static vector<float> dist_mat;
+    future<pair<vector<float>, pair<float,float>>> ftr;
     static bool compute_running = false;
 
 	// lambda function to normalise [1,0] (!) a float value
@@ -284,102 +285,34 @@ int main()
 
 		ImGui::Checkbox("Show point cloud", &states.show_cloud);
 
-        if(ImGui::TreeNode("Distance Matrix")) {
-            /* - This button starts an async thread to do the distance matrix computation
-               - When computation is done, the value is retrivied */
-            if (ImGui::Button("Compute distance matrix")) {
-                ftr = std::async(compute_distance_matrix);
-                compute_running = true;
-				states.show_selected_frames=false;
-            }
-            // Only tries to retrieve the return value of the thread compute, if it is has started.
-            if (compute_running) {
-                auto status = ftr.wait_for(0ms);
-                if(status == std::future_status::ready){
-                    if (ftr.valid()) {
-                        pair<vector<vector<float>>, pair<float, float>> dist_mat_res = ftr.get();
-                        dist_mat = dist_mat_res.first;
-                        dist_mat_range = dist_mat_res.second;
-
-                        // cout << "dist_mat_res.first.size() = " << dist_mat_res.first.size() << endl;
-                    }
-                    compute_running = false;
-                }
-            }
-            ImGui::Text("the dist_mat size is %d", dist_mat.size());
-            ImGui::Text("range distance %f-%f", dist_mat_range.first, dist_mat_range.second);
-
-            ImGui::ProgressBar(progress, ImVec2(0.0f,0.0f));
-            static int btn_size = 10;
-			static int lines = 10;
-            ImGui::SliderInt("Lines", &lines, 1, 300);
-			ImGui::SliderInt("Button size", &btn_size, 1, 50);
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 1.0f));
-            ImGui::BeginChild("scrolling", ImVec2(0, ImGui::GetFrameHeightWithSpacing() * lines), true, ImGuiWindowFlags_HorizontalScrollbar);
-            pair<int,int> hoovered = {0,0};
-            for (int line = 0; line < dist_mat.size(); line++)
-            {
-                vector<float> mat_line = dist_mat.at(line);
-                // Display random stuff (for the sake of this trivial demo we are using basic Button+SameLine. If you want to create your own time line for a real application you may be better off
-                // manipulating the cursor position yourself, aka using SetCursorPos/SetCursorScreenPos to position the widgets yourself. You may also want to use the lower-level ImDrawList API)
-                for (int n = 0; n < mat_line.size(); n++)
-                {
-                    if (n > 0) ImGui::SameLine();
-                    ImGui::PushID(n*line);
-                    float hue = n*0.05f;
-					float dist = mat_line.at(n);
-					float normalised_val = normalise(dist, dist_mat_range.first, 0.5);
-					ImVec4 btn_color = ImVec4(normalised_val, normalised_val, normalised_val, 1.f);
-                    ImGui::PushStyleColor(ImGuiCol_Button, btn_color);
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(hue, 0.7f, 0.7f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(hue, 0.8f, 0.8f));
-                    char num_buf[16];
-                    sprintf(num_buf, "", dist);
-                    if (ImGui::Button((const char*)num_buf, ImVec2( btn_size, btn_size)) ) {
-                        selected_frames = {line, n};
-                        states.show_selected_frames = true;
-                    }  
-                    if (ImGui::IsItemHovered()) {
-                        hoovered = {line, n};
-                        selected_frames = {line + 1, n + 1};
-						cout << "hovering: " << line+1 << "-" << n+1 << endl;
-                    }
-                    ImGui::PopStyleColor(3);
-                    ImGui::PopID();
-                }
-            }
-            float scroll_x = ImGui::GetScrollX();
-            float scroll_max_x = ImGui::GetScrollMaxX();
-            ImGui::EndChild();
-            ImGui::PopStyleVar(2);
-            float scroll_x_delta = 0.0f;
-            ImGui::SmallButton("<<"); if (ImGui::IsItemActive()) { scroll_x_delta = -ImGui::GetIO().DeltaTime * 1000.0f; } ImGui::SameLine();
-            ImGui::Text("Scroll from code"); ImGui::SameLine();
-            ImGui::SmallButton(">>"); if (ImGui::IsItemActive()) { scroll_x_delta = +ImGui::GetIO().DeltaTime * 1000.0f; } ImGui::SameLine();
-            ImGui::Text("%.0f/%.0f", scroll_x, scroll_max_x);
-            if (scroll_x_delta != 0.0f)
-            {
-                ImGui::BeginChild("scrolling"); // Demonstrate a trick: you can use Begin to set yourself in the context of another window (here we are already out of your child window)
-                ImGui::SetScrollX(ImGui::GetScrollX() + scroll_x_delta);
-                ImGui::EndChild();
-            }
-            ImGui::Spacing();
-            ImGui::Checkbox("Show selected_frames", &states.show_selected_frames);
-            if (states.show_selected_frames) {
-                ImGui::Text("Selected frames A-B: %d-%d", selected_frames.first, selected_frames.second); 
-				ImGui::SameLine();
-				float dist = dist_mat.at(selected_frames.first-1).at(selected_frames.second-1);
-				ImGui::Text("| Distance: %f (%.00f)", dist, normalise(dist, dist_mat_range.first, dist_mat_range.second));
+		if (ImGui::Button("Compute distance matrix")) {
+			ftr = std::async(compute_distance_matrix);
+			compute_running = true;
+			states.show_selected_frames=false;
+		}
+		// Only tries to retrieve the return value of the thread compute, if it is has started.
+		if (compute_running) {
+			auto status = ftr.wait_for(0ms);
+			if(status == std::future_status::ready){
+				if (ftr.valid()) {
+					pair<vector<float>, pair<float, float>> dist_mat_res = ftr.get();
+					dist_mat = dist_mat_res.first;
+					dist_mat_range = dist_mat_res.second;
+					// cout << "dist_mat_res.first.size() = " << dist_mat_res.first.size() << endl;
+				}
+				compute_running = false;
 			}
+		}
+		ImGui::Text("range distance %f-%f", dist_mat_range.first, dist_mat_range.second);
 
-            ImGui::TreePop();
-        }
-
-
+		ImGui::ProgressBar(progress, ImVec2(0.0f,0.0f));
+		int anim_a_size = get_anim(anim_a)->getNumberOfFrames();
+		int anim_b_size = get_anim(anim_b)->getNumberOfFrames();
+        showDistanceMatrix(anim_a_size, anim_b_size, dist_mat, normalise, selected_frames, &states.show_selected_frames);
         ImGui::Separator();
         if (ImGui::Button("Exit"))
             break; //exit gameloop
+
         ImGui::End();		
 		ImGui::ShowMetricsWindow();
 
@@ -770,7 +703,7 @@ void imgui_file_selector(string name, string root, string &filename)
     }    
 }
 
-pair<vector<vector<float>>, pair<float,float>> compute_distance_matrix()
+pair<vector<float>, pair<float,float>> compute_distance_matrix()
 {
 	cout << "Calculating distance matrix" << endl;
 	const int num_frames_a = get_anim(anim_a)->getNumberOfFrames();
@@ -823,14 +756,13 @@ pair<vector<vector<float>>, pair<float,float>> compute_distance_matrix()
 	PCs_a = cloud_a_total;
 	PCs_b = cloud_b_total;
 
-	vector<vector<float>> distance_mat;
+	vector<float> distance_mat;
 	pair<int, int> min_dist_frames = {-1,-1};
 	pair<float, float> range = {std::numeric_limits<float>::infinity(),-1};
 
 	for (int i = 0; i < num_frames_a; i++) {
 		PointCloud* cloud_a = cloud_a_total[i];
 
-		vector<float> dist_mat_row;
 		for (int j = 0; j < num_frames_b; j++) {
 			PointCloud* cloud_b = cloud_b_total[j];
 
@@ -847,12 +779,11 @@ pair<vector<vector<float>>, pair<float,float>> compute_distance_matrix()
 				}
 			}
 			//cout << "| @"<<i<<"," <<j<<"\td="<<distance<<"\t"; 
-			dist_mat_row.push_back(distance);
+			distance_mat.push_back(distance);
 		}
         progress = (float)i/(float)num_frames_a;
 		cout << "i = "<< i <<endl;
         // cout << "progress = " << progress << endl;
-		distance_mat.push_back(dist_mat_row);
 	}
 
     cout << distance_mat.size() << "== size of mat row" << endl;
