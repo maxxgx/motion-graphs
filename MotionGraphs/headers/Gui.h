@@ -13,14 +13,13 @@
 #include "../includes/imgui/imgui_impl_glfw.h"
 #include "../includes/imgui/imgui_impl_opengl3.h"
 
-#include <vector>
-#include <algorithm>
-#include <functional>
+#include <string.h>
 #include <iostream>
+#include <vector>
+#include <functional>
 #include <map>
-
-
-void showGui();
+#include <algorithm>
+#include <limits>
 
 void showDistanceMatrix(int anim_a_size, int anim_b_size, 
     std::vector<float> dist_mat, std::function<float(float,float,float)> normalise, 

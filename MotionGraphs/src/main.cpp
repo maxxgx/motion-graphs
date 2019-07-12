@@ -236,7 +236,6 @@ int main()
 
 	// Set shader to use
 	diffShader.use();
-
 	
     // Vars
     static pair<int,int> selected_frames = {0,0};
@@ -312,10 +311,9 @@ int main()
         ImGui::Separator();
         if (ImGui::Button("Exit"))
             break; //exit gameloop
-
-        ImGui::End();		
 		ImGui::ShowMetricsWindow();
 
+        ImGui::End();
 
 		// input
 		// -----

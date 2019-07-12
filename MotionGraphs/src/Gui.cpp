@@ -2,14 +2,11 @@
 
 using namespace std;
 
-void showGui()
-{
-
-}
-
 void showDistanceMatrix(int anim_a_size, int anim_b_size, vector<float> dist_mat, 
 	function<float(float,float,float)> normalise, std::pair<int,int> &selected_frames, bool *show_selected_frames)
 {
+	static float threshold = 0.5f;
+	ImGui::SliderFloat("Threshold", &threshold, 0.5f, 100000.f);
     if (ImGui::TreeNode("Distance matrix"))
     {
 		ImGuiIO& io = ImGui::GetIO();
@@ -24,7 +21,7 @@ void showDistanceMatrix(int anim_a_size, int anim_b_size, vector<float> dist_mat
 		vector<float> dist_mat_norm;
 		for (int i = 0; i < my_tex_h * my_tex_w; i++) {
 			if (i < dist_mat.size()) {
-				float v = normalise(dist_mat[i], 0.f, 0.5f);
+				float v = normalise(dist_mat[i], 0.f, threshold);
 				dist_mat_norm.push_back(v);
 				dist_mat_norm.push_back(v);
 				dist_mat_norm.push_back(v);
@@ -59,6 +56,7 @@ void showDistanceMatrix(int anim_a_size, int anim_b_size, vector<float> dist_mat
 
 		my_tex_h *= tex_scale;
 		my_tex_w *= tex_scale;
+		
         ImGui::Image(my_tex_id, ImVec2(my_tex_w, my_tex_h), ImVec2(0,0), ImVec2(1,1), ImVec4(1.0f,1.0f,1.0f,1.0f), ImVec4(1.0f,1.0f,1.0f,0.5f));
         if (ImGui::IsItemHovered())
         {
