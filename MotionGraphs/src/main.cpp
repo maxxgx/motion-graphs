@@ -201,8 +201,9 @@ int main()
     // - Read 'misc/fonts/README.txt' for more instructions and details.
     // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
     // io.Fonts->AddFontDefault();
-    io.Fonts->AddFontFromFileTTF("../resources/fonts/Roboto-Medium.ttf", 32.0f);
+	io.Fonts->AddFontFromFileTTF("../resources/fonts/Cousine-Regular.ttf", 20.0f);
     io.Fonts->AddFontFromFileTTF("../resources/fonts/Cousine-Regular.ttf", 30.0f);
+    io.Fonts->AddFontFromFileTTF("../resources/fonts/Roboto-Medium.ttf", 32.0f);
     io.Fonts->AddFontFromFileTTF("../resources/fonts/DroidSans.ttf", 32.0f);
     io.Fonts->AddFontFromFileTTF("../resources/fonts/ProggyTiny.ttf", 20.0f);
 	
@@ -659,7 +660,8 @@ void mouse_movement(GLFWwindow* window, double xpos, double ypos)
 // glfw: called when mouse wheel is used
 void mouse_scroll(GLFWwindow* window, double xoffset, double yoffset)
 {
-	camera.ProcessMouseScroll(yoffset);
+	// camera.ProcessMouseScroll(yoffset);
+	// ImGui_ImplGlfw_ScrollCallback(window, xoffset, yoffset);
 }
 
 // glfw: called when mouse button is used
@@ -701,26 +703,18 @@ void imgui_file_selector(string name, string root, string &filename)
     }    
 }
 
-pair<vector<float>, pair<float,float>> compute_distance_matrix()
+vector<PointCloud*> getCumulativePC(string anim, Skeleton *sk)
 {
-	cout << "Calculating distance matrix" << endl;
-	const int num_frames_a = get_anim(anim_a)->getNumberOfFrames();
-	const int num_frames_b = get_anim(anim_b)->getNumberOfFrames();
-	vector<PointCloud*> cloud_a_total;
-	vector<PointCloud*> cloud_b_total;
-
+	vector<PointCloud*> cloud_total;
+	int num_frames = get_anim(anim)->getNumberOfFrames();
 	// Pose starts at 1
-	for (int i = 1; i < num_frames_a; i++) {
-		Pose* pose = get_anim(anim_a)->getPoseAt(i);
-		cloud_a_total.push_back( sk->getGlobalPointCloud(pose) );
+	for (int i = 0; i < num_frames; i++) {
+		Pose* pose = get_anim(anim)->getPoseAt(i);
+		cloud_total.push_back( sk->getGlobalPointCloud(pose) );
 	}
-	for (int i = 1; i < num_frames_b; i++) {
-		Pose* pose = get_anim(anim_b)->getPoseAt(i);
-		cloud_b_total.push_back( sk->getGlobalPointCloud(pose) );
-	}
-	int v_size = cloud_a_total.size();
+	int v_size = cloud_total.size();
 	int index = 0;
-	auto iter = cloud_a_total;
+	auto iter = cloud_total;
 
 	auto cumulative_pc = [&] (PointCloud* val) {
 			if(index + k < v_size) {
@@ -734,14 +728,58 @@ pair<vector<float>, pair<float,float>> compute_distance_matrix()
 				return val;
 		};
 
-	std::transform(cloud_a_total.begin(), cloud_a_total.end(), cloud_a_total.begin(), cumulative_pc);
-	rotate(cloud_a_total.rbegin(), cloud_a_total.rbegin() + k/2, cloud_a_total.rend());
+	cout << "Applying transform and rotation on PC |" << anim<<endl;
+	std::transform(cloud_total.begin(), cloud_total.end(), cloud_total.begin(), cumulative_pc);
+	rotate(cloud_total.rbegin(), cloud_total.rbegin() + k/2, cloud_total.rend());
+	return cloud_total;
+}
 
-	v_size = cloud_b_total.size();
-	index = 0;
-	iter = cloud_b_total;
-	std::transform(cloud_b_total.begin(), cloud_b_total.end(), cloud_b_total.begin(), cumulative_pc);
-	rotate(cloud_b_total.rbegin(), cloud_b_total.rbegin() + k/2, cloud_b_total.rend());
+pair<float, int> find_min(vector<float> D, int w, int h, int col, int min)
+{
+	int index = 0;
+	for (int i=0; i < h; i++) {
+		if (min > D[i * h + col]) {
+			min = D[i * h + col];
+			index = i;
+		}
+	}
+	return {min, index};
+}
+
+/**
+ * Find local minima of the a matrix (represented by a 1D vector)
+ * Params:
+ * 	- D = distance vector
+ *  - res = indeces of the local minimas [as reference]
+ *  - w, h are weight and height of the matrix
+ *  - col is the mid column
+ */
+float find_local_minima(vector<float> D, vector<int> &res, int w, int h, int col)
+{
+	pair<float,int> min = find_min(D, w, h, col, std::numeric_limits<float>::infinity());
+
+	if (col == 0 || col == w - 1) {
+		res.push_back(min.second);
+		return min.first;
+	} 
+	else if (min.first <= D[min.second * h + col -1] && min.first <= D[min.second * h + col + 1]) {
+		res.push_back(min.second);
+		return min.first;
+	}
+	else if (min.first > D[min.second * h + col - 1]) {
+		return find_local_minima(D, res, w, h, col - ceil((float)col / 2));
+	}
+
+	return find_local_minima(D, res, w, h, col + ceil((float)col / 2) );
+}
+
+pair<vector<float>, pair<float,float>> compute_distance_matrix()
+{
+	cout << "Calculating distance matrix" << endl;
+	const int num_frames_a = get_anim(anim_a)->getNumberOfFrames();
+	const int num_frames_b = get_anim(anim_b)->getNumberOfFrames();
+	vector<PointCloud*> cloud_a_total = getCumulativePC(anim_a, sk);
+	vector<PointCloud*> cloud_b_total = getCumulativePC(anim_b, sk);
 
 	// for (int i = v_size -1; i >= 0; i--) {
     //     if(i - k + 1 >= 0){
@@ -751,8 +789,8 @@ pair<vector<float>, pair<float,float>> compute_distance_matrix()
     //     } else 
     //         cloud_b_total[i] = NULL;
     // }
-	PCs_a = cloud_a_total;
-	PCs_b = cloud_b_total;
+	// PCs_a = cloud_a_total;
+	// PCs_b = cloud_b_total;
 
 	vector<float> distance_mat;
 	pair<int, int> min_dist_frames = {-1,-1};
@@ -763,7 +801,6 @@ pair<vector<float>, pair<float,float>> compute_distance_matrix()
 
 		for (int j = 0; j < num_frames_b; j++) {
 			PointCloud* cloud_b = cloud_b_total[j];
-
 			float distance = -1.f; // default distance == -1
 			if (cloud_a != NULL && cloud_b != NULL) {
 				distance = cloud_a->computeDistance(cloud_b);
