@@ -10,7 +10,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include <iostream>
 
 #include <learnopengl/Camera.h> // custom camera.h
 #include <learnopengl/shader.h>
@@ -20,12 +19,13 @@
 	#include <learnopengl/model.h>
 #endif
 #include <learnopengl/filesystem.h>
+
+#include <iostream>
 #include <string.h>
 #include <algorithm>
 #include <limits>
 #include <thread>
 #include <future>
-
 // Dear ImGui static library
 #include "../includes/imgui/imgui.h"
 #include "../includes/imgui/imgui_impl_glfw.h"
@@ -38,6 +38,7 @@
 #include "../headers/PointLight.h"
 #include "../headers/PointCloud.h"
 #include "../headers/Gui.h"
+#include "../headers/blending.h"
 
 #define ROOT_DIR FileSystem::getRoot()
 
@@ -59,6 +60,8 @@ struct state_flags {
     bool show_selected_frames = false;
 
     bool mouse_btn2_pressed = false;
+
+	bool update_texture = false;
 } states;
 
 // timing
@@ -83,7 +86,7 @@ void imgui_file_selector(string name, string root, string &filename);
 Animation* get_anim(string amc);
 void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader, 
 		screen_size window_region, Animation* anim, int frame, vector<PointCloud*> PC);
-pair<vector<float>, pair<float,float>> compute_distance_matrix();
+pair<vector<float>, pair<float,float>> get_distance_matrix();
 
 
 // Camera
@@ -286,7 +289,7 @@ int main()
 		ImGui::Checkbox("Show point cloud", &states.show_cloud);
 
 		if (ImGui::Button("Compute distance matrix")) {
-			ftr = std::async(compute_distance_matrix);
+			ftr = std::async(get_distance_matrix);
 			compute_running = true;
 			states.show_selected_frames=false;
 		}
@@ -301,6 +304,7 @@ int main()
 					// cout << "dist_mat_res.first.size() = " << dist_mat_res.first.size() << endl;
 				}
 				compute_running = false;
+				states.update_texture = true;
 			}
 		}
 		ImGui::Text("range distance %f-%f", dist_mat_range.first, dist_mat_range.second);
@@ -308,7 +312,7 @@ int main()
 		ImGui::ProgressBar(progress, ImVec2(0.0f,0.0f));
 		int anim_a_size = get_anim(anim_a)->getNumberOfFrames();
 		int anim_b_size = get_anim(anim_b)->getNumberOfFrames();
-        showDistanceMatrix(anim_a_size, anim_b_size, dist_mat, normalise, selected_frames, &states.show_selected_frames);
+        showDistanceMatrix(anim_a_size, anim_b_size, dist_mat, normalise, selected_frames, &states.show_selected_frames, &states.update_texture);
         ImGui::Separator();
         if (ImGui::Button("Exit"))
             break; //exit gameloop
@@ -550,6 +554,7 @@ void keyboardInput(GLFWwindow *window)
 	if ((glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS))
 		states.show_cloud = !states.show_cloud;
 
+	// WASD movement
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 		camera.ProcessKeyboard(FORWARD, timings.delta_time);
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -577,37 +582,6 @@ void keyboardInput(GLFWwindow *window)
 		lamp.Position += glm::vec3(0.f, 0.f, -light_offset);
 	if (glfwGetKey(window, GLFW_KEY_KP_9) == GLFW_PRESS)
 		lamp.Position += glm::vec3(0.f, 0.f, light_offset);
-
-	// Switching animation 01-09
-	// if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) {
-	// 	change_anim(file_amc + "1.amc");
-	// }
-	// if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS) {
-	// 	// amc = file_amc + "3.amc"; //demo
-	// 	change_anim(file_amc + "2.amc");
-	// }
-	// if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS) {
-	// 	change_anim(file_amc + "3.amc");
-	// }
-	// if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS) {
-	// 	change_anim(file_amc + "4.amc");
-	// }
-	// if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS) {
-	// 	// amc = res_path + "mocap/14/14_06.amc"; //demo
-	// 	change_anim(file_amc + "5.amc");
-	// }
-	// if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS) {
-	// 	change_anim(file_amc + "6.amc");
-	// }
-	// if (glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS) {
-	// 	change_anim(file_amc + "7.amc");
-	// }
-	// if (glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS) {
-	// 	change_anim(file_amc + "8.amc");
-	// }
-	// if (glfwGetKey(window, GLFW_KEY_9) == GLFW_PRESS) {
-	// 	change_anim(file_amc + "9.amc");		
-	// }
 }
 
 // Get the animation from the cache, adds it if not present
@@ -703,128 +677,7 @@ void imgui_file_selector(string name, string root, string &filename)
     }    
 }
 
-vector<PointCloud*> getCumulativePC(string anim, Skeleton *sk)
+pair<vector<float>, pair<float,float>> get_distance_matrix()
 {
-	vector<PointCloud*> cloud_total;
-	int num_frames = get_anim(anim)->getNumberOfFrames();
-	// Pose starts at 1
-	for (int i = 0; i < num_frames; i++) {
-		Pose* pose = get_anim(anim)->getPoseAt(i);
-		cloud_total.push_back( sk->getGlobalPointCloud(pose) );
-	}
-	int v_size = cloud_total.size();
-	int index = 0;
-	auto iter = cloud_total;
-
-	auto cumulative_pc = [&] (PointCloud* val) {
-			if(index + k < v_size) {
-				for (int i=index+1; i < index + k +1 ; i++) {
-					val->addPointCloud(iter[i]);
-				}
-			}
-				else
-					val = NULL;
-				index++;
-				return val;
-		};
-
-	cout << "Applying transform and rotation on PC |" << anim<<endl;
-	std::transform(cloud_total.begin(), cloud_total.end(), cloud_total.begin(), cumulative_pc);
-	rotate(cloud_total.rbegin(), cloud_total.rbegin() + k/2, cloud_total.rend());
-	return cloud_total;
-}
-
-pair<float, int> find_min(vector<float> D, int w, int h, int col, int min)
-{
-	int index = 0;
-	for (int i=0; i < h; i++) {
-		if (min > D[i * h + col]) {
-			min = D[i * h + col];
-			index = i;
-		}
-	}
-	return {min, index};
-}
-
-/**
- * Find local minima of the a matrix (represented by a 1D vector)
- * Params:
- * 	- D = distance vector
- *  - res = indeces of the local minimas [as reference]
- *  - w, h are weight and height of the matrix
- *  - col is the mid column
- */
-float find_local_minima(vector<float> D, vector<int> &res, int w, int h, int col)
-{
-	pair<float,int> min = find_min(D, w, h, col, std::numeric_limits<float>::infinity());
-
-	if (col == 0 || col == w - 1) {
-		res.push_back(min.second);
-		return min.first;
-	} 
-	else if (min.first <= D[min.second * h + col -1] && min.first <= D[min.second * h + col + 1]) {
-		res.push_back(min.second);
-		return min.first;
-	}
-	else if (min.first > D[min.second * h + col - 1]) {
-		return find_local_minima(D, res, w, h, col - ceil((float)col / 2));
-	}
-
-	return find_local_minima(D, res, w, h, col + ceil((float)col / 2) );
-}
-
-pair<vector<float>, pair<float,float>> compute_distance_matrix()
-{
-	cout << "Calculating distance matrix" << endl;
-	const int num_frames_a = get_anim(anim_a)->getNumberOfFrames();
-	const int num_frames_b = get_anim(anim_b)->getNumberOfFrames();
-	vector<PointCloud*> cloud_a_total = getCumulativePC(anim_a, sk);
-	vector<PointCloud*> cloud_b_total = getCumulativePC(anim_b, sk);
-
-	// for (int i = v_size -1; i >= 0; i--) {
-    //     if(i - k + 1 >= 0){
-    //         for (int j = i - 1; j > i - k; j--) {
-    //             cloud_b_total[i]->addPointCloud(cloud_b_total[j]);
-    //         }
-    //     } else 
-    //         cloud_b_total[i] = NULL;
-    // }
-	// PCs_a = cloud_a_total;
-	// PCs_b = cloud_b_total;
-
-	vector<float> distance_mat;
-	pair<int, int> min_dist_frames = {-1,-1};
-	pair<float, float> range = {std::numeric_limits<float>::infinity(),-1};
-
-	for (int i = 0; i < num_frames_a; i++) {
-		PointCloud* cloud_a = cloud_a_total[i];
-
-		for (int j = 0; j < num_frames_b; j++) {
-			PointCloud* cloud_b = cloud_b_total[j];
-			float distance = -1.f; // default distance == -1
-			if (cloud_a != NULL && cloud_b != NULL) {
-				distance = cloud_a->computeDistance(cloud_b);
-				// cout << "assigning " << i << " - " << j << "dist = " << distance << endl;
-				if (distance != -1.f && distance < range.first) {
-					range.first = distance;
-					min_dist_frames = { i,j };
-				}
-				if (distance > range.second) {
-					range.second = distance;
-				}
-			}
-			//cout << "| @"<<i<<"," <<j<<"\td="<<distance<<"\t"; 
-			distance_mat.push_back(distance);
-		}
-        progress = (float)i/(float)num_frames_a;
-		cout << "i = "<< i <<endl;
-        // cout << "progress = " << progress << endl;
-	}
-
-    cout << distance_mat.size() << "== size of mat row" << endl;
-
-	cout << "range: " << range.first << " to " << range.second << endl;
-
-	cout << "Min distance at frames " << min_dist_frames.first << " - " << min_dist_frames.second << endl;
-    return {distance_mat, range};
+	return blending::compute_distance_matrix(get_anim(anim_a), get_anim(anim_b), sk, k, &progress);
 }

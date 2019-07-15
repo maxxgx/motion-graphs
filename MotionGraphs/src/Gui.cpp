@@ -3,10 +3,11 @@
 using namespace std;
 
 void showDistanceMatrix(int anim_a_size, int anim_b_size, vector<float> dist_mat, 
-	function<float(float,float,float)> normalise, std::pair<int,int> &selected_frames, bool *show_selected_frames)
+	function<float(float,float,float)> normalise, std::pair<int,int> &selected_frames, bool *show_selected_frames, bool *update_texture)
 {
 	static float threshold = 0.5f;
-	ImGui::SliderFloat("Threshold", &threshold, 0.5f, 100000.f);
+	static float last_threshold = threshold;
+	ImGui::SliderFloat("Threshold", &threshold, 0.5f, 1000.f);
     if (ImGui::TreeNode("Distance matrix"))
     {
 		ImGuiIO& io = ImGui::GetIO();
@@ -18,21 +19,33 @@ void showDistanceMatrix(int anim_a_size, int anim_b_size, vector<float> dist_mat
         float my_tex_w = anim_b_size;
         float my_tex_h = anim_a_size;
 
-		vector<float> dist_mat_norm;
-		for (int i = 0; i < my_tex_h * my_tex_w; i++) {
-			if (i < dist_mat.size()) {
-				float v = normalise(dist_mat[i], 0.f, threshold);
-				dist_mat_norm.push_back(v);
-				dist_mat_norm.push_back(v);
-				dist_mat_norm.push_back(v);
-			}
-			else {
-				dist_mat_norm.push_back(0.f);
-				dist_mat_norm.push_back(0.f);
-				dist_mat_norm.push_back(0.f);
+		float minima_color [] = {0.1, 0.8, 0.1};
+		static vector<float> dist_mat_norm;
+		if (dist_mat_norm.size() != my_tex_h * my_tex_w * 3 || *update_texture || last_threshold != threshold) {
+			last_threshold = threshold;
+			*update_texture = false;
+			dist_mat_norm.clear();
+			dist_mat_norm.reserve(my_tex_h*my_tex_w*3);
+			for (int i = 0; i < my_tex_h * my_tex_w; i++) {
+				if (i < dist_mat.size()) {
+					float v = normalise(dist_mat[i], 0.f, threshold);
+					if (dist_mat[i] >= 0 && dist_mat[i] < threshold && blending::is_local_minima(dist_mat, my_tex_h, my_tex_w, i)){
+						dist_mat_norm.emplace_back(minima_color[0]);
+						dist_mat_norm.emplace_back(minima_color[1]);
+						dist_mat_norm.emplace_back(minima_color[2]);
+					} else {
+						dist_mat_norm.emplace_back(v);
+						dist_mat_norm.emplace_back(v);
+						dist_mat_norm.emplace_back(v);
+					}
+				}
+				else {
+					dist_mat_norm.emplace_back(0.f);
+					dist_mat_norm.emplace_back(0.f);
+					dist_mat_norm.emplace_back(0.f);
+				}
 			}
 		}
-		for_each(dist_mat.begin(), dist_mat.end(), [&](int val){dist_mat_norm.push_back(normalise(val,0,0.5));});
 
 		GLuint tex, tex_marked;
 		glEnable(GL_TEXTURE_2D);
