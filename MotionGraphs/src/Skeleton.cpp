@@ -181,14 +181,16 @@ void Skeleton::apply_pose(Pose* pose)
 		// new root coords
 		//cout << "getting pose name " << name << "\n";
 		vector<float> ts = pose->getBoneTrans(this->id);
+		float rot_[3] = { 0.0, 0.0, 0.0 };
 		for (int i = 0; i < ts.size(); i++) {
 			if (i < 3) {
 				dir[i] = ts.at(i);
 			}
 			else {
-				rot[i - 3] = ts.at(i); 
+				rot_[i - 3] = ts.at(i); 
 			}
 		}
+		this->rot = glm::quat(glm::vec3(glm::radians(rot_[0]), glm::radians(rot_[1]), glm::radians(rot_[2]) ) );
 	}
 	else {
 		cout << "--- NULL pose!" << "\n";
