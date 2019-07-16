@@ -21,7 +21,10 @@ public:
 	Pose* getPoseAt(long frame);
 	Pose* getNextPose();
 
+	vector<Pose*> getPosesInRange(unsigned int start, unsigned int end);
+
 	long getCurrentFrame();
+	long getNumberOfFrames();
 	bool isOver();
 	void reset();
 

@@ -222,21 +222,18 @@ void Bone::updateSegMat()
 	float unit_len = p1p2_len / samples_along_line;
 
 	
-	//for (int i = 0; i < samples_along_line; i++) {
-	//	glm::mat4 off = glm::mat4(1.f);
-	//	glm::vec3 offx = -diff * (float)(i / (float)samples_along_line);
-	//	glm::vec3 offz = glm::vec3(0.f, 0.f, offset_normal);
-	//	off = glm::translate(off, offx + offz);
+	// if (this->cloud_counter > this->cloud_k) {
+	// 	int num_point_axis = 4; // how many addPointsAlongOffset() times called
+	// 	for(int i = 0; i < num_point_axis * samples_along_line; i++) {
+	// 		this->local_point_cloud->points.pop_back();
+	// 	}
+	// 	this->cloud_counter = 0;
+	// }
+	// this->cloud_counter++;
 
-	//	glm::mat4 temp = Bseg * off;
-	//	this->local_point_cloud->addPoint(glm::vec3(temp[3]));
-	//}
-	if (this->cloud_counter >= this->cloud_k) {
-		vector<glm::vec3> ep;
-		this->local_point_cloud->points = ep;
-		this->cloud_counter = 0;
-	}
-	this->cloud_counter++;
+	// only the current point cloud is kept
+	vector<glm::vec3> ep;
+	this->local_point_cloud->points = ep;
 	addPointsAlongOffset(diff, p1, samples_along_line, glm::vec3(0.f, 0.f, offset_normal));
 	addPointsAlongOffset(diff, p1, samples_along_line, glm::vec3(0.f, 0.f, -offset_normal));
 	addPointsAlongOffset(diff, p1, samples_along_line, glm::vec3(offset_normal, 0.f, 0.f));
