@@ -56,8 +56,10 @@ Animation::Animation(Skeleton* sk, char* amc_filename)
 Pose* Animation::getPoseAt(long frame)
 {
 	frame--; // poses start from [0], frames starts from 1
-	if (this->poses.size() > frame && frame > 0)
+	this->currentFrame = frame;
+	if (this->poses.size() > frame && frame > 0) {
 		return this->poses.at(frame);
+	}
 	else 
 		return NULL;
 }
@@ -98,6 +100,12 @@ long Animation::getNumberOfFrames()
 	return this->poses.size();
 }
 
+void Animation::setFrame(long frame)
+{
+	if (frame > 0 && frame < this->poses.size())
+		this->currentFrame = frame;
+}
+
 bool Animation::isOver()
 {
 	return currentFrame > this->poses.size() - 1;
@@ -105,7 +113,7 @@ bool Animation::isOver()
 
 void Animation::reset()
 {
-	this->currentFrame = 0;
+	this->currentFrame = 1;
 }
 
 Animation::~Animation() 

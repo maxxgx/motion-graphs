@@ -8,7 +8,7 @@ namespace blending {
         int num_frames = anim->getNumberOfFrames();
         cloud_total.reserve(num_frames);
         // Pose starts at 1
-        for (int i = 0; i < num_frames; i++) {
+        for (int i = 1; i < num_frames+1; i++) {
             Pose* pose = anim->getPoseAt(i);
             cloud_total.push_back( sk->getGlobalPointCloud(pose) );
         }
@@ -57,7 +57,7 @@ namespace blending {
         // PCs_b = cloud_b_total;
 
         vector<float> distance_mat;
-        distance_mat.reserve(num_frames_a*num_frames_b);
+        // distance_mat.reserve(num_frames_a*num_frames_b);
         pair<int, int> min_dist_frames = {-1,-1};
         pair<float, float> range = {std::numeric_limits<float>::infinity(),-1};
 
@@ -83,7 +83,6 @@ namespace blending {
             }
             *progress = (float)i/(float)num_frames_a;
             cout << "i = "<< i <<endl;
-            // cout << "progress = " << progress << endl;
         }
 
         cout << distance_mat.size() << "== size of mat row" << endl;

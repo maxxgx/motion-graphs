@@ -50,10 +50,12 @@ struct screen_size {
 } init_window, curr_window, fullscreen_window, region_a, region_b;
 
 // states (feature on off)
-struct state_flags {
-    // Controls
+struct controls {
+    // Flags
     bool play = false;
+	bool exit=false;
     bool is_full_screen = true;
+	bool split_screen = true;
     bool lock_view = false;
     bool show_cloud = false;
 
@@ -62,6 +64,12 @@ struct state_flags {
     bool mouse_btn2_pressed = false;
 
 	bool update_texture = false;
+
+	bool compute_running = false;
+
+	// COntrols
+	int current_frame_a = 1, current_frame_b = 1, current_frame_r = 1;
+	float speed = 1.f;
 } states;
 
 // timing
@@ -80,12 +88,16 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 void keyboardInput(GLFWwindow *window);
 
 // IMGUI
-void imgui_file_selector(string name, string root, string &filename);
+map<string, vector<string>> get_dirs_files(string root);
 
 // CUSTOM
 Animation* get_anim(string amc);
+
+void update(Animation* anim, int *current_frame, int selected_frame);
+
 void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader, 
-		screen_size window_region, Animation* anim, int frame, vector<PointCloud*> PC);
+		screen_size window_region, vector<PointCloud*> PC);
+
 pair<vector<float>, pair<float,float>> get_distance_matrix();
 
 
@@ -247,7 +259,7 @@ int main()
 	static pair<float, float> dist_mat_range = {-1,-1};
     static vector<float> dist_mat;
     future<pair<vector<float>, pair<float,float>>> ftr;
-    static bool compute_running = false;
+	map<string, vector<string>> dir_files = get_dirs_files(res_path + "mocap/");
 
 	// lambda function to normalise [1,0] (!) a float value
 	auto normalise = [](float val, float min, float max) {
@@ -256,7 +268,7 @@ int main()
 	};
 
 	/** render loop **/
-	while (!glfwWindowShouldClose(window))
+	while (!glfwWindowShouldClose(window) && !states.exit)
 	{
 		// frame time
 		timings.num_frames++;
@@ -266,35 +278,23 @@ int main()
 		float last_fps = 1.f / timings.delta_time;
 		timings.agg_fps += last_fps;
 
-
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         ImGui::ShowDemoWindow();
-        ImGui::Begin("Controls");
-        if (ImGui::Button("Play"))
-            states.play = !states.play;   
-        ImGui::Separator();
+        ImGui::Begin("Vis");
 
-        ImGui::BulletText( ("Motion A: " + anim_a.substr(anim_a.find_last_of("/"))).c_str());
-        ImGui::SameLine();
-        imgui_file_selector("Select motion A",res_path + "mocap/", anim_a);
-        ImGui::BulletText( ("Motion B: " + anim_b.substr(anim_b.find_last_of("/"))).c_str());
-        ImGui::SameLine();
-        imgui_file_selector("Select motion B",res_path + "mocap/", anim_b);
-
-        ImGui::Separator();
-
-		ImGui::Checkbox("Show point cloud", &states.show_cloud);
-
-		if (ImGui::Button("Compute distance matrix")) {
+		ImGui::PushStyleColor(ImGuiCol_Button, !states.compute_running ? GUI::color_green : GUI::color_red);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, !states.compute_running ? GUI::color_green_h : GUI::color_red_h);
+		if (ImGui::Button("Compute distance matrix") && !states.compute_running) {
 			ftr = std::async(get_distance_matrix);
-			compute_running = true;
+			states.compute_running = true;
 			states.show_selected_frames=false;
 		}
+		ImGui::PopStyleColor(2);
 		// Only tries to retrieve the return value of the thread compute, if it is has started.
-		if (compute_running) {
+		if (states.compute_running) {
 			auto status = ftr.wait_for(0ms);
 			if(status == std::future_status::ready){
 				if (ftr.valid()) {
@@ -303,20 +303,21 @@ int main()
 					dist_mat_range = dist_mat_res.second;
 					// cout << "dist_mat_res.first.size() = " << dist_mat_res.first.size() << endl;
 				}
-				compute_running = false;
+				states.compute_running = false;
 				states.update_texture = true;
 			}
 		}
-		ImGui::Text("range distance %f-%f", dist_mat_range.first, dist_mat_range.second);
+		ImGui::Text("range distance %.3f to %.3f", dist_mat_range.first, dist_mat_range.second);
 
-		ImGui::ProgressBar(progress, ImVec2(0.0f,0.0f));
+		ImGui::ProgressBar(progress >= 0.98 ? 1.0f : progress, ImVec2(0.0f,0.0f));
 		int anim_a_size = get_anim(anim_a)->getNumberOfFrames();
 		int anim_b_size = get_anim(anim_b)->getNumberOfFrames();
-        showDistanceMatrix(anim_a_size, anim_b_size, dist_mat, normalise, selected_frames, &states.show_selected_frames, &states.update_texture);
+        GUI::showDistanceMatrix(anim_a_size, anim_b_size, dist_mat, normalise, selected_frames, &states.show_selected_frames, &states.update_texture);
         ImGui::Separator();
-        if (ImGui::Button("Exit"))
-            break; //exit gameloop
 		ImGui::ShowMetricsWindow();
+		
+		GUI::showBasicControls(&states.play, &states.split_screen, &states.exit, &anim_a, &anim_b, &states.current_frame_a, &states.current_frame_b, &states.current_frame_r, 
+			anim_a_size, anim_b_size, &states.speed, dir_files, res_path + "mocap/");
 
         ImGui::End();
 
@@ -327,15 +328,28 @@ int main()
 		float input_time = (glfwGetTime() - input_start_time);
 		timings.agg_input += input_time;
 
+
 		// Rendering
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
 
-		glViewport(region_a.posX, region_a.posY, region_a.width, region_a.height);
-		draw(plane, sphere, cylinder, cube, diffShader, lampShader, region_a, get_anim(anim_a), selected_frames.first, PCs_a);
-
-		glViewport(region_b.posX, region_b.posY, region_b.width, region_b.height);
-		draw(plane, sphere, cylinder, cube, diffShader, lampShader, region_b, get_anim(anim_b), selected_frames.second, PCs_b);
+		if (states.split_screen) {
+			glViewport(region_a.posX, region_a.posY, region_a.width, region_a.height);
+			// Update motion A and render
+			update(get_anim(anim_a), &states.current_frame_a, selected_frames.first);
+			draw(plane, sphere, cylinder, cube, diffShader, lampShader, region_a, PCs_a);
+			
+			// Update motion B and render
+			glViewport(region_b.posX, region_b.posY, region_b.width, region_b.height);
+			update(get_anim(anim_b), &states.current_frame_b, selected_frames.second);
+			draw(plane, sphere, cylinder, cube, diffShader, lampShader, region_b, PCs_b);
+		}
+		else { 
+			// Show only the result of the blending
+			glViewport(curr_window.posX, curr_window.posY, curr_window.width, curr_window.height);
+			update(get_anim(anim_a), &states.current_frame_a, selected_frames.first);
+			draw(plane, sphere, cylinder, cube, diffShader, lampShader, curr_window, PCs_a);
+		}
 		// End Rendering
 
 		//glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -365,28 +379,37 @@ int main()
 	return -1;
 }
 
-void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader, 
-			screen_size window_region, Animation* anim, int frame, vector<PointCloud*> PC)
+void update(Animation* anim, int *current_frame, int selected_frame)
 {
+	if (states.compute_running) 
+		return;
+
 	// Update animation 
-	if (states.play)
-	{
-		if (anim->isOver()) {
-			anim->reset();
-			sk->resetAll();
-		}
-		int frame = anim->getCurrentFrame();
-		sk->apply_pose(anim->getPoseAt(frame + skip_frame));
-		for (int i = 0; i < skip_frame; i++) {
-			anim->getNextPose();
-		}
-	}
-	else {
-		if (states.show_selected_frames){
-			sk->apply_pose(anim->getPoseAt(frame));
-		}
+	if (states.show_selected_frames){
+		states.play = false;
+		*current_frame = selected_frame;
 	}
 
+	sk->apply_pose(anim->getPoseAt(*current_frame) );
+
+	if (states.play)
+	{
+		for (int i = 0; i < skip_frame; i++) {
+			*current_frame += 1;
+		}
+		// *current_frame = anim->getCurrentFrame();
+	}
+
+	if (anim->isOver()) {
+		anim->reset();
+		sk->resetAll();
+		*current_frame = 1;
+	}
+}
+
+void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader, 
+		screen_size window_region, vector<PointCloud*> PC)
+{
 	/** Start Rendering **/
 	float render_start_time = glfwGetTime();
 
@@ -465,18 +488,18 @@ void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffS
 		glDrawArrays(GL_TRIANGLES, 0, 36);*/
 
 		//Cloud points
-		if (states.show_cloud && PC.size() > frame) 
-		{
-			PointCloud* w_pc = PC[frame]; // window frame
-			diffShader.setVec3("objectColor", .8f, 0.8f, 0.8f);
-			for (auto p : w_pc->points) {
-				model = glm::scale(bone->getLocalPointCloud()->getPointMat(p), glm::vec3(0.01f));
-				diffShader.setMat4("model", model);
-				// sphere.Draw(diffShader);
-				glBindVertexArray(cube.VAO);
-				glDrawArrays(GL_TRIANGLES, 0, 36);
-			}
-		}			
+		// if (states.show_cloud && PC.size() > frame) 
+		// {
+		// 	PointCloud* w_pc = PC[frame]; // window frame
+		// 	diffShader.setVec3("objectColor", .8f, 0.8f, 0.8f);
+		// 	for (auto p : w_pc->points) {
+		// 		model = glm::scale(bone->getLocalPointCloud()->getPointMat(p), glm::vec3(0.01f));
+		// 		diffShader.setMat4("model", model);
+		// 		// sphere.Draw(diffShader);
+		// 		glBindVertexArray(cube.VAO);
+		// 		glDrawArrays(GL_TRIANGLES, 0, 36);
+		// 	}
+		// }			
 	}
 
 	// Draw Lights
@@ -651,31 +674,19 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 }
 
 
-void imgui_file_selector(string name, string root, string &filename) 
+map<string, vector<string>> get_dirs_files(string root)
 {
-    if (ImGui::Button(name.c_str()))
-        ImGui::OpenPopup(("my_file_popup" + name).c_str());
-    if (ImGui::BeginPopup(("my_file_popup" + name).c_str()))
-    {
-        vector<string> sorted_dirs = FileSystem::getDirs(root);
-        std::sort(sorted_dirs.begin(), sorted_dirs.end());
-        for (string dirs : sorted_dirs) {
-            if(ImGui::BeginMenu(dirs.c_str())) // add files to dir
-            {
-                cout << "get Files form " << res_path + "mocap/" + dirs << endl;
-                vector<string> sorted_dirs = FileSystem::getFiles(root + dirs + "/");
-                std::sort(sorted_dirs.begin(), sorted_dirs.end());
-                for (string file : sorted_dirs) {
-                    if (ImGui::MenuItem(file.c_str()) ) {
-                        filename = root + dirs + "/" + file;
-                    }
-                }
-                ImGui::EndMenu();
-            }
-        }
-        ImGui::EndPopup();
-    }    
+	map<string, vector<string>> res;
+	vector<string> sorted_dirs = FileSystem::getDirs(root);
+	std::sort(sorted_dirs.begin(), sorted_dirs.end());
+	for (string dirs : sorted_dirs) {
+		vector<string> sorted_files = FileSystem::getFiles(root + dirs + "/");
+		std::sort(sorted_files.begin(), sorted_files.end());
+		res[dirs] = sorted_files;
+	}
+	return res;
 }
+
 
 pair<vector<float>, pair<float,float>> get_distance_matrix()
 {

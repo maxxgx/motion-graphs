@@ -25,6 +25,7 @@ public:
 
 	long getCurrentFrame();
 	long getNumberOfFrames();
+	void setFrame(long frame);
 	bool isOver();
 	void reset();
 
