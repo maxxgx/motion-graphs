@@ -2,8 +2,7 @@
 
 Animation::Animation(Skeleton* sk, char* amc_filename)
 {
-	//initialize first pose to NULL (frame 0)
-	this->poses.push_back(NULL);
+	//initialize first pose at index 0 (frame 1)
 
 	bool started = false; //for skipping the first few lines of header stuff
 
@@ -56,7 +55,7 @@ Animation::Animation(Skeleton* sk, char* amc_filename)
 
 Pose* Animation::getPoseAt(long frame)
 {
-	frame--;
+	frame--; // poses start from [0], frames starts from 1
 	if (this->poses.size() > frame && frame > 0)
 		return this->poses.at(frame);
 	else 

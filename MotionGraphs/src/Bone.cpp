@@ -15,9 +15,13 @@ Bone::Bone(int id, string name, float dir_x, float dir_y, float dir_z,
 	this->dir[1] = copy_dir[1] = dir_y;
 	this->dir[2] = copy_dir[2] = dir_z;
 
-	this->axis[0] = copy_axis[0] = axis_x;
-	this->axis[1] = copy_axis[1] = axis_y;
-	this->axis[2] = copy_axis[2] = axis_z;
+	// this->axis[0] = copy_axis[0] = axis_x;
+	// this->axis[1] = copy_axis[1] = axis_y;
+	// this->axis[2] = copy_axis[2] = axis_z;
+	copy_axis[0] = axis_x;
+	copy_axis[1] = axis_y;
+	copy_axis[2] = axis_z;
+	this->axis = glm::quat(glm::vec3(glm::radians(axis_x), glm::radians(axis_y), glm::radians(axis_z) ));
 
 	this->length = copy_length = length;
 
@@ -36,16 +40,20 @@ void Bone::apply_pose(Pose *pose)
 	{
 		vector<float> trans = pose->getBoneTrans(this->id);
 
+		float rot_[3] = { 0.0, 0.0, 0.0 };
 		for (int i = 0, j = 0; i < 3 && j < trans.size(); i++) {
 			if (this->dof[i]) {
-				this->rot[i] = trans.at(j);
+				rot_[i] = trans.at(j);
 				j++;
 			}
 			else {
-				this->rot[i] = 0.0f;
+				rot_[i] = 0.0f;
 			}
 		}
-	}
+		this->rot = glm::quat(glm::vec3(glm::radians(rot_[0]), glm::radians(rot_[1]), glm::radians(rot_[2]) ) );
+	} else {
+		reset();
+	}	
 	updateModelMat();
 }
 
@@ -60,16 +68,18 @@ void Bone::updateModelMat()
 		//B = glm::translate(B, glm::vec3(dir[0]*scale, dir[1]*scale, dir[2]*scale));
 		B = glm::translate(B, glm::vec3(0.f, dir[1] * scale, 0.f)); // in-place movement
 
-		glm::mat4 ax = glm::eulerAngleX(glm::radians(axis[0]));
-		glm::mat4 ay = glm::eulerAngleY(glm::radians(axis[1]));
-		glm::mat4 az = glm::eulerAngleZ(glm::radians(axis[2]));
-		glm::mat4 C = az * ay * ax;
+		// glm::mat4 ax = glm::eulerAngleX(glm::radians(axis[0]));
+		// glm::mat4 ay = glm::eulerAngleY(glm::radians(axis[1]));
+		// glm::mat4 az = glm::eulerAngleZ(glm::radians(axis[2]));
+		// glm::mat4 C = az * ay * ax;
+		glm::mat4 C = glm::mat4_cast(this->axis);
 		glm::mat4 Cinv = glm::inverse(C);
 
-		glm::mat4 transformX = glm::eulerAngleX(glm::radians(rot[0]));
-		glm::mat4 transformY = glm::eulerAngleY(glm::radians(rot[1]));
-		glm::mat4 transformZ = glm::eulerAngleZ(glm::radians(rot[2]));
-		glm::mat4 M = transformZ * transformY * transformX;
+		// glm::mat4 transformX = glm::eulerAngleX(glm::radians(rot[0]));
+		// glm::mat4 transformY = glm::eulerAngleY(glm::radians(rot[1]));
+		// glm::mat4 transformZ = glm::eulerAngleZ(glm::radians(rot[2]));
+		// glm::mat4 M = transformZ * transformY * transformX;
+		glm::mat4 M = glm::mat4_cast(this->rot);
 
 		this->JointMat = B * C * M * Cinv;
 	}
@@ -118,8 +128,9 @@ void Bone::reset()
 {
 	for (int i = 0; i < 3; i++) {
 		this->dir[i] = copy_dir[i];
-		this->axis[i] = copy_axis[i];
 	}
+	this->axis = glm::quat(glm::vec3(glm::radians(copy_axis[0]), glm::radians(copy_axis[1]), glm::radians(copy_axis[2]) ));
+	this->rot = glm::quat(glm::vec3(glm::radians(0.f), glm::radians(0.f), glm::radians(0.f) ) );
 	length = copy_length;
 	this->JointMat = this->SegMat = glm::mat4(1.f);
 }
@@ -140,17 +151,21 @@ void Bone::updateJointMat()
 	glm::mat4 M, C, Cinv = glm::mat4(1.f);
 
 	/// Creating the Rotation matrix R (or M?)
-	glm::mat4 transformX, transformY, transformZ = glm::mat4(1.f);
-	transformX = dof[0] == true ? glm::eulerAngleX(glm::radians(rot[0])) : glm::mat4(1.f);
-	transformY = dof[1] == true ? glm::eulerAngleY(glm::radians(rot[1])) : glm::mat4(1.f);
-	transformZ = dof[2] == true ? glm::eulerAngleZ(glm::radians(rot[2])) : glm::mat4(1.f);
-	M = transformZ * transformY * transformX;
+	// glm::mat4 transformX, transformY, transformZ = glm::mat4(1.f);
+	// transformX = dof[0] == true ? glm::eulerAngleX(glm::radians(rot[0])) : glm::mat4(1.f);
+	// transformY = dof[1] == true ? glm::eulerAngleY(glm::radians(rot[1])) : glm::mat4(1.f);
+	// transformZ = dof[2] == true ? glm::eulerAngleZ(glm::radians(rot[2])) : glm::mat4(1.f);
+	// M = transformZ * transformY * transformX;
+	// glm::quat r_quat = glm::quat_cast(M);
+	M = glm::mat4_cast(this->rot);
 
 	/// C matrix == the axis, and its inverse
-	glm::mat4 ax = glm::eulerAngleX(glm::radians(axis[0]));
-	glm::mat4 ay = glm::eulerAngleY(glm::radians(axis[1]));
-	glm::mat4 az = glm::eulerAngleZ(glm::radians(axis[2]));
-	C = az * ay * ax;
+	// glm::mat4 ax = glm::eulerAngleX(glm::radians(axis[0]));
+	// glm::mat4 ay = glm::eulerAngleY(glm::radians(axis[1]));
+	// glm::mat4 az = glm::eulerAngleZ(glm::radians(axis[2]));
+	// C = az * ay * ax;
+	// glm::quat c_quat = glm::quat(this->axis);
+	C = glm::mat4_cast(this->axis);
 	Cinv = glm::inverse(C);
 
 	/// B matrix == the translation offset from the segment parent

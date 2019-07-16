@@ -8,15 +8,15 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
+#include <glm/gtx/euler_angles.hpp>
 
 #include <string>
 #include <vector>
 #include <utility>
 #include <tuple>
 #include "Pose.h"
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtx/quaternion.hpp>
-#include <glm/gtx/euler_angles.hpp>
 
 #include "PointCloud.h"
 
@@ -58,8 +58,10 @@ public:
 	//direction
 	float dir[3] = { 0.0, 0.0, 0.0 };
 	//axis
-	float axis[3] = { 0.0, 0.0, 0.0 };
-	float rot[3] = { 0.0, 0.0, 0.0 };;
+	// float axis[3] = { 0.0, 0.0, 0.0 };
+	// float rot[3] = { 0.0, 0.0, 0.0 };;
+	glm::quat axis = glm::quat(glm::vec3(0.0, 0.0, 0.0));
+	glm::quat rot = glm::quat(glm::vec3(0.0, 0.0, 0.0));
 
 	bool dof[3];
 	vector<pair<float, float>> limits;
