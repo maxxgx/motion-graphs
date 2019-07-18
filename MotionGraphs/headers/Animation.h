@@ -17,11 +17,14 @@ class Animation
 {
 public:
 	Animation(Skeleton* sk, char *amc_filename);
+	Animation(vector<Pose*> ps);
+
+	void addPoses(vector<Pose*> ps);
 
 	Pose* getPoseAt(long frame);
 	Pose* getNextPose();
 
-	vector<Pose*> getPosesInRange(unsigned int start, unsigned int end);
+	vector<Pose*> getPosesInRange(unsigned long start, unsigned long end);
 
 	long getCurrentFrame();
 	long getNumberOfFrames();

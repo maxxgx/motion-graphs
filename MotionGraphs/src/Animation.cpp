@@ -39,8 +39,9 @@ Animation::Animation(Skeleton* sk, char* amc_filename)
 				for (int i = 1; i < toks.size(); i++) {
 					t.push_back(stod(toks.at(i)));
 				}
-				int id = sk->getIdByName(toks.at(0));
-				pose->addTransf(id, t);
+				string bone_name = toks.at(0);
+				Bone * bone_ = sk->getByName(bone_name);
+				pose->addTransf(bone_name, t, bone_->dof[0], bone_->dof[1], bone_->dof[2]);
 			}
 		}
 		//adding last frame/pose
@@ -51,6 +52,16 @@ Animation::Animation(Skeleton* sk, char* amc_filename)
 	else std::cout << "Unable to open file";
 
 	std::cout << "\nAnimation: added "<< c <<  " poses\n";
+}
+
+Animation::Animation(vector<Pose*> ps)
+{
+	this->poses = ps;
+}
+
+void Animation::addPoses(vector<Pose*> ps) 
+{
+	this->poses.insert(this->poses.end(), ps.begin(), ps.end());
 }
 
 Pose* Animation::getPoseAt(long frame)
@@ -76,7 +87,7 @@ Pose* Animation::getNextPose()
 	}
 }
 
-vector<Pose*> Animation::getPosesInRange(unsigned int start, unsigned int end)
+vector<Pose*> Animation::getPosesInRange(unsigned long start, unsigned long end)
 {
 	vector<Pose*> ps;
 	if (start >= 0 && start <= this->poses.size() && end >= 0 && end <= this->poses.size()) {

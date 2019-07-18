@@ -152,13 +152,24 @@ namespace GUI{
 			ImGui::BulletText( ("Motion A: " + name_anim_a).c_str());
 			ImGui::SameLine();
 			imgui_file_selector("Select motion A", dir_nfiles, root, anim_a);
+			ImGui::PushButtonRepeat(true);
+			if (ImGui::ArrowButton("##leftA", ImGuiDir_Left)) { --*frame_a; } ImGui::SameLine();
+			if (ImGui::ArrowButton("##rightA", ImGuiDir_Right)) { ++*frame_a; }
+			ImGui::SameLine();
+
 			ImGui::SliderInt("Frame A", frame_a, 1, num_frames_a, "%d");
 
 			ImGui::Separator();
 			ImGui::BulletText( ("Motion B: " + name_anim_b).c_str());
 			ImGui::SameLine();
 			imgui_file_selector("Select motion B", dir_nfiles, root, anim_b);
+			if (ImGui::ArrowButton("##leftB", ImGuiDir_Left)) { --*frame_b; } ImGui::SameLine();
+			if (ImGui::ArrowButton("##rightB", ImGuiDir_Right)) { ++*frame_b; }
+			ImGui::PopButtonRepeat();
+
+			ImGui::SameLine();
 			ImGui::SliderInt("Frame B", frame_b, 1, num_frames_b, "%d");
+			ImGui::Separator();
 		} else {
 			ImGui::Separator();
 			ImGui::BulletText( ("Motion A -> B: (" + name_anim_a + ", " + name_anim_b).c_str());

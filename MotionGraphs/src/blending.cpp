@@ -160,6 +160,20 @@ namespace blending {
 
     Animation* blend(Animation *anim_a, Animation *anim_b, int Ai, int Bj, int k)
     {
-        
+        if (Ai + k > anim_a->getNumberOfFrames() || Bj - k + 1 < 0) {
+            cout << "Cannot make transition between frames Ai = " << Ai<<", Bj = " << Bj <<endl;
+            return NULL;
+        }
+        vector<Pose*> pre_Ai = anim_a->getPosesInRange(0, Ai-1);
+        vector<Pose*> after_Bj = anim_b->getPosesInRange(Bj+1, anim_b->getNumberOfFrames());
+
+        vector<Pose*> inside_k;
+
+        // Blending Ai with Bj-k+1 to Ai+k-1 with Bj
+        for (int a = Ai, b = Bj - k + 1; a < Ai + k, b < Bj + 1; a++, b++) {
+            
+        }
+
+        return NULL;
     }
 }
