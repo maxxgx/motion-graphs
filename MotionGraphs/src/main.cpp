@@ -370,6 +370,8 @@ int main()
 	cube.~CubeCore();
 	delete sk;
 	for (auto anim: anim_cache) {delete anim.second;};
+	delete anim_r;
+	
 
 	// end glfw and ImGui
     ImGui_ImplOpenGL3_Shutdown();
