@@ -4,8 +4,13 @@ using namespace std;
 
 namespace GUI{
 
-	void showDistanceMatrix(int anim_a_size, int anim_b_size, vector<float> dist_mat, 
-		function<float(float,float,float)> normalise, std::pair<int,int> &selected_frames, bool *show_selected_frames, bool *update_texture)
+	// lambda function to normalise [1,0] (!) a float value
+	float normalise(float val, float min, float max) {
+		if (val < 0  || val > max) return 0.0f;
+		return 1.0f - ((val - min) / (max - min));
+	}
+
+	void showDistanceMatrix(int anim_a_size, int anim_b_size, vector<float> dist_mat, std::pair<int,int> &selected_frames, bool *show_selected_frames, bool *update_texture)
 	{
 		static float threshold = 0.5f;
 		static float last_threshold = threshold;
@@ -19,17 +24,22 @@ namespace GUI{
 			// std::copy(dist_mat.begin(), dist_mat.end(), back_inserter(dist_mat_norm));
 			// transform(dist_mat_norm.begin(), dist_mat_norm.end(), dist_mat_norm.begin(), [&](float val) {return normalise(val,0,0.5);});
 
+			static GLuint tex;
 			float my_tex_h = anim_a_size;
 			float my_tex_w = anim_b_size;
 
 			float minima_color [] = {0.1, 0.8, 0.1};
 			static vector<float> dist_mat_norm;
+			// if (ImGui::Button("Update image")) {
 			if (dist_mat_norm.size() != my_tex_h * my_tex_w * 3 || *update_texture || last_threshold != threshold) {
 				last_threshold = threshold;
 				*update_texture = false;
 				dist_mat_norm.clear();
 				dist_mat_norm.reserve(my_tex_h*my_tex_w*3);
 				for (int i = 0; i < my_tex_h * my_tex_w; i++) {
+					// dist_mat_norm.emplace_back(0.f);
+					// dist_mat_norm.emplace_back(i > my_tex_h*my_tex_w ? 1.f : 0.f);
+					// dist_mat_norm.emplace_back(0.f);
 					if (i < dist_mat.size()) {
 						float v = normalise(dist_mat[i], 0.f, threshold);
 						if (dist_mat[i] >= 0 && dist_mat[i] <= threshold && blending::is_local_minima(dist_mat, my_tex_h, my_tex_w, i)){
@@ -48,21 +58,20 @@ namespace GUI{
 						dist_mat_norm.emplace_back(0.f);
 					}
 				}
+				glEnable(GL_TEXTURE_2D);
+				glGenTextures(1,&tex);
+				glBindTexture(GL_TEXTURE_2D, tex);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,GL_REPEAT);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,GL_REPEAT);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+				glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
+				glTexImage2D(GL_TEXTURE_2D, 0 ,GL_RGB, my_tex_w, my_tex_h,0,GL_RGB,GL_FLOAT, &dist_mat_norm[0]);
 			}
 
-			GLuint tex, tex_marked;
-			glEnable(GL_TEXTURE_2D);
-			glGenTextures(1,&tex);
-			glBindTexture(GL_TEXTURE_2D, tex);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,GL_REPEAT);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,GL_REPEAT);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,GL_NEAREST);
-			glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
-			glTexImage2D(GL_TEXTURE_2D, 0 ,GL_RGB, my_tex_w, my_tex_h,0,GL_RGB,GL_FLOAT, &dist_mat_norm[0]);
 
 			static float tex_scale = 1.f;
-			float region_sz = 32.0f;
+			static float region_sz = 32.0f;
 
 			ImTextureID my_tex_id = (void*)(intptr_t)tex;
 			ImGui::Text("%.0fx%.0f", my_tex_h, my_tex_w);
@@ -89,7 +98,7 @@ namespace GUI{
 				selected_frames = make_pair(selected_px_y, selected_px_x);
 				if(selected_px_x < 0) selected_px_x = 0; else if(selected_px_x > anim_b_size) selected_px_x = anim_b_size;
 				if(selected_px_y < 0) selected_px_y = 0; else if(selected_px_y > anim_a_size) selected_px_y = anim_a_size;
-				ImGui::Text("Selected: (%d, %d)", selected_px_x, selected_px_y);
+				ImGui::Text("Selected: (%d, %d)", selected_px_y, selected_px_x);
 				int index = selected_frames.first * anim_b_size + selected_frames.second;
 				if ( dist_mat.size() > index) {
 					float dist = dist_mat.at(index);
@@ -146,13 +155,15 @@ namespace GUI{
 		
         ImGui::Separator();
 
+		ImGui::InputFloat("Speed", speed, 0.1, 0.25, 2);
+
 		string name_anim_a = anim_a->substr(anim_a->find_last_of("/"));
 		string name_anim_b = anim_b->substr(anim_b->find_last_of("/"));
+		ImGui::PushButtonRepeat(true);
 		if (*split_screen) {
 			ImGui::BulletText( ("Motion A: " + name_anim_a).c_str());
 			ImGui::SameLine();
 			imgui_file_selector("Select motion A", dir_nfiles, root, anim_a);
-			ImGui::PushButtonRepeat(true);
 			if (ImGui::ArrowButton("##leftA", ImGuiDir_Left)) { --*frame_a; } ImGui::SameLine();
 			if (ImGui::ArrowButton("##rightA", ImGuiDir_Right)) { ++*frame_a; }
 			ImGui::SameLine();
@@ -165,7 +176,6 @@ namespace GUI{
 			imgui_file_selector("Select motion B", dir_nfiles, root, anim_b);
 			if (ImGui::ArrowButton("##leftB", ImGuiDir_Left)) { --*frame_b; } ImGui::SameLine();
 			if (ImGui::ArrowButton("##rightB", ImGuiDir_Right)) { ++*frame_b; }
-			ImGui::PopButtonRepeat();
 
 			ImGui::SameLine();
 			ImGui::SliderInt("Frame B", frame_b, 1, num_frames_b, "%d");
@@ -173,8 +183,13 @@ namespace GUI{
 		} else {
 			ImGui::Separator();
 			ImGui::BulletText( ("Motion A -> B: (" + name_anim_a + ", " + name_anim_b).c_str());
+			if (ImGui::ArrowButton("##leftA", ImGuiDir_Left)) { --*frame_r; } ImGui::SameLine();
+			if (ImGui::ArrowButton("##rightA", ImGuiDir_Right)) { ++*frame_r; }
+			
+			ImGui::SameLine();
 			ImGui::SliderInt("Frame", frame_r, 1, num_frames_b + num_frames_a, "%d");
 		}
+		ImGui::PopButtonRepeat();
 
         ImGui::Separator();
 

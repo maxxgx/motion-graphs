@@ -34,11 +34,11 @@ Bone::Bone(int id, string name, float dir_x, float dir_y, float dir_z,
 	this->scale = scale;
 }
 
-void Bone::apply_pose(Pose *pose)
+void Bone::apply_pose(Pose* pose)
 {
 	if (pose != NULL)
 	{
-		this->rot = pose->getBoneTrans(this->name);
+		this->rot = glm::quat(pose->getBoneTrans(this->name));
 	} else {
 		reset();
 	}	

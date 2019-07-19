@@ -78,6 +78,8 @@ struct times {
     float last_frame = 0.0f;
     long num_frames = 0;
     float agg_fps, agg_anim, agg_input, agg_render = 0.f; // for benchmarking
+
+	float dt_update = 0.0f; // for updating animation
 } timings;
 
 // INPUT CALLBACKS
@@ -136,7 +138,7 @@ int main()
 {
 	/* Just trying some code in debug */
 	// #ifdef DEBUG
-	// compute_distance_matrix();
+	// get_distance_matrix();
 	// #endif
 	/** GLFW initialization **/
 	glfwInit();
@@ -247,7 +249,6 @@ int main()
 	// Add first anim to cache 
 	get_anim(anim_a);
 	get_anim(anim_b);
-	sk->apply_pose(NULL);
 	cube.setBuffers();
 
 	// Set shader to use
@@ -260,12 +261,7 @@ int main()
     static vector<float> dist_mat;
     future<pair<vector<float>, pair<float,float>>> ftr;
 	map<string, vector<string>> dir_files = get_dirs_files(res_path + "mocap/");
-
-	// lambda function to normalise [1,0] (!) a float value
-	auto normalise = [](float val, float min, float max) {
-		if (val < 0  || val > max) return 0.0f;
-		return 1.0f - ((val - min) / (max - min));
-	};
+	Animation* anim_r = NULL;
 
 	/** render loop **/
 	while (!glfwWindowShouldClose(window) && !states.exit)
@@ -293,6 +289,10 @@ int main()
 			states.show_selected_frames=false;
 		}
 		ImGui::PopStyleColor(2);
+		ImGui::Text("\t\t");
+		if (ImGui::Button("BLEND") ) {
+			anim_r = blending::blend_anim(get_anim(anim_a), get_anim(anim_b), states.current_frame_a, states.current_frame_b, k);
+		}
 		// Only tries to retrieve the return value of the thread compute, if it is has started.
 		if (states.compute_running) {
 			auto status = ftr.wait_for(0ms);
@@ -302,9 +302,9 @@ int main()
 					dist_mat = dist_mat_res.first;
 					dist_mat_range = dist_mat_res.second;
 					// cout << "dist_mat_res.first.size() = " << dist_mat_res.first.size() << endl;
+					states.compute_running = false;
+					states.update_texture = true;
 				}
-				states.compute_running = false;
-				states.update_texture = true;
 			}
 		}
 		ImGui::Text("range distance %.3f to %.3f", dist_mat_range.first, dist_mat_range.second);
@@ -312,7 +312,7 @@ int main()
 		ImGui::ProgressBar(progress >= 0.98 ? 1.0f : progress, ImVec2(0.0f,0.0f));
 		int anim_a_size = get_anim(anim_a)->getNumberOfFrames();
 		int anim_b_size = get_anim(anim_b)->getNumberOfFrames();
-        GUI::showDistanceMatrix(anim_a_size, anim_b_size, dist_mat, normalise, selected_frames, &states.show_selected_frames, &states.update_texture);
+        GUI::showDistanceMatrix(anim_a_size, anim_b_size, dist_mat, selected_frames, &states.show_selected_frames, &states.update_texture);
         ImGui::Separator();
 		ImGui::ShowMetricsWindow();
 		
@@ -333,6 +333,7 @@ int main()
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
 
+		timings.dt_update += timings.delta_time;
 		if (states.split_screen) {
 			glViewport(region_a.posX, region_a.posY, region_a.width, region_a.height);
 			// Update motion A and render
@@ -347,9 +348,10 @@ int main()
 		else { 
 			// Show only the result of the blending
 			glViewport(curr_window.posX, curr_window.posY, curr_window.width, curr_window.height);
-			update(get_anim(anim_a), &states.current_frame_a, selected_frames.first);
+			update(anim_r, &states.current_frame_r, 1);
 			draw(plane, sphere, cylinder, cube, diffShader, lampShader, curr_window, PCs_a);
 		}
+		if (timings.dt_update >= states.speed) timings.dt_update = 0.f;
 		// End Rendering
 
 		//glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -366,8 +368,8 @@ int main()
 
 	// de-allocation
 	cube.~CubeCore();
-	sk->~Skeleton();
-	// anim->~Animation();
+	delete sk;
+	for (auto anim: anim_cache) {delete anim.second;};
 
 	// end glfw and ImGui
     ImGui_ImplOpenGL3_Shutdown();
@@ -376,12 +378,12 @@ int main()
 
     glfwDestroyWindow(window);
     glfwTerminate();
-	return -1;
+	return 0;
 }
 
 void update(Animation* anim, int *current_frame, int selected_frame)
 {
-	if (states.compute_running) 
+	if (states.compute_running || anim == NULL) 
 		return;
 
 	// Update animation 
@@ -390,14 +392,21 @@ void update(Animation* anim, int *current_frame, int selected_frame)
 		*current_frame = selected_frame;
 	}
 
-	sk->apply_pose(anim->getPoseAt(*current_frame) );
+	// delta time for smooth update at variable speeds
+	// float dt = timings.dt_update*states.speed;
+	
+	// ImGui::Text("Dt = %f", dt);
+	// Pose dt_pose = *blending::blend_pose(anim->getPoseAt(*current_frame), anim->getPoseAt(*current_frame+1), dt);
+	// sk->apply_pose(&dt_pose);
+	sk->apply_pose(anim->getPoseAt(*current_frame));
 
 	if (states.play)
 	{
-		for (int i = 0; i < skip_frame; i++) {
-			*current_frame += 1;
-		}
-		// *current_frame = anim->getCurrentFrame();
+		// for (int i = 0; i < skip_frame; i++) {
+			// *current_frame = dt >= 0.99f ? 1 : 0;
+
+		// }
+		*current_frame += 1;
 	}
 
 	if (anim->isOver()) {

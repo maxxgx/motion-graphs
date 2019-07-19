@@ -27,7 +27,7 @@ namespace GUI {
 	static ImVec4 color_red = (ImVec4)ImColor::HSV(0.0f, 0.7500f, 0.7843f), color_red_h = (ImVec4)ImColor::HSV(0.f, 0.7727f, 0.8627f);
 
     void showDistanceMatrix(int anim_a_size, int anim_b_size, 
-        std::vector<float> dist_mat, std::function<float(float,float,float)> normalise, 
+        std::vector<float> dist_mat,
         std::pair<int,int> &selected_frames, bool *show_selected_frames, bool *update_texture);
 
     void showBasicControls(bool *play, bool *split_screen, bool *exit, string *anim_a, string *anim_b, 

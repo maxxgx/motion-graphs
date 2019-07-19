@@ -180,14 +180,15 @@ void Skeleton::apply_pose(Pose* pose)
 	if (pose != NULL) {
 		// new root coords
 		//cout << "getting pose name " << name << "\n";
-		glm::vec3 dirvec = pose->getRootPos();
+		glm::vec3 dirvec = glm::vec3(pose->getRootPos());
 		dir[0] = dirvec.x;
 		dir[1] = dirvec.y;
 		dir[2] = dirvec.z;
-		this->rot = pose->getBoneTrans(this->name);
+		this->rot = glm::quat(pose->getBoneTrans(this->name));
 	}
 	else {
-		cout << "--- NULL pose!" << "\n";
+		// cout << "--- NULL pose!" << "\n";
+		// ImGui::Text("NULL POSE!"); // crashes when computing dist mat
 	}
 
 	// Depth Traversal of the skeleton to update the model matrix
@@ -262,4 +263,6 @@ vector<Bone*> Skeleton::getAllBones()
 
 Skeleton::~Skeleton()
 {
+	for (auto bone: this->bones)
+		delete bone;
 }

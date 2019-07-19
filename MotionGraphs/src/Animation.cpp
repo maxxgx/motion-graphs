@@ -129,5 +129,6 @@ void Animation::reset()
 
 Animation::~Animation() 
 {
-
+	for (auto pose: this->poses)
+		delete pose;
 }

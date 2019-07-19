@@ -62,6 +62,15 @@ namespace blending {
     vector<int> find_local_minima(vector<float> D, int w, int h);
 
     /**
+     * Blends pose A with pose B. Linear interpolation of root position and slerp of rotations.
+     * 
+     * @param  {Pose*} a : pose A.
+     * @param  {Pose*} b : pose B.
+     * @return {Pose*}   : the interpolated pose.
+     */
+    Pose* blend_pose(Pose* a, Pose* b, float t);
+
+    /**
      * Blends motion A to motion B, interpolation between frames Ai to Ai+k-1 with Bj-k+1 to Bj.
      * 
      * @param  {Animation*} anim_a : motion A
@@ -71,5 +80,5 @@ namespace blending {
      * @param  {int} k             : window size
      * @return {Animation*}        : blended animation of A and B
      */
-    Animation* blend(Animation *anim_a, Animation *anim_b, int Ai, int Bj, int k);
+    Animation* blend_anim(Animation *anim_a, Animation *anim_b, int Ai, int Bj, int k);
 }

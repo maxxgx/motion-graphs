@@ -23,14 +23,18 @@ public:
 	glm::vec3 getRootPos();
 	glm::quat getBoneTrans(string name);
 
+	map<string, glm::quat> getAllPoses();
+
 	int getPoseFrame();
 	
 	void addTransf(string name, vector<float> transf, bool dof_x, bool dof_y, bool dof_z);
 
+	void addSingle(string name, glm::quat q);
+
 	~Pose();
 
+	glm::vec3 root_pos;
 private:
 	int frame;
-	glm::vec3 root_pos;
 	map<string, glm::quat> transf;
 };

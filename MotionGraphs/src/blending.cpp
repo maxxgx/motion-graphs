@@ -85,6 +85,9 @@ namespace blending {
             cout << "i = "<< i <<endl;
         }
 
+        for (auto c_a:cloud_a_total) delete c_a;
+        for (auto c_b:cloud_b_total) delete c_b;
+
         cout << distance_mat.size() << "== size of mat row" << endl;
 
         cout << "range: " << range.first << " to " << range.second << endl;
@@ -158,7 +161,23 @@ namespace blending {
     }
 
 
-    Animation* blend(Animation *anim_a, Animation *anim_b, int Ai, int Bj, int k)
+    Pose* blend_pose(Pose* a, Pose* b, float t)
+    {
+        if (a == NULL && b != NULL) return b;
+        if (b == NULL && a != NULL) return a;
+        if (a == NULL && b == NULL) return NULL;
+        Pose* blend = new Pose(a->getPoseFrame());
+        blend->root_pos = glm::mix(a->getRootPos(), b->getRootPos(), t);
+        for (auto name_quat: a->getAllPoses()) {
+            glm::quat b_quat = b->getBoneTrans(name_quat.first);
+            blend->addSingle(name_quat.first, glm::slerp(name_quat.second, b_quat, t));
+        }
+
+        return blend;
+    }
+
+
+    Animation* blend_anim(Animation *anim_a, Animation *anim_b, int Ai, int Bj, int k)
     {
         if (Ai + k > anim_a->getNumberOfFrames() || Bj - k + 1 < 0) {
             cout << "Cannot make transition between frames Ai = " << Ai<<", Bj = " << Bj <<endl;
@@ -168,12 +187,22 @@ namespace blending {
         vector<Pose*> after_Bj = anim_b->getPosesInRange(Bj+1, anim_b->getNumberOfFrames());
 
         vector<Pose*> inside_k;
+        inside_k.reserve(k);
 
         // Blending Ai with Bj-k+1 to Ai+k-1 with Bj
-        for (int a = Ai, b = Bj - k + 1; a < Ai + k, b < Bj + 1; a++, b++) {
-            
+        for (int a = Ai, b = Bj - k + 1, t = 0; a < Ai + k, b < Bj + 1; a++, b++, t++) {
+            cout << "Blending: blend frame Ai = " << a << " with Bj = " << b << ", t = " << (float)t/(float)(k-1) << endl;
+            Pose* blended_pose = blend_pose(anim_a->getPoseAt(a), anim_b->getPoseAt(b), (float)t/(float)(k-1));
+            inside_k.emplace_back(blended_pose);
         }
 
-        return NULL;
+        pre_Ai.insert(pre_Ai.end(), inside_k.begin(), inside_k.end());
+        pre_Ai.insert(pre_Ai.end(), after_Bj.begin(), after_Bj.end());
+
+        Animation* blend = new Animation(pre_Ai);
+
+        cout << "Blended: new anim size is " << blend->getNumberOfFrames() << endl;
+
+        return blend;
     }
 }

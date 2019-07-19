@@ -20,6 +20,11 @@ int Pose::getPoseFrame()
 	return this->frame;
 }
 
+map<string, glm::quat> Pose::getAllPoses()
+{
+	return this->transf;
+}
+
 glm::quat transf_to_quat(vector<float> tranf, bool dof_x, bool dof_y, bool dof_z) 
 {
 	float rot_[3] = { 0.0, 0.0, 0.0 };
@@ -47,6 +52,11 @@ void Pose::addTransf(string name, vector<float> transf, bool dof_x, bool dof_y, 
 		transf.swap(temp);
 	}
 	this->transf[name] = transf_to_quat(transf, dof_x, dof_y, dof_z);
+}
+
+void Pose::addSingle(string name, glm::quat q)
+{
+	this->transf[name] = q;
 }
 
 Pose::~Pose()
