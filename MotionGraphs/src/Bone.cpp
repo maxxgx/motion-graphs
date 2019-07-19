@@ -34,23 +34,11 @@ Bone::Bone(int id, string name, float dir_x, float dir_y, float dir_z,
 	this->scale = scale;
 }
 
-void Bone::apply_pose(Pose *pose)
+void Bone::apply_pose(Pose* pose)
 {
 	if (pose != NULL)
 	{
-		vector<float> trans = pose->getBoneTrans(this->id);
-
-		float rot_[3] = { 0.0, 0.0, 0.0 };
-		for (int i = 0, j = 0; i < 3 && j < trans.size(); i++) {
-			if (this->dof[i]) {
-				rot_[i] = trans.at(j);
-				j++;
-			}
-			else {
-				rot_[i] = 0.0f;
-			}
-		}
-		this->rot = glm::quat(glm::vec3(glm::radians(rot_[0]), glm::radians(rot_[1]), glm::radians(rot_[2]) ) );
+		this->rot = glm::quat(pose->getBoneTrans(this->name));
 	} else {
 		reset();
 	}	

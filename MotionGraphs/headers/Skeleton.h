@@ -14,6 +14,10 @@
 #include "Scene.h"
 #include "Utils.h"
 
+#include "../includes/imgui/imgui.h"
+#include "../includes/imgui/imgui_impl_glfw.h"
+#include "../includes/imgui/imgui_impl_opengl3.h"
+
 using namespace std;
 
 class Skeleton :
