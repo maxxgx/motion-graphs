@@ -218,7 +218,7 @@ int main()
     // - Read 'misc/fonts/README.txt' for more instructions and details.
     // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
     // io.Fonts->AddFontDefault();
-	io.Fonts->AddFontFromFileTTF("../resources/fonts/Cousine-Regular.ttf", 20.0f);
+	io.Fonts->AddFontFromFileTTF("../resources/fonts/Cousine-Regular.ttf", 26.0f);
     io.Fonts->AddFontFromFileTTF("../resources/fonts/Cousine-Regular.ttf", 30.0f);
     io.Fonts->AddFontFromFileTTF("../resources/fonts/Roboto-Medium.ttf", 32.0f);
     io.Fonts->AddFontFromFileTTF("../resources/fonts/DroidSans.ttf", 32.0f);
