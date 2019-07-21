@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 #include <functional>
+#include <math.h>
 
 #include "PointCloud.h"
 #include "Skeleton.h"
@@ -71,7 +72,7 @@ namespace blending {
     Pose* blend_pose(Pose* a, Pose* b, float t);
 
     /**
-     * Blends motion A to motion B, interpolation between frames Ai to Ai+k-1 with Bj-k+1 to Bj.
+     * Blends motion A to motion B, interpolation between frames Ai-k to Ai+k with Bj-k to Bj+k.
      * 
      * @param  {Animation*} anim_a : motion A
      * @param  {Animation*} anim_b : motion B

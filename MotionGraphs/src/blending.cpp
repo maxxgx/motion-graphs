@@ -41,8 +41,8 @@ namespace blending {
         const int num_frames_a = anim_a->getNumberOfFrames();
         const int num_frames_b = anim_b->getNumberOfFrames();
         double t = glfwGetTime();
-        vector<PointCloud*> cloud_a_total = getCumulativePC(anim_a, sk, k);
-        vector<PointCloud*> cloud_b_total = getCumulativePC(anim_b, sk, k);
+        vector<PointCloud*> cloud_a_total = getCumulativePC(anim_a, sk, 2*k);
+        vector<PointCloud*> cloud_b_total = getCumulativePC(anim_b, sk, 2*k);
         t = glfwGetTime() - t;
 
         // for (int i = v_size -1; i >= 0; i--) {
@@ -176,23 +176,29 @@ namespace blending {
         return blend;
     }
 
+    float continuity(float t, float k)
+    {
+        return 2 * pow((( (float)t+1.f)/(float)k), 3) - 3 * pow((( (float)t+1.f)/(float)k), 2) + 1;
+    }
 
     Animation* blend_anim(Animation *anim_a, Animation *anim_b, int Ai, int Bj, int k)
     {
-        if (Ai + k > anim_a->getNumberOfFrames() || Bj - k + 1 < 0) {
+        if ( (Ai-k < 1 && Ai + k > anim_a->getNumberOfFrames() ) && (Bj-k < 1 && Bj + k > anim_b->getNumberOfFrames() )) {
             cout << "Cannot make transition between frames Ai = " << Ai<<", Bj = " << Bj <<endl;
             return NULL;
         }
-        vector<Pose*> pre_Ai = anim_a->getPosesInRange(0, Ai-1);
-        vector<Pose*> after_Bj = anim_b->getPosesInRange(Bj+1, anim_b->getNumberOfFrames());
+        vector<Pose*> pre_Ai = anim_a->getPosesInRange(0, Ai-k-1);
+        vector<Pose*> after_Bj = anim_b->getPosesInRange(Bj+k+1, anim_b->getNumberOfFrames());
 
         vector<Pose*> inside_k;
         inside_k.reserve(k);
 
-        // Blending Ai with Bj-k+1 to Ai+k-1 with Bj
-        for (int a = Ai, b = Bj - k + 1, t = 0; a < Ai + k, b < Bj + 1; a++, b++, t++) {
+        // Blending Ai-k with Bj-k to Ai+k with Bj+k
+        for (int a = Ai-k, b = Bj-k, t = 0; a <= Ai+k, b <= Bj+k; a++, b++, t++) {
+            float cont = continuity((float)t, (float)k*2 +1);
             cout << "Blending: blend frame Ai = " << a << " with Bj = " << b << ", t = " << (float)t/(float)(k-1) << endl;
-            Pose* blended_pose = blend_pose(anim_a->getPoseAt(a), anim_b->getPoseAt(b), (float)t/(float)(k-1));
+            cout << " || Blending: blend frame Ai = " << a << " with Bj = " << b << ", t = " << cont << endl;
+            Pose* blended_pose = blend_pose(anim_b->getPoseAt(b), anim_a->getPoseAt(a), cont);
             inside_k.emplace_back(blended_pose);
         }
 
