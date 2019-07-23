@@ -51,6 +51,7 @@
         "typeinfo": "cpp",
         "utility": "cpp",
         "algorithm": "cpp",
-        "untitled-1": "cpp"
+        "untitled-1": "cpp",
+        "unordered_set": "cpp"
     }
 }

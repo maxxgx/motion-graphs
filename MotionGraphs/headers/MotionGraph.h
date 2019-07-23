@@ -4,38 +4,58 @@
 #include <algorithm>
 #include <vector>
 #include <map>
+#include <unordered_set>
 
 #include "Animation.h"
+#include "blending.h"
 
 using namespace std;
 
 class Vertex {
 public:
+    Vertex(string name, Animation* motion, string action = "Undefined");
+    Animation* get_anim();
+
+private:
     string v_name;
+    string v_action;
     Animation* anim;
 };
 
 class Edge {
 public:
-    virtual Animation get_motion() = 0;
+    Edge(Vertex* v1, Vertex* v2, int i, int j, float d);
+    virtual ~Edge() {}
 
-    Vertex* v1, v2;
+    virtual Vertex* get_target();
+    float get_weight();
+    Animation get_motion(Vertex* src);
+    pair<int,int> get_frames();
+
+private:
+    Vertex* target;
     int frame_i, frame_j;
-};
-
-class Transition: public Edge {
-public:
-    Animation get_motion();
-};
-
-class OriginalTran: public Edge {
-public:
-    Animation get_motion();
+    float weight;
 };
 
 class MotionGraph {
 public:
-    void add_edge(Vertex* v1, Vertex* v2, Edge e);
+    MotionGraph() {}
+    void add_edge(Vertex* src, Edge e);
+    Animation* get_current_motion();
+    void move_to_next();
+    Vertex* get_head();
 
-    Map<Vertex, vector<Edge>> G;
+    ~MotionGraph() {
+        delete head;
+        for (auto item:G){
+            delete item.first;
+            // for (auto v_item:item.second) delete v_item;
+        }
+    }
+
+private:
+    Edge* get_min_edge();
+    Vertex* head;
+    map<Vertex*, vector<Edge>> G;
 };
