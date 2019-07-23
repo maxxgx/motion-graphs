@@ -1,11 +1,18 @@
 #include "../headers/MotionGraph.h"
 
-Vertex* Edge::get_target() {
+Vertex* Edge::get_target()
+{
     return this->target;
 }
 
-float Edge::get_weight() {
+float Edge::get_weight()
+{
     return this->weight;
+}
+
+pair<int,int> Edge::get_frames()
+{
+    return make_pair(frame_i, frame_j);
 }
 
 Animation* Vertex::get_anim()

@@ -262,7 +262,7 @@ int main()
     future<pair<vector<float>, pair<float,float>>> ftr;
 	map<string, vector<string>> dir_files = get_dirs_files(res_path + "mocap/");
 	Animation* anim_r = NULL;
-
+	
 	/** render loop **/
 	while (!glfwWindowShouldClose(window) && !states.exit)
 	{
