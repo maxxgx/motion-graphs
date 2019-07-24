@@ -262,7 +262,8 @@ int main()
     future<pair<vector<float>, pair<float,float>>> ftr;
 	map<string, vector<string>> dir_files = get_dirs_files(res_path + "mocap/");
 	Animation* anim_r = NULL;
-	
+	mograph::MotionGraph* motion_graph = NULL; 
+
 	/** render loop **/
 	while (!glfwWindowShouldClose(window) && !states.exit)
 	{
@@ -315,11 +316,16 @@ int main()
         GUI::showDistanceMatrix(anim_a_size, anim_b_size, dist_mat, selected_frames, &states.show_selected_frames, &states.update_texture);
         ImGui::Separator();
 		ImGui::ShowMetricsWindow();
+		if (ImGui::Button("Compute motion graph")) {
+			motion_graph = new mograph::MotionGraph(anim_cache, sk, k, &progress);
+			
+		}
+		GUI::showGraphWindow(NULL);
 		
 		GUI::showBasicControls(&states.play, &states.split_screen, &states.exit, &anim_a, &anim_b, &states.current_frame_a, &states.current_frame_b, &states.current_frame_r, 
 			anim_a_size, anim_b_size, &states.speed, dir_files, res_path + "mocap/");
 
-        ImGui::End();
+        ImGui::End(); //last END
 
 		// input
 		// -----

@@ -37,7 +37,7 @@ namespace blending {
      * @param  {Skeleton*} sk         : 
      * @param  {int} k                : 
      * @param  {float} progress       : 
-     * @return {pair<vector<float>,}  : 
+     * @return {pair<vector<float>,}  : a pair containing the distance matrix (1D form) and the range (min-max value).
      */
     pair<vector<float>, pair<float,float>> compute_distance_matrix(Animation *anim_a, Animation *anim_b, Skeleton *sk, int k, float *progress);
 
@@ -60,7 +60,7 @@ namespace blending {
      * @param  {int} h           : height of the matrix
      * @return {vector<int>}     : list of index that are local minima.
      */
-    vector<int> find_local_minima(vector<float> D, int w, int h);
+    vector<pair<int,int>> find_local_minima(vector<float> D, int w, int h);
 
     /**
      * Blends pose A with pose B. Linear interpolation of root position and slerp of rotations.
