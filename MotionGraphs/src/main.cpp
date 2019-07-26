@@ -130,7 +130,7 @@ map<string, Animation*> anim_cache;
 // Loading mocap data: skeleton from .asf and animation (poses) from .amc
 Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
 string anim_a = (file_amc + "3.amc");
-string anim_b = (file_amc + "3.amc");
+string anim_b = (file_amc + "1.amc");
 vector<PointCloud*> PCs_a;
 vector<PointCloud*> PCs_b;
 
@@ -139,6 +139,10 @@ int main()
 	/* Just trying some code in debug */
 	// #ifdef DEBUG
 	// get_distance_matrix();
+	// get_anim(anim_a);
+	// get_anim(anim_b);
+	// mograph::MotionGraph* motion_graph = new mograph::MotionGraph(anim_cache, sk, k, &progress);
+	// Animation* anim_r = motion_graph->get_current_motion();
 	// #endif
 	/** GLFW initialization **/
 	glfwInit();
@@ -264,6 +268,7 @@ int main()
 	Animation* anim_r = NULL;
 	mograph::MotionGraph* motion_graph = NULL; 
 
+
 	/** render loop **/
 	while (!glfwWindowShouldClose(window) && !states.exit)
 	{
@@ -304,7 +309,7 @@ int main()
 					dist_mat_range = dist_mat_res.second;
 					// cout << "dist_mat_res.first.size() = " << dist_mat_res.first.size() << endl;
 					states.compute_running = false;
-					states.update_texture = true;
+						states.update_texture = true;
 				}
 			}
 		}
@@ -318,7 +323,7 @@ int main()
 		ImGui::ShowMetricsWindow();
 		if (ImGui::Button("Compute motion graph")) {
 			motion_graph = new mograph::MotionGraph(anim_cache, sk, k, &progress);
-			
+			anim_r = motion_graph->get_current_motion();
 		}
 		GUI::showGraphWindow(NULL);
 		
@@ -350,6 +355,17 @@ int main()
 			glViewport(region_b.posX, region_b.posY, region_b.width, region_b.height);
 			update(get_anim(anim_b), &states.current_frame_b, selected_frames.second);
 			draw(plane, sphere, cylinder, cube, diffShader, lampShader, region_b, PCs_b);
+		}
+		else if (motion_graph != NULL) {
+			glViewport(curr_window.posX, curr_window.posY, curr_window.width, curr_window.height);
+			if (anim_r->getCurrentFrame() + 1 >= anim_r->getNumberOfFrames()) {
+				update(anim_r, &states.current_frame_r, 1);
+				motion_graph->move_to_next();
+				anim_r = motion_graph->get_current_motion();
+			} else 
+				update(anim_r, &states.current_frame_r, 1);
+			cout << "update, frame = " << states.current_frame_r << endl;
+			draw(plane, sphere, cylinder, cube, diffShader, lampShader, curr_window, PCs_a);
 		}
 		else { 
 			// Show only the result of the blending

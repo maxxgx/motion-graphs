@@ -52,12 +52,11 @@ namespace mograph {
 
     Edge* MotionGraph::get_min_edge()
     {
-        vector<Edge> edges = G[head.first];
         Edge* min;
         float min_w = std::numeric_limits<float>::infinity();
-        for (auto e:edges) {
+        for (auto e:G[head.first]) {
             if (e.get_weight() < min_w) {
-                min = &e;
+                min = new Edge(e.get_target(), e.get_frames().first, e.get_frames().second, e.get_weight());
                 min_w = e.get_weight();
             }
         }
@@ -66,8 +65,17 @@ namespace mograph {
 
     Animation* MotionGraph::get_current_motion()
     {
-        return blending::blend_anim(head.first->get_anim(), head.second->get_target()->get_anim(), 
-             head.second->get_frames().first, head.second->get_frames().second, 40);
+        this->head.second = get_min_edge();
+        // Vertex* tar = head.second->get_target();
+        // Animation* tar_anim = head.second->get_target()->get_anim();
+        // cout << "tar_anim size = " <<  this->head.second->get_target()->get_anim()->getNumberOfFrames() << endl;
+        int i = this->head.second->get_frames().first;
+        int j = this->head.second->get_frames().second;
+        // cout << "Getting current motion: head.first = " << head.first->get_anim()->getNumberOfFrames() << 
+            // ",head.second = " << head.second->get_target()->get_anim()->getNumberOfFrames() << endl;
+        Animation* A = head.first->get_anim();
+        Animation* B = head.second->get_target()->get_anim();
+        return blending::blend_anim(A, B, i, j, 40);
     }
 
     pair<Vertex*, Edge*> MotionGraph::get_head()
@@ -87,6 +95,9 @@ namespace mograph {
         map<string, Vertex*> vert_map;
         for (auto A:anim_list) {
             vert_map[A.first] = new Vertex(A.first, A.second);
+            if (head.first == NULL) {
+                head.first = vert_map[A.first];
+            }
             cout << "Adding vertex " << A.first <<endl;
         }
         cout << "Added " << vert_map.size() << " vertices..." << endl;
@@ -100,11 +111,19 @@ namespace mograph {
                     auto dist_mat_range = blending::compute_distance_matrix(A.second, B.second, sk, k, progress);
                     int size_a = A.second->getNumberOfFrames();
                     int size_b = B.second->getNumberOfFrames();
-                    vector<pair<int,int>> local_minimas = blending::find_local_minima(dist_mat_range.first, size_a, size_b);
-
+                    if (size_a * size_b != dist_mat_range.first.size()) {
+                        cout << "----------------------\tdist_mat size is different than num of frame" << endl;
+                    } else
+                    {
+                         cout << "----------------------\t size == num of frame" << endl;
+                    }
+                    
+                    vector<pair<int,int>> local_minimas = blending::find_local_minima(dist_mat_range.first, size_b, size_a);
+                    cout << "----------------------\t local minima done" << endl;
                     vector<Edge> edges_a, edges_b;
                     for (auto l:local_minimas) {
                         int i = l.first, j = l.second;
+                        cout << " i = " << i << ", j = " << j << endl; 
                         float d = dist_mat_range.first.at(i*size_b + j);
                         Edge e(vert_map[B.first], l.first, l.second, d);
                         edges_a.push_back(e);
