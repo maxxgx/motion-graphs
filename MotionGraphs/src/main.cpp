@@ -159,8 +159,8 @@ int main()
 	GLFWvidmode *primary_mode = (GLFWvidmode*)glfwGetVideoMode(glfwGetPrimaryMonitor());
 	fullscreen_window.width = primary_mode->width; 
 	fullscreen_window.height = primary_mode-> height;
-	curr_window.width = fullscreen_window.width * .75f;
-	curr_window.height = fullscreen_window.height * .75f;
+	curr_window.width = fullscreen_window.width;
+	curr_window.height = fullscreen_window.height;
 	init_window = curr_window;
 	cout << "Screen size: " << fullscreen_window.width << "x" << fullscreen_window.height << endl;
 	cout << "Init window size: " << init_window.width << "x" << init_window.height << endl;
@@ -240,12 +240,35 @@ int main()
 #else
 	Shader diffShader((ROOT_DIR + "/shaders/basic_lighting.vs").c_str(), (ROOT_DIR + "/shaders/basic_lighting.fs").c_str());
 	Shader lampShader((ROOT_DIR + "/shaders/lamp.vs").c_str(), (ROOT_DIR + "/shaders/lamp.fs").c_str());
+	Shader screenShader((ROOT_DIR + "/shaders/screen.vs").c_str(), (ROOT_DIR + "/shaders/screen.fs").c_str());
 #endif
 	Model sphere(FileSystem::getPath("resources/objects/sphere/sphere.obj"));
 	Model cylinder(FileSystem::getPath("resources/objects/cylinder/cylinder.obj"));
 	Model plane(FileSystem::getPath("resources/objects/plane/plane.obj"));
 	Model monkey(FileSystem::getPath("resources/objects/monkey/monkey.obj"));
 	CubeCore cube = CubeCore();
+
+	float quadVer[] = {
+		//pos 	//texcord
+		-1.0f, 	1.0f, 0.0, 1.0f,
+		-1.0f, -1.0f, 0.0, 0.0f,
+		 1.0f, -1.0f, 1.0, 0.0f,
+
+		-1.0f,  1.0f, 0.0, 1.0f,
+		 1.0f, -1.0f, 1.0, 0.0f,
+		 1.0f,  1.0f, 1.0, 1.0f,
+	};
+	// screen quad VAO
+    unsigned int quadVAO, quadVBO;
+    glGenVertexArrays(1, &quadVAO);
+    glGenBuffers(1, &quadVBO);
+    glBindVertexArray(quadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVer), &quadVer, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
 	// Lights buffers
 	lamp.setBuffers();
@@ -257,6 +280,34 @@ int main()
 
 	// Set shader to use
 	diffShader.use();
+
+	screenShader.use();
+    screenShader.setInt("screenTexture", 0);
+
+    // framebuffer configuration
+    // -------------------------
+    unsigned int framebuffer;
+    glGenFramebuffers(1, &framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    // create a color attachment texture
+    unsigned int textureColorbuffer;
+    glGenTextures(1, &textureColorbuffer);
+    glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, curr_window.width, curr_window.height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
+    // create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
+    unsigned int rbo;
+    glGenRenderbuffers(1, &rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, curr_window.width, curr_window.height); // use a single renderbuffer object for both a depth AND stencil buffer.
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo); // now actually attach it
+    // now that we actually created the framebuffer and added all attachments we want to check if it is actually complete now
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 	
     // Vars
     static pair<int,int> selected_frames = {0,0};
@@ -341,6 +392,8 @@ int main()
 
 
 		// Rendering
+		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+        glEnable(GL_DEPTH_TEST);
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
 
@@ -373,6 +426,53 @@ int main()
 			update(anim_r, &states.current_frame_r, 1);
 			draw(plane, sphere, cylinder, cube, diffShader, lampShader, curr_window, PCs_a);
 		}
+
+		 // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glDisable(GL_DEPTH_TEST); // disable depth test so screen-space quad isn't discarded due to depth test.
+        // clear all relevant buffers
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
+        glClear(GL_COLOR_BUFFER_BIT);
+		glViewport(fullscreen_window.posX, fullscreen_window.posY, fullscreen_window.width, fullscreen_window.height);
+
+        screenShader.use();
+        glBindVertexArray(quadVAO);
+        glBindTexture(GL_TEXTURE_2D, textureColorbuffer);	// use the color attachment texture as the texture of the quad plane
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		// 2D texture for drawing the graph
+		// glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+        // glEnable(GL_DEPTH_TEST);
+		// glClearColor(1.0f, 0.3f, 0.3f, 1.0f);
+		// glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
+		// glBindVertexArray(quadVAO);
+        // glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		//  // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
+        // glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        // glDisable(GL_DEPTH_TEST); // disable depth test so screen-space quad isn't discarded due to depth test.
+        // // clear all relevant buffers
+        // glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
+        // glClear(GL_COLOR_BUFFER_BIT);
+		// glViewport(fullscreen_window.posX, fullscreen_window.posY, fullscreen_window.width, fullscreen_window.height);
+
+        // screenShader.use();
+        // glBindVertexArray(quadVAO);
+        // glBindTexture(GL_TEXTURE_2D, textureColorbuffer);	// use the color attachment texture as the texture of the quad plane
+        // glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		{
+			ImGui::Begin("CACCA");
+
+			ImTextureID my_tex_id = (void*)(intptr_t)textureColorbuffer;
+			static float zoom = 0.5f;
+			ImGui::SliderFloat("Zoom", &zoom, 0.1f, 5.0f);
+			ImGui::Image(my_tex_id, ImVec2(curr_window.width*zoom, curr_window.height*zoom), 
+			ImVec2(0,0), ImVec2(1,-1));
+
+			ImGui::End();
+		}
+
 		if (timings.dt_update >= states.speed) timings.dt_update = 0.f;
 		// End Rendering
 
@@ -659,11 +759,13 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	glViewport(0, 0, width, height);
 	curr_window.width = width;
 	curr_window.height = height;
-	region_a.width = curr_window.width / 2;
-	region_a.height = curr_window.height;
-	region_b.width = curr_window.width / 2;
-	region_b.height = curr_window.height;
-	region_b.posX = curr_window.width/2;
+	region_a.width = width / 2;
+	region_a.height = height;
+	region_b.width = width / 2;
+	region_b.height = height;
+	region_b.posX = width/2;
+
+	cout << "new width = " << width << " | region a w = " << region_a.width << ", region b w = " << region_b.width <<endl;
 }
 
 
