@@ -241,6 +241,7 @@ int main()
 	Shader diffShader((ROOT_DIR + "/shaders/basic_lighting.vs").c_str(), (ROOT_DIR + "/shaders/basic_lighting.fs").c_str());
 	Shader lampShader((ROOT_DIR + "/shaders/lamp.vs").c_str(), (ROOT_DIR + "/shaders/lamp.fs").c_str());
 	Shader screenShader((ROOT_DIR + "/shaders/screen.vs").c_str(), (ROOT_DIR + "/shaders/screen.fs").c_str());
+	Shader basicShader((ROOT_DIR + "/shaders/basic.vs").c_str(), (ROOT_DIR + "/shaders/basic.fs").c_str());
 #endif
 	Model sphere(FileSystem::getPath("resources/objects/sphere/sphere.obj"));
 	Model cylinder(FileSystem::getPath("resources/objects/cylinder/cylinder.obj"));
@@ -289,14 +290,18 @@ int main()
     unsigned int framebuffer;
     glGenFramebuffers(1, &framebuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+	// create the framebuffer for plotting
+	unsigned int framebufferPlot;
+    glGenFramebuffers(1, &framebufferPlot);
+
     // create a color attachment texture
-    unsigned int textureColorbuffer;
-    glGenTextures(1, &textureColorbuffer);
-    glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+    unsigned int textureMainBuffer;
+    glGenTextures(1, &textureMainBuffer);
+    glBindTexture(GL_TEXTURE_2D, textureMainBuffer);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, curr_window.width, curr_window.height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureMainBuffer, 0);
     // create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
     unsigned int rbo;
     glGenRenderbuffers(1, &rbo);
@@ -437,38 +442,59 @@ int main()
 
         screenShader.use();
         glBindVertexArray(quadVAO);
-        glBindTexture(GL_TEXTURE_2D, textureColorbuffer);	// use the color attachment texture as the texture of the quad plane
+        glBindTexture(GL_TEXTURE_2D, textureMainBuffer);	// use the color attachment texture as the texture of the quad plane
         glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		// 2D texture for drawing the graph
-		// glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-        // glEnable(GL_DEPTH_TEST);
-		// glClearColor(1.0f, 0.3f, 0.3f, 1.0f);
-		// glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
-		// glBindVertexArray(quadVAO);
-        // glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		//  // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
-        // glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        // glDisable(GL_DEPTH_TEST); // disable depth test so screen-space quad isn't discarded due to depth test.
-        // // clear all relevant buffers
-        // glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
-        // glClear(GL_COLOR_BUFFER_BIT);
-		// glViewport(fullscreen_window.posX, fullscreen_window.posY, fullscreen_window.width, fullscreen_window.height);
-
-        // screenShader.use();
-        // glBindVertexArray(quadVAO);
-        // glBindTexture(GL_TEXTURE_2D, textureColorbuffer);	// use the color attachment texture as the texture of the quad plane
-        // glDrawArrays(GL_TRIANGLES, 0, 6);
-
 		{
 			ImGui::Begin("CACCA");
+			static unsigned int texturePlotBuffer;
+			
+			static bool show = false;
+			static float off_x = 0.f;
+			static float off_y = 0.f;
+			static float scale = 1.f;
+			show = true;
+			if(ImGui::Button("Update")) {
+				glBindFramebuffer(GL_FRAMEBUFFER, framebufferPlot);
+				
+				glGenTextures(1, &texturePlotBuffer);
+				glBindTexture(GL_TEXTURE_2D, texturePlotBuffer);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, fullscreen_window.width, fullscreen_window.height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texturePlotBuffer, 0);
 
-			ImTextureID my_tex_id = (void*)(intptr_t)textureColorbuffer;
-			static float zoom = 0.5f;
-			ImGui::SliderFloat("Zoom", &zoom, 0.1f, 5.0f);
-			ImGui::Image(my_tex_id, ImVec2(curr_window.width*zoom, curr_window.height*zoom), 
-			ImVec2(0,0), ImVec2(1,-1));
+        		glDisable(GL_DEPTH_TEST);
+				// 2D texture for drawing the graph
+				glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
+
+    			glViewport(fullscreen_window.posX, fullscreen_window.posY, fullscreen_window.width, fullscreen_window.height);
+
+				basicShader.use();
+				basicShader.setVec3("objectColor", .05f, 0.95f, 0.95f);
+				glm::mat4 model = glm::mat4(1.0f);
+				model = glm::translate(model, glm::vec3(off_x, off_y, 0));
+				model = glm::scale(model, glm::vec3(scale, scale , scale));
+				basicShader.setMat4("model", model);
+				// pass projection matrix to shader (note that in this case it could change every frame)
+				glm::mat4 projection = glm::ortho(0.0f, (float)fullscreen_window.width, 0.0f, (float)fullscreen_window.height, 0.0f, 1000000.f);
+				diffShader.setMat4("projection", projection);
+
+				cube.setBuffers();
+				glDrawArrays(GL_TRIANGLES, 0, 36);
+
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			}
+			if (show) {
+				ImTextureID my_tex_id = (void*)(intptr_t)texturePlotBuffer;
+				static float zoom = 0.5f;
+				ImGui::SliderFloat("Zoom", &zoom, 0.1f, 5.0f);
+				ImGui::SliderFloat("Scale", &scale, 1.f, 10000.0f);
+				ImGui::SliderFloat("translate x", &off_x, 0.f, (float)fullscreen_window.width);
+				ImGui::SliderFloat("translate y", &off_y, 0.f, (float)fullscreen_window.height);
+				ImGui::Image(my_tex_id, ImVec2(curr_window.width*zoom, curr_window.height*zoom), 
+				ImVec2(0,0), ImVec2(1,-1));				
+			}
 
 			ImGui::End();
 		}
