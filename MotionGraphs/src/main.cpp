@@ -716,7 +716,7 @@ void plot_motion_graph(mograph::MotionGraph* graph, Model quad_mesh, Model line,
 
 	int padding_left = 200, padding_top = 200;
 	float vertex_offset_h = 200*scale;
-	float scale_line_thick = 5*scale, scale_line_narrow = scale_line_thick/3, scale_point = 10*scale;
+	float scale_line_thick = 5*scale, scale_line_narrow = scale_line_thick/5, scale_point = 10*scale;
 	for (auto v_es:graph->get_graph()) // v_es -> pair<Vertex*, vector<Edges>>
 	// for (int i = 0 ; i < 5; i++)
 	{
@@ -767,7 +767,8 @@ void plot_motion_graph(mograph::MotionGraph* graph, Model quad_mesh, Model line,
 			if (v_idx[v] > 0) {
 				shader.setVec3("objectColor", .6f, 0.6f, 0.6f);
 				int B = e.get_frames().second * scale * 2;
-				glm::vec3 p1 = glm::vec3(x_pos - length_half + (float)B, y_pos - vertex_offset_h, 1.f);
+				float tar_h = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[e.get_target()];
+				glm::vec3 p1 = glm::vec3(x_pos - length_half + (float)B, tar_h, 1.f);
 				glm::vec3 p2 = glm::vec3(x_pos - length_half + (float)A, y_pos, 1.f);
 				plot_line_between_p1_p2(p1, p2, line, shader, scale_line_narrow);	
 			}
@@ -784,7 +785,7 @@ void plot_motion_graph(mograph::MotionGraph* graph, Model quad_mesh, Model line,
 	float x_pos_2 = offset_x+scale/2 + padding_left;
 	glm::vec3 p1 = glm::vec3(x_pos_1 + (float)A, tar_h_offset_1, 1.f);
 	glm::vec3 p2 = glm::vec3(x_pos_2 + (float)B, tar_h_offset_2, 1.f);
-	plot_line_between_p1_p2(p1, p2, line, shader, scale_line_narrow);	
+	plot_line_between_p1_p2(p1, p2, line, shader, scale_line_narrow);
 
 }
 
