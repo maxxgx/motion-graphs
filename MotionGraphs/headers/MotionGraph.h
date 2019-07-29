@@ -17,6 +17,8 @@ namespace mograph {
     public:
         Vertex(string name, Animation* motion, string action = "Undefined");
         Animation* get_anim();
+        string get_name();
+        string get_action();
 
     private:
         string v_name;

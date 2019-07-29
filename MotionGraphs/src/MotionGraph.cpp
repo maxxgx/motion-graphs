@@ -22,6 +22,16 @@ namespace mograph {
         return this->anim;
     }
 
+    string Vertex::get_name()
+    {
+        return this->v_name;
+    }
+
+    string Vertex::get_action()
+    {
+        return this->v_action;
+    }
+
     Vertex* Edge::get_target()
     {
         return this->target;

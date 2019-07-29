@@ -99,6 +99,8 @@ void update(Animation* anim, int *current_frame, int selected_frame);
 
 void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader, 
 		screen_size window_region, vector<PointCloud*> PC);
+void plot_line_between_p1_p2(glm::vec3 p1, glm::vec3 p2, Model line, Shader shader, float thickness);
+void plot_motion_graph(mograph::MotionGraph* graph, Model quad_mesh, Model line, Shader shader, float offset_x, float offset_y, float scale);
 
 pair<vector<float>, pair<float,float>> get_distance_matrix();
 
@@ -302,6 +304,17 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureMainBuffer, 0);
+	// Texture for the graph plot
+	glBindFramebuffer(GL_FRAMEBUFFER, framebufferPlot);
+	unsigned int texturePlotBuffer;
+	glGenTextures(1, &texturePlotBuffer);
+	glBindTexture(GL_TEXTURE_2D, texturePlotBuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, fullscreen_window.width, fullscreen_window.height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texturePlotBuffer, 0);
+    
+	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
     // create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
     unsigned int rbo;
     glGenRenderbuffers(1, &rbo);
@@ -311,7 +324,7 @@ int main()
     // now that we actually created the framebuffer and added all attachments we want to check if it is actually complete now
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	
     // Vars
@@ -445,24 +458,15 @@ int main()
         glBindTexture(GL_TEXTURE_2D, textureMainBuffer);	// use the color attachment texture as the texture of the quad plane
         glDrawArrays(GL_TRIANGLES, 0, 6);
 		{
-			ImGui::Begin("CACCA");
-			static unsigned int texturePlotBuffer;
+			ImGui::Begin("Motion graph");
 			
 			static bool show = false;
 			static float off_x = 0.f;
 			static float off_y = 0.f;
 			static float scale = 1.f;
 			show = true;
-			if(ImGui::Button("Update")) {
+			// if(ImGui::Button("Update")) {
 				glBindFramebuffer(GL_FRAMEBUFFER, framebufferPlot);
-				
-				glGenTextures(1, &texturePlotBuffer);
-				glBindTexture(GL_TEXTURE_2D, texturePlotBuffer);
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, fullscreen_window.width, fullscreen_window.height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texturePlotBuffer, 0);
-
         		glDisable(GL_DEPTH_TEST);
 				// 2D texture for drawing the graph
 				glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -470,31 +474,20 @@ int main()
 
     			glViewport(fullscreen_window.posX, fullscreen_window.posY, fullscreen_window.width, fullscreen_window.height);
 
-				basicShader.use();
-				basicShader.setVec3("objectColor", .05f, 0.95f, 0.95f);
-				glm::mat4 model = glm::mat4(1.0f);
-				model = glm::translate(model, glm::vec3(off_x, off_y, 0));
-				model = glm::scale(model, glm::vec3(scale, scale , scale));
-				basicShader.setMat4("model", model);
-				// pass projection matrix to shader (note that in this case it could change every frame)
-				glm::mat4 projection = glm::ortho(0.0f, (float)fullscreen_window.width, 0.0f, (float)fullscreen_window.height, 0.0f, 1000000.f);
-				diffShader.setMat4("projection", projection);
-
-				cube.setBuffers();
-				glDrawArrays(GL_TRIANGLES, 0, 36);
-
-				glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			}
+				plot_motion_graph(motion_graph, plane, cylinder, basicShader, off_x, off_y, scale);
+				if (motion_graph != NULL) {
+				}
 			if (show) {
 				ImTextureID my_tex_id = (void*)(intptr_t)texturePlotBuffer;
 				static float zoom = 0.5f;
 				ImGui::SliderFloat("Zoom", &zoom, 0.1f, 5.0f);
-				ImGui::SliderFloat("Scale", &scale, 1.f, 10000.0f);
+				ImGui::SliderFloat("Scale", &scale, 1.f, 10.0f);
 				ImGui::SliderFloat("translate x", &off_x, 0.f, (float)fullscreen_window.width);
 				ImGui::SliderFloat("translate y", &off_y, 0.f, (float)fullscreen_window.height);
 				ImGui::Image(my_tex_id, ImVec2(curr_window.width*zoom, curr_window.height*zoom), 
-				ImVec2(0,0), ImVec2(1,-1));				
+				ImVec2(0,0), ImVec2(1,1));				
 			}
+			// }
 
 			ImGui::End();
 		}
@@ -502,6 +495,7 @@ int main()
 		if (timings.dt_update >= states.speed) timings.dt_update = 0.f;
 		// End Rendering
 
+		glBindFramebuffer(GL_FRAMEBUFFER, 0); // change framebuffer to default one
 		//glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		//-------------------------------------------------------------------------------
 		glfwPollEvents();
@@ -676,6 +670,122 @@ void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffS
 	float render_time = glfwGetTime() - render_start_time;
 	timings.agg_render += render_time;
 	/** END RENDERING **/
+}
+
+void plot_line_between_p1_p2(glm::vec3 p1, glm::vec3 p2, Model line, Shader shader, float thickness)
+{
+	glm::vec3 diff = p1-p2; // vec between p1 and p2
+	glm::vec3 v = glm::vec3(0.f, 1.f, 0.f); // initial axis of objection
+	
+	glm::vec3 rot_ax = glm::cross(v, diff);
+	float len = glm::sqrt(glm::dot(diff, diff)); //length of vector diff
+	//rotation angle to align object with vector diff
+	float angle = glm::acos(glm::dot(v, diff) / len);
+
+	glm::mat4 model = glm::mat4(1.0f);
+	model = glm::translate(model, p1);
+	model = glm::translate(model, -diff / 2.f);
+	// model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f) );
+	model = glm::rotate(model, angle, rot_ax );
+	model = glm::scale(model, glm::vec3(thickness, len/2, thickness));
+	shader.setMat4("model", model);
+	line.Draw(shader);
+}
+
+void plot_motion_graph(mograph::MotionGraph* graph, Model quad_mesh, Model line, Shader shader, float offset_x, float offset_y, float scale) 
+{
+	if (graph == NULL) return;
+
+	shader.use();
+	// Same projection for every draw call
+	glm::mat4 projection = glm::ortho(0.0f, (float)fullscreen_window.width, 0.0f, (float)fullscreen_window.height, 0.0f, 1000000.f);
+	shader.setMat4("projection", projection);
+
+		// shader.setVec3("objectColor", .05f, 0.95f, 0.95f);
+		// glm::mat4 model = glm::mat4(1.0f);
+		// model = glm::translate(model, glm::vec3(offset_x, offset_y, 0));
+		// model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f) );
+		// model = glm::scale(model, glm::vec3(scale, scale , scale));
+		// shader.setMat4("model", model);
+		// quad_mesh.Draw(shader);
+	
+	map<mograph::Vertex*, int> v_idx;
+	int idx = 0;
+	// store the vertex plot index
+	for (auto v_es:graph->get_graph()) { v_idx[v_es.first] = idx; idx++; };
+
+	int padding_left = 200, padding_top = 200;
+	float vertex_offset_h = 200*scale;
+	float scale_line_thick = 5*scale, scale_line_narrow = scale_line_thick/3, scale_point = 10*scale;
+	for (auto v_es:graph->get_graph()) // v_es -> pair<Vertex*, vector<Edges>>
+	// for (int i = 0 ; i < 5; i++)
+	{
+		mograph::Vertex* v = v_es.first;
+		// Draw vertex => motion line
+		shader.setVec3("objectColor", .6f, 0.6f, 0.6f);
+		int length_half = v->get_anim()->getNumberOfFrames() * scale;
+		float x_pos = offset_x+scale/2 + padding_left + length_half;
+		float y_pos = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[v];
+		glm::mat4 model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(x_pos, y_pos, 0));
+		model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f) );
+		model = glm::scale(model, glm::vec3(length_half, 1.f , scale_line_thick));
+		// model = glm::translate(model, glm::vec3(offset_x, offset_y, 0));
+		// model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f) );
+		// model = glm::scale(model, glm::vec3(scale, scale , scale));
+		shader.setMat4("model", model);
+		quad_mesh.Draw(shader);
+		// cout << "drawing vertex " << v->get_name() << " | x = " << x_pos << ", y = " << y_pos << endl;
+
+		shader.setVec3("objectColor",1.f, 0.05f, 0.05f);
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(x_pos - length_half, y_pos, 0));
+		model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f) );
+		model = glm::scale(model, glm::vec3(scale_point/5, 1.f,  scale_line_thick));
+		shader.setMat4("model", model);
+		quad_mesh.Draw(shader);
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(x_pos + length_half, y_pos, 0));
+		model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f) );
+		model = glm::scale(model, glm::vec3(scale_point/5, 1.f, scale_line_thick));
+		shader.setMat4("model", model);
+		quad_mesh.Draw(shader);
+
+		// Draw the local minimas points on the animation line
+		for (mograph::Edge e:v_es.second) {
+			shader.setVec3("objectColor", .75f, 0.75f, 0.75f);
+			// Drawing the bars on the animation line
+			int A = e.get_frames().first * scale * 2;
+			model = glm::mat4(1.0f);
+			model = glm::translate(model, glm::vec3(x_pos - length_half + A, y_pos, 0));
+			model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f) );
+			model = glm::scale(model, glm::vec3(scale_point/5, 1.f, scale_point));
+			shader.setMat4("model", model);
+			quad_mesh.Draw(shader);
+			
+			// Drawing the lines connecting the bars | from botton vertex to top vertex
+			if (v_idx[v] > 0) {
+				shader.setVec3("objectColor", .6f, 0.6f, 0.6f);
+				int B = e.get_frames().second * scale * 2;
+				glm::vec3 p1 = glm::vec3(x_pos - length_half + (float)B, y_pos - vertex_offset_h, 1.f);
+				glm::vec3 p2 = glm::vec3(x_pos - length_half + (float)A, y_pos, 1.f);
+				plot_line_between_p1_p2(p1, p2, line, shader, scale_line_narrow);	
+			}
+		}
+	}
+	// Draw the current edge
+	shader.setVec3("objectColor", .05f, 0.75f, 0.05f);
+	mograph::Edge* head_edge = graph->get_head().second;
+	float A = head_edge->get_frames().first * scale * 2;
+	float B = head_edge->get_frames().second * scale * 2;
+	float tar_h_offset_1 = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[graph->get_head().first];
+	float tar_h_offset_2 = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[head_edge->get_target()];
+	float x_pos_1 = offset_x+scale/2 + padding_left;
+	float x_pos_2 = offset_x+scale/2 + padding_left;
+	glm::vec3 p1 = glm::vec3(x_pos_1 + (float)A, tar_h_offset_1, 1.f);
+	glm::vec3 p2 = glm::vec3(x_pos_2 + (float)B, tar_h_offset_2, 1.f);
+	plot_line_between_p1_p2(p1, p2, line, shader, scale_line_narrow);	
+
 }
 
 
