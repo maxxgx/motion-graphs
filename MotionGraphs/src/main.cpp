@@ -65,7 +65,7 @@ struct controls {
 
 	bool update_texture = false;
 
-	bool compute_running = false;
+	bool compute_running = false, compute_mograph = false;
 
 	// COntrols
 	int current_frame_a = 1, current_frame_b = 1, current_frame_r = 1;
@@ -103,6 +103,7 @@ void plot_line_between_p1_p2(glm::vec3 p1, glm::vec3 p2, Model line, Shader shad
 void plot_motion_graph(mograph::MotionGraph* graph, Model quad_mesh, Model line, Shader shader, float offset_x, float offset_y, float scale);
 
 pair<vector<float>, pair<float,float>> get_distance_matrix();
+mograph::MotionGraph* get_motion_graph();
 
 
 // Camera
@@ -119,7 +120,8 @@ float scale = 0.056444f; //inches to meters
 
 int skip_frame = 1;
 int k = 40;
-float progress = 0;
+float progress = 0.f;
+float progress_mograph = 0.f;
 
 // Animation & skeleton
 string res_path = ROOT_DIR + "/resources/";
@@ -334,6 +336,8 @@ int main()
     static vector<float> dist_mat;
     future<pair<vector<float>, pair<float,float>>> ftr;
 	map<string, vector<string>> dir_files = get_dirs_files(res_path + "mocap/");
+
+	future<mograph::MotionGraph*> ftr_mograph;
 	Animation* anim_r = NULL;
 	mograph::MotionGraph* motion_graph = NULL; 
 
@@ -364,7 +368,7 @@ int main()
 			states.show_selected_frames=false;
 		}
 		ImGui::PopStyleColor(2);
-		ImGui::Text("\t\t");
+		ImGui::SameLine();ImGui::Text("\t\t");ImGui::SameLine();
 		if (ImGui::Button("BLEND") ) {
 			anim_r = blending::blend_anim(get_anim(anim_a), get_anim(anim_b), states.current_frame_a, states.current_frame_b, k);
 		}
@@ -378,7 +382,7 @@ int main()
 					dist_mat_range = dist_mat_res.second;
 					// cout << "dist_mat_res.first.size() = " << dist_mat_res.first.size() << endl;
 					states.compute_running = false;
-						states.update_texture = true;
+					states.update_texture = true;
 				}
 			}
 		}
@@ -390,10 +394,6 @@ int main()
         GUI::showDistanceMatrix(anim_a_size, anim_b_size, dist_mat, selected_frames, &states.show_selected_frames, &states.update_texture);
         ImGui::Separator();
 		ImGui::ShowMetricsWindow();
-		if (ImGui::Button("Compute motion graph")) {
-			motion_graph = new mograph::MotionGraph(anim_cache, sk, k, &progress);
-			anim_r = motion_graph->get_current_motion();
-		}
 		GUI::showGraphWindow(NULL);
 		
 		GUI::showBasicControls(&states.play, &states.split_screen, &states.exit, &anim_a, &anim_b, &states.current_frame_a, &states.current_frame_b, &states.current_frame_r, 
@@ -458,36 +458,50 @@ int main()
         glBindTexture(GL_TEXTURE_2D, textureMainBuffer);	// use the color attachment texture as the texture of the quad plane
         glDrawArrays(GL_TRIANGLES, 0, 6);
 		{
+			ImGui::PushStyleColor(ImGuiCol_Button, !states.compute_mograph ? GUI::color_green : GUI::color_red);
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, !states.compute_mograph ? GUI::color_green_h : GUI::color_red_h);
 			ImGui::Begin("Motion graph");
-			
+			if (ImGui::Button("Compute motion graph") && !states.compute_mograph) {
+				// ftr_mograph = std::async(get_motion_graph);
+				// states.compute_mograph = true;
+				motion_graph = new mograph::MotionGraph(anim_cache, sk, k, &progress_mograph);
+				anim_r = motion_graph->get_current_motion();
+			}
+			ImGui::PopStyleColor(2);
+			// Only tries to retrieve the return value of the thread compute, if it is has started.
+			// if (states.compute_mograph) {
+			// 	auto status = ftr_mograph.wait_for(0ms);
+			// 	if(status == std::future_status::ready){
+			// 		if (ftr_mograph.valid()) {
+			// 			motion_graph = ftr_mograph.get();
+			// 			anim_r = motion_graph->get_current_motion();
+			// 			states.compute_mograph = false;
+			// 		}
+			// 	}
+			// }
+			// ImGui::SameLine();
+			// ImGui::ProgressBar(progress_mograph >= 0.98 ? 1.0f : progress_mograph, ImVec2(0.0f,0.0f));
 			static bool show = false;
 			static float off_x = 0.f;
 			static float off_y = 0.f;
 			static float scale = 1.f;
-			show = true;
-			// if(ImGui::Button("Update")) {
-				glBindFramebuffer(GL_FRAMEBUFFER, framebufferPlot);
-        		glDisable(GL_DEPTH_TEST);
-				// 2D texture for drawing the graph
-				glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
+			glBindFramebuffer(GL_FRAMEBUFFER, framebufferPlot);
+			glDisable(GL_DEPTH_TEST);
+			// 2D texture for drawing the graph
+			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
 
-    			glViewport(fullscreen_window.posX, fullscreen_window.posY, fullscreen_window.width, fullscreen_window.height);
+			glViewport(fullscreen_window.posX, fullscreen_window.posY, fullscreen_window.width, fullscreen_window.height);
 
-				plot_motion_graph(motion_graph, plane, cylinder, basicShader, off_x, off_y, scale);
-				if (motion_graph != NULL) {
-				}
-			if (show) {
-				ImTextureID my_tex_id = (void*)(intptr_t)texturePlotBuffer;
-				static float zoom = 0.5f;
-				ImGui::SliderFloat("Zoom", &zoom, 0.1f, 5.0f);
-				ImGui::SliderFloat("Scale", &scale, 1.f, 10.0f);
-				ImGui::SliderFloat("translate x", &off_x, 0.f, (float)fullscreen_window.width);
-				ImGui::SliderFloat("translate y", &off_y, 0.f, (float)fullscreen_window.height);
-				ImGui::Image(my_tex_id, ImVec2(curr_window.width*zoom, curr_window.height*zoom), 
-				ImVec2(0,0), ImVec2(1,1));				
-			}
-			// }
+			plot_motion_graph(motion_graph, plane, cylinder, basicShader, off_x, off_y, scale);
+			ImTextureID my_tex_id = (void*)(intptr_t)texturePlotBuffer;
+			static float zoom = 0.5f;
+			ImGui::SliderFloat("Zoom", &zoom, 0.1f, 5.0f);
+			ImGui::SliderFloat("Scale", &scale, 1.f, 10.0f);
+			ImGui::SliderFloat("translate x", &off_x, 0.f, (float)fullscreen_window.width);
+			ImGui::SliderFloat("translate y", &off_y, 0.f, (float)fullscreen_window.height);
+			ImGui::Image(my_tex_id, ImVec2(curr_window.width*zoom, curr_window.height*zoom), 
+			ImVec2(0,0), ImVec2(1,1));				
 
 			ImGui::End();
 		}
@@ -963,4 +977,10 @@ map<string, vector<string>> get_dirs_files(string root)
 pair<vector<float>, pair<float,float>> get_distance_matrix()
 {
 	return blending::compute_distance_matrix(get_anim(anim_a), get_anim(anim_b), sk, k, &progress);
+}
+
+mograph::MotionGraph* get_motion_graph()
+{
+	mograph::MotionGraph* m = new mograph::MotionGraph(anim_cache, sk, k, &progress_mograph);
+	return m;
 }
