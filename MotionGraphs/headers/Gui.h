@@ -51,5 +51,5 @@ namespace GUI {
         map<string, vector<string>> dir_nfiles, 
         string root);
 
-    void showGraphWindow(mograph::MotionGraph* graph);
+    void showMotionList(map<string, Animation*> anim_cache);
 }

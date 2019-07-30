@@ -394,7 +394,6 @@ int main()
         GUI::showDistanceMatrix(anim_a_size, anim_b_size, dist_mat, selected_frames, &states.show_selected_frames, &states.update_texture);
         ImGui::Separator();
 		ImGui::ShowMetricsWindow();
-		GUI::showGraphWindow(NULL);
 		
 		GUI::showBasicControls(&states.play, &states.split_screen, &states.exit, &anim_a, &anim_b, &states.current_frame_a, &states.current_frame_b, &states.current_frame_r, 
 			anim_a_size, anim_b_size, &states.speed, dir_files, res_path + "mocap/");
@@ -458,9 +457,10 @@ int main()
         glBindTexture(GL_TEXTURE_2D, textureMainBuffer);	// use the color attachment texture as the texture of the quad plane
         glDrawArrays(GL_TRIANGLES, 0, 6);
 		{
+			GUI::showMotionList(anim_cache);
+			ImGui::Begin("Motion graph");
 			ImGui::PushStyleColor(ImGuiCol_Button, !states.compute_mograph ? GUI::color_green : GUI::color_red);
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, !states.compute_mograph ? GUI::color_green_h : GUI::color_red_h);
-			ImGui::Begin("Motion graph");
 			if (ImGui::Button("Compute motion graph") && !states.compute_mograph) {
 				// ftr_mograph = std::async(get_motion_graph);
 				// states.compute_mograph = true;
@@ -498,8 +498,8 @@ int main()
 			static float zoom = 0.5f;
 			ImGui::SliderFloat("Zoom", &zoom, 0.1f, 5.0f);
 			ImGui::SliderFloat("Scale", &scale, 1.f, 10.0f);
-			ImGui::SliderFloat("translate x", &off_x, 0.f, (float)fullscreen_window.width);
-			ImGui::SliderFloat("translate y", &off_y, 0.f, (float)fullscreen_window.height);
+			ImGui::DragFloat("translate x", &off_x);
+			ImGui::DragFloat("translate y", &off_y);
 			ImGui::Image(my_tex_id, ImVec2(curr_window.width*zoom, curr_window.height*zoom), 
 			ImVec2(0,0), ImVec2(1,1));				
 

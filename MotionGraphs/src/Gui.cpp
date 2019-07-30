@@ -199,108 +199,15 @@ namespace GUI{
 		ImGui::End();
 	}
 
-	void showGraphWindow(mograph::MotionGraph* graph)
+	void showMotionList(map<string, Animation*> anim_cache)
 	{
-		if (ImGui::TreeNode("Motion graph"))
-		{
-			static GLuint tex;
-			float my_tex_h = 100;
-			float my_tex_w = 100;
-
-			float color_background [] = {0.7, 0.7, 0.7}; static const int color_back = -1;
-			float color_foreground [] = {0.1, 0.1, 0.1}; static const int color_fore = 0;
-			float color_highlight [] = {0.8, 0.1, 0.1}; static const int color_high = 1;
-			static vector<float> img_vec;
-			if (ImGui::Button("Update image") && graph != NULL) {
-			  	vector<vector<int>> img_grid;
-				// my_tex_h = 100*graph->get_graph().size()+50;
-				// int padding_left = 100, padding_right = 50;
-				// int offset_h = 100;
-
-				//init size of image
-				// for (auto item:graph->get_graph()) {
-				// 	int w = item.first->get_anim()->getNumberOfFrames() + padding_left + padding_right > my_tex_w;
-				// 	if (w > my_tex_w)
-				// 		my_tex_w = w;
-				// }
-				
-				// img_grid with init background
-				img_grid.reserve(my_tex_h);
-				for (int i = 0; i < my_tex_h; i++) {
-					vector<int> row;
-					row.reserve(my_tex_w);
-					for (int j = 0; j < my_tex_w; j++) {
-						row.emplace_back(color_back);
-					}
-					img_grid.emplace_back(row);
-				}
-
-				// // draw on background
-				// int idx = 1;
-				// for (auto item:graph->get_graph()) // item type: map<Vertex*, vector<Edge>>
-				// {
-				// 	mograph::Vertex* v = item.first;
-				// 	int offset = idx * offset_h-1;
-				// 	for (int j = 0; j < my_tex_w; j++) {
-				// 		img_grid.at(offset).at(j) = color_fore;
-				// 	}
-				// 	idx++;
-				// }
-
-				// img_vec.clear();
-				// img_vec.reserve(my_tex_h*my_tex_w*3);
-				// img_grid to img_vec (rgb vals)
-				for (int i = 0; i < img_grid.size(); i++) {
-					for (int j = 0; j < img_grid.at(i).size(); j++) {
-						switch (img_grid.at(i).at(j))
-						{
-						case color_fore:
-							img_vec.emplace_back(color_foreground[0]);
-							img_vec.emplace_back(color_foreground[1]);
-							img_vec.emplace_back(color_foreground[2]);
-							break;
-						case color_high:
-							img_vec.emplace_back(color_highlight[0]);
-							img_vec.emplace_back(color_highlight[1]);
-							img_vec.emplace_back(color_highlight[2]);
-						default:
-							img_vec.emplace_back(color_background[0]);
-							img_vec.emplace_back(color_background[1]);
-							img_vec.emplace_back(color_background[2]);
-							break;
-						}
-					}
-				}
-				
-				glEnable(GL_TEXTURE_2D);
-				glGenTextures(2,&tex);
-				glBindTexture(GL_TEXTURE_2D, tex);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,GL_REPEAT);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,GL_REPEAT);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,GL_NEAREST);
-				glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
-				glTexImage2D(GL_TEXTURE_2D, 0 ,GL_RGB, my_tex_w, my_tex_h,0,GL_RGB,GL_FLOAT, &img_vec[0]);
-			}
-
-
-			static float tex_scale = 1.f;
-
-			ImTextureID my_tex_id = (void*)(intptr_t)tex;
-			ImGui::Text("%.0fx%.0f", my_tex_h, my_tex_w);
-			ImGui::Text("size of img_vec = %d", img_vec.size());
-			ImVec2 pos = ImGui::GetCursorScreenPos();
-
-			my_tex_h *= tex_scale;
-			my_tex_w *= tex_scale;
-			
-			ImGui::Image(my_tex_id, ImVec2(my_tex_w, my_tex_h), ImVec2(0,0), ImVec2(1,1), ImVec4(1.0f,1.0f,1.0f,1.0f), ImVec4(1.0f,1.0f,1.0f,0.5f));
-			
-			ImGui::SliderFloat("Zoom", &tex_scale, 0.1f, 3.f);
-
-
-			ImGui::TreePop();
+		ImGui::Begin("Motion list");
+		for (auto entry:anim_cache) {
+			string name = entry.first.substr(entry.first.find_last_of("/"));
+			string num_frames = std::to_string(entry.second->getNumberOfFrames());
+			ImGui::Text((name + " | " + num_frames).c_str());
 		}
+		ImGui::End();
 	}
 }
 
