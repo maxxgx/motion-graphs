@@ -30,22 +30,29 @@ namespace mograph {
     class Edge {
     public:
         Edge(Vertex* target, int i, int j, float d);
-        virtual ~Edge() {}
+        ~Edge() {
+            // delete motion;
+        }
 
         virtual Vertex* get_target();
         float get_weight();
         Animation get_motion(Vertex* src);
         pair<int,int> get_frames();
 
+        bool operator < (const Edge& e) const {
+            return this->weight< e.weight;
+        }
+
     private:
         Vertex* target;
         int frame_i, frame_j;
         float weight;
+        // Animation* motion; // either a transition between motion or piece of original clip
     };
 
     class MotionGraph {
     public:
-        MotionGraph(map<string, Animation*> anim_list, Skeleton* sk, int k, float *progress);
+        MotionGraph(vector<pair<string,Animation*>> anim_list, Skeleton* sk, int k, float *progress);
         void add_edge(Vertex* src, Edge e);
         Animation* get_current_motion();
         void move_to_next();
@@ -63,7 +70,7 @@ namespace mograph {
 
     private:
         Edge* get_min_edge();
-        pair<Vertex*, Edge*> head;
+        pair<Vertex*, Edge*> head, next_candidate;
         map<Vertex*, vector<Edge>> G;
     };
 }

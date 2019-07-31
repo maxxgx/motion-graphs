@@ -130,6 +130,7 @@ string file_amc = res_path + "mocap/02/02_0";
 //string file_asf = res_path + "mocap/14/14.asf";
 //string file_amc = res_path + "mocap/14/14_0";
 map<string, Animation*> anim_cache;
+vector<pair<string,Animation*>> anim_list;
 
 // Loading mocap data: skeleton from .asf and animation (poses) from .amc
 Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
@@ -399,72 +400,15 @@ int main()
 			anim_a_size, anim_b_size, &states.speed, dir_files, res_path + "mocap/");
 
         ImGui::End(); //last END
-
-		// input
-		// -----
-		float input_start_time = glfwGetTime();
-		keyboardInput(window);
-		float input_time = (glfwGetTime() - input_start_time);
-		timings.agg_input += input_time;
-
-
-		// Rendering
-		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-        glEnable(GL_DEPTH_TEST);
-		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
-
-		timings.dt_update += timings.delta_time;
-		if (states.split_screen) {
-			glViewport(region_a.posX, region_a.posY, region_a.width, region_a.height);
-			// Update motion A and render
-			update(get_anim(anim_a), &states.current_frame_a, selected_frames.first);
-			draw(plane, sphere, cylinder, cube, diffShader, lampShader, region_a, PCs_a);
-			
-			// Update motion B and render
-			glViewport(region_b.posX, region_b.posY, region_b.width, region_b.height);
-			update(get_anim(anim_b), &states.current_frame_b, selected_frames.second);
-			draw(plane, sphere, cylinder, cube, diffShader, lampShader, region_b, PCs_b);
-		}
-		else if (motion_graph != NULL) {
-			glViewport(curr_window.posX, curr_window.posY, curr_window.width, curr_window.height);
-			if (anim_r->getCurrentFrame() + 1 >= anim_r->getNumberOfFrames()) {
-				update(anim_r, &states.current_frame_r, 1);
-				motion_graph->move_to_next();
-				anim_r = motion_graph->get_current_motion();
-			} else 
-				update(anim_r, &states.current_frame_r, 1);
-			cout << "update, frame = " << states.current_frame_r << endl;
-			draw(plane, sphere, cylinder, cube, diffShader, lampShader, curr_window, PCs_a);
-		}
-		else { 
-			// Show only the result of the blending
-			glViewport(curr_window.posX, curr_window.posY, curr_window.width, curr_window.height);
-			update(anim_r, &states.current_frame_r, 1);
-			draw(plane, sphere, cylinder, cube, diffShader, lampShader, curr_window, PCs_a);
-		}
-
-		 // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glDisable(GL_DEPTH_TEST); // disable depth test so screen-space quad isn't discarded due to depth test.
-        // clear all relevant buffers
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
-        glClear(GL_COLOR_BUFFER_BIT);
-		glViewport(fullscreen_window.posX, fullscreen_window.posY, fullscreen_window.width, fullscreen_window.height);
-
-        screenShader.use();
-        glBindVertexArray(quadVAO);
-        glBindTexture(GL_TEXTURE_2D, textureMainBuffer);	// use the color attachment texture as the texture of the quad plane
-        glDrawArrays(GL_TRIANGLES, 0, 6);
 		{
-			GUI::showMotionList(anim_cache);
+			GUI::showMotionList(anim_list);
 			ImGui::Begin("Motion graph");
 			ImGui::PushStyleColor(ImGuiCol_Button, !states.compute_mograph ? GUI::color_green : GUI::color_red);
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, !states.compute_mograph ? GUI::color_green_h : GUI::color_red_h);
 			if (ImGui::Button("Compute motion graph") && !states.compute_mograph) {
 				// ftr_mograph = std::async(get_motion_graph);
 				// states.compute_mograph = true;
-				motion_graph = new mograph::MotionGraph(anim_cache, sk, k, &progress_mograph);
+				motion_graph = new mograph::MotionGraph(anim_list, sk, k, &progress_mograph);
 				anim_r = motion_graph->get_current_motion();
 			}
 			ImGui::PopStyleColor(2);
@@ -505,6 +449,65 @@ int main()
 
 			ImGui::End();
 		}
+		// End UI
+
+		// input
+		// -----
+		float input_start_time = glfwGetTime();
+		keyboardInput(window);
+		float input_time = (glfwGetTime() - input_start_time);
+		timings.agg_input += input_time;
+
+
+		// Rendering
+		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+        glEnable(GL_DEPTH_TEST);
+		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
+
+		timings.dt_update += timings.delta_time;
+		if (states.split_screen) {
+			glViewport(region_a.posX, region_a.posY, region_a.width, region_a.height);
+			// Update motion A and render
+			update(get_anim(anim_a), &states.current_frame_a, selected_frames.first);
+			draw(plane, sphere, cylinder, cube, diffShader, lampShader, region_a, PCs_a);
+			
+			// Update motion B and render
+			glViewport(region_b.posX, region_b.posY, region_b.width, region_b.height);
+			update(get_anim(anim_b), &states.current_frame_b, selected_frames.second);
+			draw(plane, sphere, cylinder, cube, diffShader, lampShader, region_b, PCs_b);
+		}
+		else if (motion_graph != NULL) {
+			glViewport(curr_window.posX, curr_window.posY, curr_window.width, curr_window.height);
+			if (anim_r->getCurrentFrame() + 1 >= anim_r->getNumberOfFrames()) {
+				update(anim_r, &states.current_frame_r, 1);
+				motion_graph->move_to_next();
+				// delete anim_r;
+				anim_r = motion_graph->get_current_motion();
+			} else 
+				update(anim_r, &states.current_frame_r, 1);
+			cout << "update, frame = " << states.current_frame_r << endl;
+			draw(plane, sphere, cylinder, cube, diffShader, lampShader, curr_window, PCs_a);
+		}
+		else { 
+			// Show only the result of the blending
+			glViewport(curr_window.posX, curr_window.posY, curr_window.width, curr_window.height);
+			update(anim_r, &states.current_frame_r, 1);
+			draw(plane, sphere, cylinder, cube, diffShader, lampShader, curr_window, PCs_a);
+		}
+
+		 // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glDisable(GL_DEPTH_TEST); // disable depth test so screen-space quad isn't discarded due to depth test.
+        // clear all relevant buffers
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
+        glClear(GL_COLOR_BUFFER_BIT);
+		glViewport(fullscreen_window.posX, fullscreen_window.posY, fullscreen_window.width, fullscreen_window.height);
+
+        screenShader.use();
+        glBindVertexArray(quadVAO);
+        glBindTexture(GL_TEXTURE_2D, textureMainBuffer);	// use the color attachment texture as the texture of the quad plane
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		if (timings.dt_update >= states.speed) timings.dt_update = 0.f;
 		// End Rendering
@@ -898,6 +901,7 @@ Animation* get_anim(string amc)
 	{
 		Animation* an = new Animation(sk, (char*)(amc).c_str());
 		anim_cache.insert({ amc, an }); // insert only if not present
+		anim_list.push_back({ amc, an });
 	}
 	return anim_cache[amc];
 }
@@ -981,6 +985,6 @@ pair<vector<float>, pair<float,float>> get_distance_matrix()
 
 mograph::MotionGraph* get_motion_graph()
 {
-	mograph::MotionGraph* m = new mograph::MotionGraph(anim_cache, sk, k, &progress_mograph);
+	mograph::MotionGraph* m = new mograph::MotionGraph(anim_list, sk, k, &progress_mograph);
 	return m;
 }

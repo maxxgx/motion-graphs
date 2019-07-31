@@ -56,39 +56,54 @@ namespace mograph {
 
     void MotionGraph::move_to_next()
     {
-        this->head.first = head.second->get_target();
-        this->head.second = get_min_edge();
+        // pair<Vertex*, Edge*> next = std::make_pair(head.second->get_target(), get_min_edge());
+        int start_next_tran = next_candidate.second->get_frames().first;
+        int current_frame = head.second->get_frames().second;
+        
+        if (current_frame == start_next_tran - 1) {
+            this->head.first = next_candidate.first;
+            this->head.second = next_candidate.second;
+            next_candidate = std::make_pair(head.second->get_target(), get_min_edge());
+        } else { // needs to close gap
+            this->head.second = new Edge(head.first, current_frame, start_next_tran-1, -1);
+        }
     }
 
     Edge* MotionGraph::get_min_edge()
     {
+        if (G[head.first].size() < 0) {
+            return NULL;
+        }
         random_selector<> rnd_sel{};
-        Edge e = rnd_sel(G[head.first]);
+    
+        std::sort(G[head.first].begin(), G[head.first].end());
+        int top_pool = G[head.first].size() / 20 + 1; // top 5%
+        vector<Edge> top(G[head.first].begin(), G[head.first].begin() + top_pool);
 
-        // float min_w = std::numeric_limits<float>::infinity();
-        // for (auto e:G[head.first]) {
-        //     if (e.get_weight() < min_w) {
-        //         min = new Edge(e.get_target(), e.get_frames().first, e.get_frames().second, e.get_weight());
-        //         min_w = e.get_weight();
-        //     }
-        // }
+        //randomly select from top edges
+        Edge e = rnd_sel(top);
+
         Edge* selected = new Edge(e.get_target(), e.get_frames().first, e.get_frames().second, e.get_weight());
         return selected;
     }
 
     Animation* MotionGraph::get_current_motion()
     {
-        this->head.second = get_min_edge();
-        // Vertex* tar = head.second->get_target();
-        // Animation* tar_anim = head.second->get_target()->get_anim();
+        Vertex* tar = head.second->get_target();
         // cout << "tar_anim size = " <<  this->head.second->get_target()->get_anim()->getNumberOfFrames() << endl;
+
         int i = this->head.second->get_frames().first;
         int j = this->head.second->get_frames().second;
         // cout << "Getting current motion: head.first = " << head.first->get_anim()->getNumberOfFrames() << 
             // ",head.second = " << head.second->get_target()->get_anim()->getNumberOfFrames() << endl;
-        Animation* A = head.first->get_anim();
-        Animation* B = head.second->get_target()->get_anim();
-        return blending::blend_anim(A, B, i, j, 40);
+        // same animation 
+        if (tar == head.first) { 
+            return new Animation(tar->get_anim()->getPosesInRange(i,j));
+        } else {
+            Animation* A = head.first->get_anim();
+            Animation* B = head.second->get_target()->get_anim();
+            return blending::blend_anim(A, B, i, j, 40);
+        }
     }
 
     pair<Vertex*, Edge*> MotionGraph::get_head()
@@ -101,7 +116,7 @@ namespace mograph {
         return G;
     }
 
-    MotionGraph::MotionGraph(map<string, Animation*> anim_list, Skeleton* sk, int k, float *progress)
+    MotionGraph::MotionGraph(vector<pair<string,Animation*>> anim_list, Skeleton* sk, int k, float *progress)
     {
         cout << "Creating mograph..." << endl;
         // Create vertex
@@ -110,6 +125,7 @@ namespace mograph {
             vert_map[A.first] = new Vertex(A.first, A.second);
             if (head.first == NULL) {
                 head.first = vert_map[A.first];
+                head.second = new Edge(head.first, 1, k*2+1, -1);
             }
             cout << "Adding vertex " << A.first <<endl;
         }
@@ -133,10 +149,12 @@ namespace mograph {
                     
                     vector<pair<int,int>> local_minimas = blending::find_local_minima(dist_mat_range.first, size_b, size_a);
                     cout << "----------------------\t local minima done" << endl;
+
+                    // Addint edges to vertex A and B
                     vector<Edge> edges_a, edges_b;
                     for (auto l:local_minimas) {
                         int i = l.first, j = l.second;
-                        cout << " i = " << i << ", j = " << j << endl; 
+                        cout << " i = " << i << ", j = " << j << endl;
                         float d = dist_mat_range.first.at(i*size_b + j);
                         Edge e(vert_map[B.first], l.first, l.second, d);
                         edges_a.push_back(e);
@@ -157,10 +175,15 @@ namespace mograph {
         for (auto v_es:G) {
             cout << "Added " << v_es.second.size() << " edges to vertex " << v_es.first << endl;
             int c = 0;
+            // Close gaps between transition edges
             for(auto e:v_es.second) {
                 // cout << "\t\tEdge " << c << ": target = " << e.get_target() <<endl; c++;
+
             }
         }
+        Edge min_edge = *std::min_element(G[head.first].begin(), G[head.first].end());
+        this->next_candidate = make_pair(head.first, 
+            new Edge(min_edge.get_target(), min_edge.get_frames().first, min_edge.get_frames().second, min_edge.get_weight()));
         cout << "... end construction mograph." << endl;
     }
 }

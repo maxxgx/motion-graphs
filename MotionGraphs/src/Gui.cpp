@@ -199,7 +199,7 @@ namespace GUI{
 		ImGui::End();
 	}
 
-	void showMotionList(map<string, Animation*> anim_cache)
+	void showMotionList(vector<pair<string,Animation*>> anim_cache)
 	{
 		ImGui::Begin("Motion list");
 		for (auto entry:anim_cache) {
