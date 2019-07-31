@@ -9,6 +9,7 @@
 
 #include "Animation.h"
 #include "blending.h"
+#include "Utils.h"
 
 using namespace std;
 

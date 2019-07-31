@@ -62,15 +62,18 @@ namespace mograph {
 
     Edge* MotionGraph::get_min_edge()
     {
-        Edge* min;
-        float min_w = std::numeric_limits<float>::infinity();
-        for (auto e:G[head.first]) {
-            if (e.get_weight() < min_w) {
-                min = new Edge(e.get_target(), e.get_frames().first, e.get_frames().second, e.get_weight());
-                min_w = e.get_weight();
-            }
-        }
-        return min;
+        random_selector<> rnd_sel{};
+        Edge e = rnd_sel(G[head.first]);
+
+        // float min_w = std::numeric_limits<float>::infinity();
+        // for (auto e:G[head.first]) {
+        //     if (e.get_weight() < min_w) {
+        //         min = new Edge(e.get_target(), e.get_frames().first, e.get_frames().second, e.get_weight());
+        //         min_w = e.get_weight();
+        //     }
+        // }
+        Edge* selected = new Edge(e.get_target(), e.get_frames().first, e.get_frames().second, e.get_weight());
+        return selected;
     }
 
     Animation* MotionGraph::get_current_motion()
