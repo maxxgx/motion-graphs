@@ -486,7 +486,7 @@ int main()
 				anim_r = motion_graph->get_current_motion();
 			} else 
 				update(anim_r, &states.current_frame_r, 1);
-			cout << "update, frame = " << states.current_frame_r << endl;
+			// cout << "update, frame = " << states.current_frame_r << endl;
 			draw(plane, sphere, cylinder, cube, diffShader, lampShader, curr_window, PCs_a);
 		}
 		else { 

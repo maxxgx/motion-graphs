@@ -70,7 +70,7 @@ namespace mograph {
 
     private:
         Edge* get_min_edge();
-        pair<Vertex*, Edge*> head, next_candidate;
+        pair<Vertex*, Edge*> head, next_candidate, head_init_copy;
         map<Vertex*, vector<Edge>> G;
     };
 }

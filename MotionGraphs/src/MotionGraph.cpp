@@ -63,7 +63,12 @@ namespace mograph {
         if (current_frame == start_next_tran - 1) {
             this->head.first = next_candidate.first;
             this->head.second = next_candidate.second;
-            next_candidate = std::make_pair(head.second->get_target(), get_min_edge());
+            Edge* next_edge = get_min_edge();
+            if (next_edge == NULL) {
+                head = head_init_copy;
+            } else {
+                next_candidate = std::make_pair(head.second->get_target(), next_edge);
+            }
         } else { // needs to close gap
             this->head.second = new Edge(head.first, current_frame, start_next_tran-1, -1);
         }
@@ -76,15 +81,24 @@ namespace mograph {
         }
         random_selector<> rnd_sel{};
     
-        std::sort(G[head.first].begin(), G[head.first].end());
-        int top_pool = G[head.first].size() / 20 + 1; // top 5%
-        vector<Edge> top(G[head.first].begin(), G[head.first].begin() + top_pool);
+        vector<Edge> valid;
+        std::copy_if(begin(G[head.first]), end(G[head.first]), back_inserter(valid), 
+            [&](Edge e) { return e.get_frames().first >= head.second->get_frames().second;});
+        std::sort(begin(valid), end(valid));
 
-        //randomly select from top edges
-        Edge e = rnd_sel(top);
+        if (valid.size() > 0) {
+            int top_pool = valid.size() / 20 + 1; // top 5%
+            vector<Edge> top(begin(valid), begin(valid) + top_pool);
+            //randomly select from top edges
+            Edge e = rnd_sel(top);
 
-        Edge* selected = new Edge(e.get_target(), e.get_frames().first, e.get_frames().second, e.get_weight());
-        return selected;
+            Edge* selected = new Edge(e.get_target(), e.get_frames().first, e.get_frames().second, e.get_weight());
+            cout << "next_candidate tar = " << selected->get_target() << " | i = " << selected->get_frames().first << ", j = " << selected->get_frames().second << endl;
+            return selected;
+        } else {
+            cout << "valid size < 0"<< ", head edge frames " << head.second->get_frames().first << "-" << head.second->get_frames().second << endl;
+            return NULL;
+        }
     }
 
     Animation* MotionGraph::get_current_motion()
@@ -184,6 +198,7 @@ namespace mograph {
         Edge min_edge = *std::min_element(G[head.first].begin(), G[head.first].end());
         this->next_candidate = make_pair(head.first, 
             new Edge(min_edge.get_target(), min_edge.get_frames().first, min_edge.get_frames().second, min_edge.get_weight()));
+        head_init_copy = head;
         cout << "... end construction mograph." << endl;
     }
 }

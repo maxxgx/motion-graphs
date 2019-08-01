@@ -219,8 +219,8 @@ namespace blending {
             std::cout << "Cannot make transition between frames Ai = " << Ai<<", Bj = " << Bj <<endl;
             return NULL;
         }
-        vector<Pose*> pre_Ai = anim_a->getPosesInRange(0, Ai-k-1);
-        vector<Pose*> after_Bj = anim_b->getPosesInRange(Bj+k+1, anim_b->getNumberOfFrames());
+        // vector<Pose*> pre_Ai = anim_a->getPosesInRange(0, Ai-k-1);
+        // vector<Pose*> after_Bj = anim_b->getPosesInRange(Bj+k+1, anim_b->getNumberOfFrames());
 
         vector<Pose*> inside_k;
         inside_k.reserve(k);
@@ -228,16 +228,17 @@ namespace blending {
         // Blending Ai-k with Bj-k to Ai+k with Bj+k
         for (int a = Ai-k, b = Bj-k, t = 0; a <= Ai+k, b <= Bj+k; a++, b++, t++) {
             float cont = continuity((float)t, (float)k*2 +1);
-            std::cout << "Blending: blend frame Ai = " << a << " with Bj = " << b << ", t = " << (float)t/(float)(k-1) << endl;
-            std::cout << " || Blending: blend frame Ai = " << a << " with Bj = " << b << ", t = " << cont << endl;
+            // std::cout << "Blending: blend frame Ai = " << a << " with Bj = " << b << ", t = " << (float)t/(float)(k-1) << endl;
+            // std::cout << " || Blending: blend frame Ai = " << a << " with Bj = " << b << ", t = " << cont << endl;
             Pose* blended_pose = blend_pose(anim_b->getPoseAt(b), anim_a->getPoseAt(a), cont);
             inside_k.emplace_back(blended_pose);
         }
 
-        pre_Ai.insert(pre_Ai.end(), inside_k.begin(), inside_k.end());
-        pre_Ai.insert(pre_Ai.end(), after_Bj.begin(), after_Bj.end());
+        // pre_Ai.insert(pre_Ai.end(), inside_k.begin(), inside_k.end());
+        // pre_Ai.insert(pre_Ai.end(), after_Bj.begin(), after_Bj.end());
 
-        Animation* blend = new Animation(pre_Ai);
+        // Animation* blend = new Animation(pre_Ai);
+        Animation* blend = new Animation(inside_k);
 
         std::cout << "Blended: new anim size is " << blend->getNumberOfFrames() << endl;
 
