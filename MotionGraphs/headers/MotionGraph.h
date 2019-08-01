@@ -58,6 +58,9 @@ namespace mograph {
         void move_to_next();
         pair<Vertex*, Edge*> get_head();
         map<Vertex*, vector<Edge>> get_graph();
+        Animation* edge2anim(Vertex* src, Edge e);
+        Animation* edge2anim(vector<pair<Vertex*, Edge>> edges);
+        vector<pair<Vertex*, Edge>> traverse_min_rand();
 
         ~MotionGraph() {
             delete head.first;

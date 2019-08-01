@@ -101,6 +101,11 @@ vector<Pose*> Animation::getPosesInRange(unsigned long start, unsigned long end)
 	return ps;
 }
 
+vector<Pose*> Animation::getAllPoses()
+{
+	return this->poses;
+}
+
 long Animation::getCurrentFrame()
 {
 	return this->currentFrame;

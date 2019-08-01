@@ -47,6 +47,7 @@ namespace GUI {
         int *frame_r, 
         int num_frames_a, 
         int num_frames_b, 
+        int num_frames_r, 
         float *speed, 
         map<string, vector<string>> dir_nfiles, 
         string root);

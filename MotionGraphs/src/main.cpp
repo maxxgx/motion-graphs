@@ -371,7 +371,13 @@ int main()
 		ImGui::PopStyleColor(2);
 		ImGui::SameLine();ImGui::Text("\t\t");ImGui::SameLine();
 		if (ImGui::Button("BLEND") ) {
-			anim_r = blending::blend_anim(get_anim(anim_a), get_anim(anim_b), states.current_frame_a, states.current_frame_b, k);
+			vector<Pose*> pre_Ai = get_anim(anim_a)->getPosesInRange(0, states.current_frame_a-k-1);
+        	vector<Pose*> after_Bj = get_anim(anim_b)->getPosesInRange(states.current_frame_b+k+1, get_anim(anim_b)->getNumberOfFrames());
+			Animation* blend = blending::blend_anim(get_anim(anim_a), get_anim(anim_b), states.current_frame_a, states.current_frame_b, k);
+			vector<Pose*> blend_poses = blend->getPosesInRange(1, blend->getNumberOfFrames());
+			pre_Ai.insert(pre_Ai.end(), blend_poses.begin(), blend_poses.end());
+			pre_Ai.insert(pre_Ai.end(), after_Bj.begin(), after_Bj.end());
+			anim_r = new Animation(pre_Ai);
 		}
 		// Only tries to retrieve the return value of the thread compute, if it is has started.
 		if (states.compute_running) {
@@ -392,12 +398,13 @@ int main()
 		ImGui::ProgressBar(progress >= 0.98 ? 1.0f : progress, ImVec2(0.0f,0.0f));
 		int anim_a_size = get_anim(anim_a)->getNumberOfFrames();
 		int anim_b_size = get_anim(anim_b)->getNumberOfFrames();
+		int anim_r_size = anim_r == NULL ? 0:anim_r->getNumberOfFrames();
         GUI::showDistanceMatrix(anim_a_size, anim_b_size, dist_mat, selected_frames, &states.show_selected_frames, &states.update_texture);
         ImGui::Separator();
 		ImGui::ShowMetricsWindow();
 		
 		GUI::showBasicControls(&states.play, &states.split_screen, &states.exit, &anim_a, &anim_b, &states.current_frame_a, &states.current_frame_b, &states.current_frame_r, 
-			anim_a_size, anim_b_size, &states.speed, dir_files, res_path + "mocap/");
+			anim_a_size, anim_b_size, anim_r_size, &states.speed, dir_files, res_path + "mocap/");
 
         ImGui::End(); //last END
 		{
@@ -409,7 +416,7 @@ int main()
 				// ftr_mograph = std::async(get_motion_graph);
 				// states.compute_mograph = true;
 				motion_graph = new mograph::MotionGraph(anim_list, sk, k, &progress_mograph);
-				anim_r = motion_graph->get_current_motion();
+				anim_r = motion_graph->edge2anim(motion_graph->traverse_min_rand());
 			}
 			ImGui::PopStyleColor(2);
 			// Only tries to retrieve the return value of the thread compute, if it is has started.
@@ -479,12 +486,12 @@ int main()
 		}
 		else if (motion_graph != NULL) {
 			glViewport(curr_window.posX, curr_window.posY, curr_window.width, curr_window.height);
-			if (anim_r->getCurrentFrame() + 1 >= anim_r->getNumberOfFrames()) {
-				update(anim_r, &states.current_frame_r, 1);
-				motion_graph->move_to_next();
-				// delete anim_r;
-				anim_r = motion_graph->get_current_motion();
-			} else 
+			// if (anim_r->getCurrentFrame() + 1 >= anim_r->getNumberOfFrames()) {
+			// 	update(anim_r, &states.current_frame_r, 1);
+			// 	motion_graph->move_to_next();
+			// 	// delete anim_r;
+			// 	anim_r = motion_graph->get_current_motion();
+			// } else 
 				update(anim_r, &states.current_frame_r, 1);
 			// cout << "update, frame = " << states.current_frame_r << endl;
 			draw(plane, sphere, cylinder, cube, diffShader, lampShader, curr_window, PCs_a);

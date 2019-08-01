@@ -137,7 +137,7 @@ namespace GUI{
 	}
 
 	void showBasicControls(bool *play, bool *split_screen, bool *exit, string *anim_a, string *anim_b, 
-        int *frame_a, int *frame_b, int *frame_r, int num_frames_a, int num_frames_b, float *speed, 
+        int *frame_a, int *frame_b, int *frame_r, int num_frames_a, int num_frames_b, int num_frames_r, float *speed, 
 		map<string, vector<string>> dir_nfiles, string root)
 	{
 		ImGui::Begin("ControlsA");
@@ -187,7 +187,7 @@ namespace GUI{
 			if (ImGui::ArrowButton("##rightA", ImGuiDir_Right)) { ++*frame_r; }
 			
 			ImGui::SameLine();
-			ImGui::SliderInt("Frame", frame_r, 1, num_frames_b + num_frames_a, "%d");
+			ImGui::SliderInt("Frame", frame_r, 1, num_frames_r, "%d");
 		}
 		ImGui::PopButtonRepeat();
 
