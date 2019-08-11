@@ -139,6 +139,8 @@ string anim_b = (file_amc + "1.amc");
 vector<PointCloud*> PCs_a;
 vector<PointCloud*> PCs_b;
 
+unsigned int textureFloor;
+
 int main()
 {
 	/* Just trying some code in debug */
@@ -264,8 +266,8 @@ int main()
 		 1.0f, -1.0f, 1.0, 0.0f,
 		 1.0f,  1.0f, 1.0, 1.0f,
 	};
-	// screen quad VAO
-    unsigned int quadVAO, quadVBO;
+	// screen quad VAO    
+	unsigned int quadVAO, quadVBO;
     glGenVertexArrays(1, &quadVAO);
     glGenBuffers(1, &quadVBO);
     glBindVertexArray(quadVAO);
@@ -329,6 +331,23 @@ int main()
         cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	//Floor tile texture
+	vector<float> floor_tiles_col = { 
+		1.0, 1.0, 1.0,		0.0, 0.0, 0.0,
+		0.0, 0.0, 0.0,		1.0, 1.0, 1.0
+	};
+	
+	glEnable(GL_TEXTURE_2D);
+	glGenTextures(1,&textureFloor);
+	glBindTexture(GL_TEXTURE_2D, textureFloor);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+	glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
+	glTexImage2D(GL_TEXTURE_2D, 0 ,GL_RGB, 2, 2,0,GL_RGB,GL_FLOAT, &floor_tiles_col[0]);
+	glDisable(GL_TEXTURE_2D);
+
 	
     // Vars
     static pair<int,int> selected_frames = {0,0};
@@ -341,6 +360,8 @@ int main()
 	future<mograph::MotionGraph*> ftr_mograph;
 	Animation* anim_r = NULL;
 	mograph::MotionGraph* motion_graph = NULL; 
+	vector<pair<mograph::Vertex*, mograph::Edge>> graph_traversal;
+	int graph_traversal_index = 0;
 
 
 	/** render loop **/
@@ -416,7 +437,9 @@ int main()
 				// ftr_mograph = std::async(get_motion_graph);
 				// states.compute_mograph = true;
 				motion_graph = new mograph::MotionGraph(anim_list, sk, k, &progress_mograph);
-				anim_r = motion_graph->edge2anim(motion_graph->traverse_min_rand());
+				graph_traversal = motion_graph->traverse_min_rand();
+				motion_graph->set_head(graph_traversal.at(graph_traversal_index));
+				anim_r = motion_graph->edge2anim(graph_traversal.at(graph_traversal_index).first, graph_traversal.at(graph_traversal_index).second);
 			}
 			ImGui::PopStyleColor(2);
 			// Only tries to retrieve the return value of the thread compute, if it is has started.
@@ -486,13 +509,15 @@ int main()
 		}
 		else if (motion_graph != NULL) {
 			glViewport(curr_window.posX, curr_window.posY, curr_window.width, curr_window.height);
-			// if (anim_r->getCurrentFrame() + 1 >= anim_r->getNumberOfFrames()) {
-			// 	update(anim_r, &states.current_frame_r, 1);
-			// 	motion_graph->move_to_next();
-			// 	// delete anim_r;
-			// 	anim_r = motion_graph->get_current_motion();
-			// } else 
-				update(anim_r, &states.current_frame_r, 1);
+			if (anim_r->getCurrentFrame() + 1 >= anim_r->getNumberOfFrames()) {
+				// delete anim_r;
+				graph_traversal_index = graph_traversal_index >= graph_traversal.size() - 1 ? 0 : graph_traversal_index + 1;
+				cout << "graph index =" << graph_traversal_index << ", size() = " << graph_traversal.size() << endl;
+				anim_r = motion_graph->edge2anim(graph_traversal.at(graph_traversal_index).first, graph_traversal.at(graph_traversal_index).second);
+				motion_graph->set_head(graph_traversal.at(graph_traversal_index));
+				states.current_frame_r = 1;
+			}
+			update(anim_r, &states.current_frame_r, 1);
 			// cout << "update, frame = " << states.current_frame_r << endl;
 			draw(plane, sphere, cylinder, cube, diffShader, lampShader, curr_window, PCs_a);
 		}
@@ -611,11 +636,11 @@ void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffS
 	// floor
 	diffShader.setVec3("objectColor", .95f, 0.95f, 0.95f);
 	glm::mat4 model = glm::mat4(1.0f);
-	model = glm::scale(model, glm::vec3(50.f, 0.001f, 50.f));
+	model = glm::scale(model, glm::vec3(50.f, 1.f, 50.f));
+	// model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f));
 	diffShader.setMat4("model", model);
-	//glBindVertexArray(cube.VAO);
-	//glDrawArrays(GL_TRIANGLES, 0, 36);
 	plane.Draw(diffShader);
+
 
 
 	// render Skeleton, root first
@@ -801,14 +826,21 @@ void plot_motion_graph(mograph::MotionGraph* graph, Model quad_mesh, Model line,
 	// Draw the current edge
 	shader.setVec3("objectColor", .05f, 0.75f, 0.05f);
 	mograph::Edge* head_edge = graph->get_head().second;
-	float A = head_edge->get_frames().first * scale * 2;
-	float B = head_edge->get_frames().second * scale * 2;
+	float A = head_edge->get_frames().first;
+	float B = head_edge->get_frames().second;
+	float A_scaled = A * scale * 2;
+	float B_scaled = B * scale * 2;  
+	if (graph->get_head().first == head_edge->get_target()) {
+		A_scaled = A == 1 ? A_scaled : (A-k) * scale * 2;
+		B_scaled = B == head_edge->get_target()->get_anim()->getNumberOfFrames() ? B_scaled : (B+k) * scale * 2;
+	}
+
 	float tar_h_offset_1 = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[graph->get_head().first];
 	float tar_h_offset_2 = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[head_edge->get_target()];
 	float x_pos_1 = offset_x+scale/2 + padding_left;
 	float x_pos_2 = offset_x+scale/2 + padding_left;
-	glm::vec3 p1 = glm::vec3(x_pos_1 + (float)A, tar_h_offset_1, 1.f);
-	glm::vec3 p2 = glm::vec3(x_pos_2 + (float)B, tar_h_offset_2, 1.f);
+	glm::vec3 p1 = glm::vec3(x_pos_1 + (float)A_scaled, tar_h_offset_1, 1.f);
+	glm::vec3 p2 = glm::vec3(x_pos_2 + (float)B_scaled, tar_h_offset_2, 1.f);
 	plot_line_between_p1_p2(p1, p2, line, shader, scale_line_narrow);
 
 }
