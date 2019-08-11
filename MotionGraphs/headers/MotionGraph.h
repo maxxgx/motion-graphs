@@ -57,6 +57,8 @@ namespace mograph {
         Animation* get_current_motion();
         void move_to_next();
         pair<Vertex*, Edge*> get_head();
+        void set_head(pair<Vertex*, Edge>& h);
+
         map<Vertex*, vector<Edge>> get_graph();
         Animation* edge2anim(Vertex* src, Edge e);
         Animation* edge2anim(vector<pair<Vertex*, Edge>> edges);
@@ -75,5 +77,6 @@ namespace mograph {
         Edge* get_min_edge();
         pair<Vertex*, Edge*> head, next_candidate, head_init_copy;
         map<Vertex*, vector<Edge>> G;
+        int k;
     };
 }

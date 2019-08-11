@@ -67,6 +67,7 @@ namespace GUI{
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,GL_NEAREST);
 				glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
 				glTexImage2D(GL_TEXTURE_2D, 0 ,GL_RGB, my_tex_w, my_tex_h,0,GL_RGB,GL_FLOAT, &dist_mat_norm[0]);
+				glDisable(GL_TEXTURE_2D);
 			}
 
 

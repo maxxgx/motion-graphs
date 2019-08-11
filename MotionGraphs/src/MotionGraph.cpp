@@ -56,22 +56,22 @@ namespace mograph {
 
     void MotionGraph::move_to_next()
     {
-        // pair<Vertex*, Edge*> next = std::make_pair(head.second->get_target(), get_min_edge());
-        int start_next_tran = next_candidate.second->get_frames().first;
-        int current_frame = head.second->get_frames().second;
+        // // pair<Vertex*, Edge*> next = std::make_pair(head.second->get_target(), get_min_edge());
+        // int start_next_tran = next_candidate.second->get_frames().first;
+        // int current_frame = head.second->get_frames().second;
         
-        if (current_frame == start_next_tran - 1) {
-            this->head.first = next_candidate.first;
-            this->head.second = next_candidate.second;
-            Edge* next_edge = get_min_edge();
-            if (next_edge == NULL) {
-                head = head_init_copy;
-            } else {
-                next_candidate = std::make_pair(head.second->get_target(), next_edge);
-            }
-        } else { // needs to close gap
-            this->head.second = new Edge(head.first, current_frame, start_next_tran-1, -1);
-        }
+        // if (current_frame == start_next_tran) { 
+        //     this->head.first = next_candidate.first;
+        //     this->head.second = next_candidate.second;
+        //     Edge* next_edge = get_min_edge();
+        //     // if (next_edge == NULL) {
+        //     //     head = head_init_copy;
+        //     // } else {
+        //         next_candidate = std::make_pair(head.second->get_target(), next_edge);
+        //     // }
+        // } else { // needs to close gap
+        //     this->head.second = new Edge(head.first, current_frame, start_next_tran, -1);
+        // }
     }
 
     Edge* MotionGraph::get_min_edge()
@@ -83,7 +83,7 @@ namespace mograph {
     
         vector<Edge> valid;
         std::copy_if(begin(G[head.first]), end(G[head.first]), back_inserter(valid), 
-            [&](Edge e) { return e.get_frames().first >= head.second->get_frames().second || true;});
+            [&](Edge e) { return e.get_frames().first >= head.second->get_frames().second+k;});
         std::sort(begin(valid), end(valid));
 
         if (valid.size() > 0) {
@@ -127,6 +127,12 @@ namespace mograph {
         return head;
     }
 
+    void MotionGraph::set_head(pair<Vertex*, Edge>& h)
+    {
+        this->head.first = h.first;
+        this->head.second = &h.second;
+    }
+
     map<Vertex*, vector<Edge>> MotionGraph::get_graph()
     {
         return G;
@@ -134,6 +140,7 @@ namespace mograph {
 
     MotionGraph::MotionGraph(vector<pair<string,Animation*>> anim_list, Skeleton* sk, int k, float *progress)
     {
+        this->k = k;
         cout << "Creating mograph..." << endl;
         // Create vertex
         map<string, Vertex*> vert_map;
@@ -141,7 +148,6 @@ namespace mograph {
             vert_map[A.first] = new Vertex(A.first, A.second);
             if (head.first == NULL) {
                 head.first = vert_map[A.first];
-                head.second = new Edge(head.first, 1, k*2+1, -1);
             }
             cout << "Adding vertex " << A.first <<endl;
         }
@@ -192,15 +198,25 @@ namespace mograph {
             cout << "Added " << v_es.second.size() << " edges to vertex " << v_es.first << endl;
             // Close gaps between transition edges
             // vector<Edge> gaps;
-            // for(auto e:v_es.second) {
-                // cout << "\t\tEdge " << c << ": target = " << e.get_target() <<endl; c++;
+            int c=0;
+            for(auto e:v_es.second) {
+                cout << "\t\tEdge " << c << ": target = " 
+                << e.get_target() 
+                << " | i-j = " << e.get_frames().first << "-" << e.get_frames().second
+                <<endl; c++;
                 // int i = e.get_frames().first;
                 // int j = e.get_frames().second;
-            // }
+            }
         }
         Edge min_edge = *std::min_element(G[head.first].begin(), G[head.first].end());
+        head.second = new Edge(head.first, 1, min_edge.get_frames().first-k, -1);
         this->next_candidate = make_pair(head.first, 
             new Edge(min_edge.get_target(), min_edge.get_frames().first, min_edge.get_frames().second, min_edge.get_weight()));
+
+            cout << "next.first: " << next_candidate.first << ", target = " 
+                << next_candidate.second->get_target() 
+                << " | i-j = " << next_candidate.second->get_frames().first << "-" << next_candidate.second->get_frames().second
+                <<endl;
         head_init_copy = head;
         cout << "... end construction mograph." << endl;
     }
@@ -211,15 +227,21 @@ namespace mograph {
 
         int i = e.get_frames().first;
         int j = e.get_frames().second;
-        // cout << "Getting current motion: head.first = " << head.first->get_anim()->getNumberOfFrames() << 
-            // ",head.second = " << head.second->get_target()->get_anim()->getNumberOfFrames() << endl;
+        
+        // cout << "\tblending src: " <<  src
+        //     << ", edge tar = "<<tar
+        //     << ", i-j = " << i
+        //     << "-" << j
+        //     << ", w -> " << e.get_weight()
+        //     << endl;
+
         // same animation 
         if (tar == src) { 
-            return new Animation(tar->get_anim()->getPosesInRange(i,j));
+            return new Animation(src->get_anim()->getPosesInRange(i,j));
         } else {
             Animation* A = src->get_anim();
             Animation* B = e.get_target()->get_anim();
-            return blending::blend_anim(A, B, i, j, 40);
+            return blending::blend_anim(A, B, i, j, k);
         }
     }
 
@@ -237,6 +259,7 @@ namespace mograph {
     vector<pair<Vertex*, Edge>> MotionGraph::traverse_min_rand()
     {
         vector<pair<Vertex*, Edge>> visited = {make_pair(head.first, *head.second)};
+        // visited.push_back(make_pair(next_candidate.first, *next_candidate.second));
 
         set<Vertex*> visited_nodes;
         for (auto v_e:G){
@@ -244,26 +267,46 @@ namespace mograph {
         }
 
         cout << "Graph traversal path:" << endl;
+        cout << "head.first: " << head.first << ", target = " 
+                << head.second->get_target() 
+                << " | i-j = " << head.second->get_frames().first << "-" << head.second->get_frames().second
+                <<endl;
+
         while (visited_nodes.size() > 0) {
             visited_nodes.erase(head.first);
-            this->move_to_next();
-            cout << "\t\tvisited node: " << head.first 
-            << ", edge i-j = " << head.second->get_frames().first
-            << "-" << head.second->get_frames().second
-            << ", w -> " << head.second->get_weight()
-            << endl;
+            
+            head = next_candidate;
+
+            next_candidate.first = head.second->get_target();
+            next_candidate.second = this->get_min_edge();
+
+            // gap between head and next_candidate
+            if (next_candidate.first == head.second->get_target() && next_candidate.second != NULL) {
+                Edge gap(next_candidate.first, head.second->get_frames().second, next_candidate.second->get_frames().first-k, -1);
+                visited.push_back(make_pair(next_candidate.first, gap));
+            }
+
+            
+
             visited.push_back(make_pair(head.first, *head.second));
-            if (visited_nodes.size() == 0) {
-                Edge final_edge(head.first, head.second->get_frames().second, head.first->get_anim()->getNumberOfFrames(), -1);
+            
+            if (next_candidate.second == NULL || visited_nodes.size() == 0) {
+                // finish playing current anim
+                Edge final_edge(head.first, head.second->get_frames().second, head.second->get_target()->get_anim()->getNumberOfFrames(), -1);
                 visited.push_back(make_pair(head.first, final_edge));
-                cout << "\t\tvisited final node: " << head.first 
-                << ", edge i-j = " << head.second->get_frames().first
-                << "-" << head.second->get_frames().second
-                << ", w -> " << head.second->get_weight()
-                << endl;
+                break;
             }
         }
-        cout << "total traversed nodes: " << visited_nodes.size() << endl;
+        cout << "\nPath:\n" ;
+        for (auto &v:visited) {
+            cout << "\t\tvisited node: " << v.first 
+                << ", edge i-j = " << v.second.get_frames().first
+                << "-" << v.second.get_frames().second
+                << ", w -> " << v.second.get_weight()
+                << endl;
+        }
+
+        cout << "total traversed nodes: " << visited.size() << endl;
         return visited;
     }
 }
