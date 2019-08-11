@@ -826,14 +826,21 @@ void plot_motion_graph(mograph::MotionGraph* graph, Model quad_mesh, Model line,
 	// Draw the current edge
 	shader.setVec3("objectColor", .05f, 0.75f, 0.05f);
 	mograph::Edge* head_edge = graph->get_head().second;
-	float A = head_edge->get_frames().first * scale * 2;
-	float B = head_edge->get_frames().second * scale * 2;
+	float A = head_edge->get_frames().first;
+	float B = head_edge->get_frames().second;
+	float A_scaled = A * scale * 2;
+	float B_scaled = B * scale * 2;  
+	if (graph->get_head().first == head_edge->get_target()) {
+		A_scaled = A == 1 ? A_scaled : (A-k) * scale * 2;
+		B_scaled = B == head_edge->get_target()->get_anim()->getNumberOfFrames() ? B_scaled : (B+k) * scale * 2;
+	}
+
 	float tar_h_offset_1 = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[graph->get_head().first];
 	float tar_h_offset_2 = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[head_edge->get_target()];
 	float x_pos_1 = offset_x+scale/2 + padding_left;
 	float x_pos_2 = offset_x+scale/2 + padding_left;
-	glm::vec3 p1 = glm::vec3(x_pos_1 + (float)A, tar_h_offset_1, 1.f);
-	glm::vec3 p2 = glm::vec3(x_pos_2 + (float)B, tar_h_offset_2, 1.f);
+	glm::vec3 p1 = glm::vec3(x_pos_1 + (float)A_scaled, tar_h_offset_1, 1.f);
+	glm::vec3 p2 = glm::vec3(x_pos_2 + (float)B_scaled, tar_h_offset_2, 1.f);
 	plot_line_between_p1_p2(p1, p2, line, shader, scale_line_narrow);
 
 }
