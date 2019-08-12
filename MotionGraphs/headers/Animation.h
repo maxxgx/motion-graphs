@@ -25,6 +25,7 @@ public:
 	Pose* getNextPose();
 
 	vector<Pose*> getPosesInRange(unsigned long start, unsigned long end);
+	vector<Pose*> getAllPoses();
 
 	long getCurrentFrame();
 	long getNumberOfFrames();

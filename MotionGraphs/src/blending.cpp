@@ -2,16 +2,21 @@
 
 
 namespace blending {
-    vector<PointCloud*> getCumulativePC(Animation *anim, Skeleton *sk, int k)
+    vector<PointCloud*> getInividualPC(Animation *anim, Skeleton *sk)
     {
-        vector<PointCloud*> cloud_total;
+        vector<PointCloud*> cloud_all;
         int num_frames = anim->getNumberOfFrames();
-        cloud_total.reserve(num_frames);
-        // Pose starts at 1
+        cloud_all.reserve(num_frames);
         for (int i = 1; i < num_frames+1; i++) {
             Pose* pose = anim->getPoseAt(i);
-            cloud_total.push_back( sk->getGlobalPointCloud(pose) );
+            cloud_all.push_back( sk->getGlobalPointCloud(pose) );
         }
+        return cloud_all;
+    }
+
+    vector<PointCloud*> getCumulativePC(Animation *anim, Skeleton *sk, int k)
+    {
+        vector<PointCloud*> cloud_total = getInividualPC(anim, sk);
         int v_size = cloud_total.size();
         int index = 0;
         auto iter = cloud_total;
@@ -28,7 +33,7 @@ namespace blending {
                     return val;
             };
         
-        cout << "Applying transform and rotation on PC |" << anim<<endl;
+        std::cout << "Applying transform and rotation on PC |" << anim<<endl;
         std::transform(cloud_total.begin(), cloud_total.end(), cloud_total.begin(), cumulative_pc);
         rotate(cloud_total.rbegin(), cloud_total.rbegin() + k/2, cloud_total.rend());
         return cloud_total;
@@ -37,12 +42,16 @@ namespace blending {
 
     pair<vector<float>, pair<float,float>> compute_distance_matrix(Animation *anim_a, Animation *anim_b, Skeleton *sk, int k, float *progress)
     {
-        cout << "Calculating distance matrix" << endl;
+        std::cout << "Calculating distance matrix" << endl;
         const int num_frames_a = anim_a->getNumberOfFrames();
         const int num_frames_b = anim_b->getNumberOfFrames();
         double t = glfwGetTime();
         vector<PointCloud*> cloud_a_total = getCumulativePC(anim_a, sk, 2*k);
         vector<PointCloud*> cloud_b_total = getCumulativePC(anim_b, sk, 2*k);
+
+        // Individual PC, of single frame
+        vector<PointCloud*> cloud_a_ind = getInividualPC(anim_a, sk);
+        vector<PointCloud*> cloud_b_ind = getInividualPC(anim_b, sk);
         t = glfwGetTime() - t;
 
         // for (int i = v_size -1; i >= 0; i--) {
@@ -61,15 +70,37 @@ namespace blending {
         pair<int, int> min_dist_frames = {-1,-1};
         pair<float, float> range = {std::numeric_limits<float>::infinity(),-1};
 
+        // Distance per frame matrix
+        vector<vector<float>> frame_dist_mat;
+        frame_dist_mat.reserve(num_frames_a);
+        for (int i = 0; i < num_frames_a; i++) {
+            vector<float> row;
+            row.reserve(num_frames_b);
+            for (int j = 0; j < num_frames_b; j++) {
+                row.emplace_back(cloud_a_ind.at(i)->computeDistance(cloud_b_ind.at(j)));
+            }
+            frame_dist_mat.emplace_back(row);
+        }
+        
+
         for (int i = 0; i < num_frames_a; i++) {
             PointCloud* cloud_a = cloud_a_total[i];
+            float last_valid_dist = -1;
 
             for (int j = 0; j < num_frames_b; j++) {
                 PointCloud* cloud_b = cloud_b_total[j];
                 float distance = -1.f; // default distance == -1
+
                 if (cloud_a != NULL && cloud_b != NULL) {
-                    distance = cloud_a->computeDistance(cloud_b);
-                    // cout << "assigning " << i << " - " << j << "dist = " << distance << endl;
+                    distance = 0.f;
+                    for (int z = j-k, x = i-k; z < k+j+1; z++, x++) 
+                    {
+                        distance += frame_dist_mat.at(x).at(z);
+                    }
+                    // float distance_old = cloud_a->computeDistance(cloud_b);
+                    // if (distance != distance_old) {
+                    //     std::cout << "assigning " << i << " - " << j << "dist = " << distance << " ---- old distance = " << distance_old << endl;
+                    // }
                     if (distance != -1.f && distance < range.first) {
                         range.first = distance;
                         min_dist_frames = { i,j };
@@ -78,21 +109,21 @@ namespace blending {
                         range.second = distance;
                     }
                 }
-                //cout << "| @"<<i<<"," <<j<<"\td="<<distance<<"\t"; 
+                //std::cout << "| @"<<i<<"," <<j<<"\td="<<distance<<"\t"; 
                 distance_mat.push_back(distance);
             }
             *progress = (float)i/(float)num_frames_a;
-            cout << "i = "<< i <<endl;
+            // std::cout << "i = "<< i <<endl;
         }
 
         for (auto c_a:cloud_a_total) delete c_a;
         for (auto c_b:cloud_b_total) delete c_b;
 
-        cout << distance_mat.size() << "== size of mat row" << endl;
+        std::cout << distance_mat.size() << "== size of mat row" << endl;
 
-        cout << "range: " << range.first << " to " << range.second << endl;
+        std::cout << "range: " << range.first << " to " << range.second << endl;
 
-        cout << "Min distance at frames " << min_dist_frames.first << " - " << min_dist_frames.second << endl;
+        std::cout << "Min distance at frames " << min_dist_frames.first << " - " << min_dist_frames.second << endl;
         return {distance_mat, range};
     }
 
@@ -102,7 +133,7 @@ namespace blending {
         // function<int(int)> getRowInd = [&](int i) {return ceil(i/w);};
         // function<int(int,int)> toMatInd = [&](int r, int c) { return r*w + c;};
 
-        // cout << "i = " << index << " | [" << getRowInd(index) << "][" << getColInd(index) << "]"<< endl; 
+        // std::cout << "i = " << index << " | [" << getRowInd(index) << "][" << getColInd(index) << "]"<< endl; 
 
         if (D[index] < 0.f) {
             return false;
@@ -149,13 +180,14 @@ namespace blending {
         return peak;
     }
 
-    vector<int> find_local_minima(vector<float> D, int w, int h)
+    vector<pair<int,int>> find_local_minima(vector<float> D, int w, int h)
     {
-        vector<int> minimas;
-        for (int i = 0; i < h*w; i++) {
-            if (is_local_minima(D, h, w, i)) {
-                minimas.push_back(i);
-            }
+        vector<pair<int,int>> minimas;
+        for (int i = 0; i < h; i++) {
+            for (int j = 0; j < w; j++)
+                if (is_local_minima(D, h, w, i*w + j)) {
+                    minimas.push_back(make_pair(i,j));
+                }
         }
         return minimas;
     }
@@ -184,11 +216,11 @@ namespace blending {
     Animation* blend_anim(Animation *anim_a, Animation *anim_b, int Ai, int Bj, int k)
     {
         if ( (Ai-k < 1 && Ai + k > anim_a->getNumberOfFrames() ) && (Bj-k < 1 && Bj + k > anim_b->getNumberOfFrames() )) {
-            cout << "Cannot make transition between frames Ai = " << Ai<<", Bj = " << Bj <<endl;
+            std::cout << "Cannot make transition between frames Ai = " << Ai<<", Bj = " << Bj <<endl;
             return NULL;
         }
-        vector<Pose*> pre_Ai = anim_a->getPosesInRange(0, Ai-k-1);
-        vector<Pose*> after_Bj = anim_b->getPosesInRange(Bj+k+1, anim_b->getNumberOfFrames());
+        // vector<Pose*> pre_Ai = anim_a->getPosesInRange(0, Ai-k-1);
+        // vector<Pose*> after_Bj = anim_b->getPosesInRange(Bj+k+1, anim_b->getNumberOfFrames());
 
         vector<Pose*> inside_k;
         inside_k.reserve(k);
@@ -196,18 +228,19 @@ namespace blending {
         // Blending Ai-k with Bj-k to Ai+k with Bj+k
         for (int a = Ai-k, b = Bj-k, t = 0; a <= Ai+k, b <= Bj+k; a++, b++, t++) {
             float cont = continuity((float)t, (float)k*2 +1);
-            cout << "Blending: blend frame Ai = " << a << " with Bj = " << b << ", t = " << (float)t/(float)(k-1) << endl;
-            cout << " || Blending: blend frame Ai = " << a << " with Bj = " << b << ", t = " << cont << endl;
+            // std::cout << "Blending: blend frame Ai = " << a << " with Bj = " << b << ", t = " << (float)t/(float)(k-1) << endl;
+            // std::cout << " || Blending: blend frame Ai = " << a << " with Bj = " << b << ", t = " << cont << endl;
             Pose* blended_pose = blend_pose(anim_b->getPoseAt(b), anim_a->getPoseAt(a), cont);
             inside_k.emplace_back(blended_pose);
         }
 
-        pre_Ai.insert(pre_Ai.end(), inside_k.begin(), inside_k.end());
-        pre_Ai.insert(pre_Ai.end(), after_Bj.begin(), after_Bj.end());
+        // pre_Ai.insert(pre_Ai.end(), inside_k.begin(), inside_k.end());
+        // pre_Ai.insert(pre_Ai.end(), after_Bj.begin(), after_Bj.end());
 
-        Animation* blend = new Animation(pre_Ai);
+        // Animation* blend = new Animation(pre_Ai);
+        Animation* blend = new Animation(inside_k);
 
-        cout << "Blended: new anim size is " << blend->getNumberOfFrames() << endl;
+        std::cout << "Blended: new anim size is " << blend->getNumberOfFrames() << endl;
 
         return blend;
     }

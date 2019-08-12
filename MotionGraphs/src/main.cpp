@@ -65,7 +65,7 @@ struct controls {
 
 	bool update_texture = false;
 
-	bool compute_running = false;
+	bool compute_running = false, compute_mograph = false;
 
 	// COntrols
 	int current_frame_a = 1, current_frame_b = 1, current_frame_r = 1;
@@ -99,8 +99,11 @@ void update(Animation* anim, int *current_frame, int selected_frame);
 
 void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader, 
 		screen_size window_region, vector<PointCloud*> PC);
+void plot_line_between_p1_p2(glm::vec3 p1, glm::vec3 p2, Model line, Shader shader, float thickness);
+void plot_motion_graph(mograph::MotionGraph* graph, Model quad_mesh, Model line, Shader shader, float offset_x, float offset_y, float scale);
 
 pair<vector<float>, pair<float,float>> get_distance_matrix();
+mograph::MotionGraph* get_motion_graph();
 
 
 // Camera
@@ -117,7 +120,8 @@ float scale = 0.056444f; //inches to meters
 
 int skip_frame = 1;
 int k = 40;
-float progress = 0;
+float progress = 0.f;
+float progress_mograph = 0.f;
 
 // Animation & skeleton
 string res_path = ROOT_DIR + "/resources/";
@@ -126,19 +130,26 @@ string file_amc = res_path + "mocap/02/02_0";
 //string file_asf = res_path + "mocap/14/14.asf";
 //string file_amc = res_path + "mocap/14/14_0";
 map<string, Animation*> anim_cache;
+vector<pair<string,Animation*>> anim_list;
 
 // Loading mocap data: skeleton from .asf and animation (poses) from .amc
 Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
 string anim_a = (file_amc + "3.amc");
-string anim_b = (file_amc + "3.amc");
+string anim_b = (file_amc + "1.amc");
 vector<PointCloud*> PCs_a;
 vector<PointCloud*> PCs_b;
+
+unsigned int textureFloor;
 
 int main()
 {
 	/* Just trying some code in debug */
 	// #ifdef DEBUG
 	// get_distance_matrix();
+	// get_anim(anim_a);
+	// get_anim(anim_b);
+	// mograph::MotionGraph* motion_graph = new mograph::MotionGraph(anim_cache, sk, k, &progress);
+	// Animation* anim_r = motion_graph->get_current_motion();
 	// #endif
 	/** GLFW initialization **/
 	glfwInit();
@@ -155,8 +166,8 @@ int main()
 	GLFWvidmode *primary_mode = (GLFWvidmode*)glfwGetVideoMode(glfwGetPrimaryMonitor());
 	fullscreen_window.width = primary_mode->width; 
 	fullscreen_window.height = primary_mode-> height;
-	curr_window.width = fullscreen_window.width * .75f;
-	curr_window.height = fullscreen_window.height * .75f;
+	curr_window.width = fullscreen_window.width;
+	curr_window.height = fullscreen_window.height;
 	init_window = curr_window;
 	cout << "Screen size: " << fullscreen_window.width << "x" << fullscreen_window.height << endl;
 	cout << "Init window size: " << init_window.width << "x" << init_window.height << endl;
@@ -236,6 +247,8 @@ int main()
 #else
 	Shader diffShader((ROOT_DIR + "/shaders/basic_lighting.vs").c_str(), (ROOT_DIR + "/shaders/basic_lighting.fs").c_str());
 	Shader lampShader((ROOT_DIR + "/shaders/lamp.vs").c_str(), (ROOT_DIR + "/shaders/lamp.fs").c_str());
+	Shader screenShader((ROOT_DIR + "/shaders/screen.vs").c_str(), (ROOT_DIR + "/shaders/screen.fs").c_str());
+	Shader basicShader((ROOT_DIR + "/shaders/basic.vs").c_str(), (ROOT_DIR + "/shaders/basic.fs").c_str());
 #endif
 	Model sphere(FileSystem::getPath("resources/objects/sphere/sphere.obj"));
 	Model cylinder(FileSystem::getPath("resources/objects/cylinder/cylinder.obj"));
@@ -243,16 +256,100 @@ int main()
 	Model monkey(FileSystem::getPath("resources/objects/monkey/monkey.obj"));
 	CubeCore cube = CubeCore();
 
+	float quadVer[] = {
+		//pos 	//texcord
+		-1.0f, 	1.0f, 0.0, 1.0f,
+		-1.0f, -1.0f, 0.0, 0.0f,
+		 1.0f, -1.0f, 1.0, 0.0f,
+
+		-1.0f,  1.0f, 0.0, 1.0f,
+		 1.0f, -1.0f, 1.0, 0.0f,
+		 1.0f,  1.0f, 1.0, 1.0f,
+	};
+	// screen quad VAO    
+	unsigned int quadVAO, quadVBO;
+    glGenVertexArrays(1, &quadVAO);
+    glGenBuffers(1, &quadVBO);
+    glBindVertexArray(quadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVer), &quadVer, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
 	// Lights buffers
 	lamp.setBuffers();
 
 	// Add first anim to cache 
 	get_anim(anim_a);
 	get_anim(anim_b);
+	anim_list.push_back(make_pair(anim_a, get_anim(anim_a)));
+	anim_list.push_back(make_pair(anim_b, get_anim(anim_b)));
 	cube.setBuffers();
 
 	// Set shader to use
 	diffShader.use();
+
+	screenShader.use();
+    screenShader.setInt("screenTexture", 0);
+
+    // framebuffer configuration
+    // -------------------------
+    unsigned int framebuffer;
+    glGenFramebuffers(1, &framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+	// create the framebuffer for plotting
+	unsigned int framebufferPlot;
+    glGenFramebuffers(1, &framebufferPlot);
+
+    // create a color attachment texture
+    unsigned int textureMainBuffer;
+    glGenTextures(1, &textureMainBuffer);
+    glBindTexture(GL_TEXTURE_2D, textureMainBuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, curr_window.width, curr_window.height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureMainBuffer, 0);
+	// Texture for the graph plot
+	glBindFramebuffer(GL_FRAMEBUFFER, framebufferPlot);
+	unsigned int texturePlotBuffer;
+	glGenTextures(1, &texturePlotBuffer);
+	glBindTexture(GL_TEXTURE_2D, texturePlotBuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, fullscreen_window.width, fullscreen_window.height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texturePlotBuffer, 0);
+    
+	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    // create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
+    unsigned int rbo;
+    glGenRenderbuffers(1, &rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, curr_window.width, curr_window.height); // use a single renderbuffer object for both a depth AND stencil buffer.
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo); // now actually attach it
+    // now that we actually created the framebuffer and added all attachments we want to check if it is actually complete now
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	//Floor tile texture
+	vector<float> floor_tiles_col = { 
+		1.0, 1.0, 1.0,		0.0, 0.0, 0.0,
+		0.0, 0.0, 0.0,		1.0, 1.0, 1.0
+	};
+	
+	glEnable(GL_TEXTURE_2D);
+	glGenTextures(1,&textureFloor);
+	glBindTexture(GL_TEXTURE_2D, textureFloor);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+	glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
+	glTexImage2D(GL_TEXTURE_2D, 0 ,GL_RGB, 2, 2,0,GL_RGB,GL_FLOAT, &floor_tiles_col[0]);
+	glDisable(GL_TEXTURE_2D);
+
 	
     // Vars
     static pair<int,int> selected_frames = {0,0};
@@ -261,8 +358,14 @@ int main()
     static vector<float> dist_mat;
     future<pair<vector<float>, pair<float,float>>> ftr;
 	map<string, vector<string>> dir_files = get_dirs_files(res_path + "mocap/");
+
+	future<mograph::MotionGraph*> ftr_mograph;
 	Animation* anim_r = NULL;
-	
+	mograph::MotionGraph* motion_graph = NULL; 
+	vector<pair<mograph::Vertex*, mograph::Edge>> graph_traversal;
+	int graph_traversal_index = 0;
+
+
 	/** render loop **/
 	while (!glfwWindowShouldClose(window) && !states.exit)
 	{
@@ -278,7 +381,7 @@ int main()
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        ImGui::ShowDemoWindow();
+        // ImGui::ShowDemoWindow();
         ImGui::Begin("Vis");
 
 		ImGui::PushStyleColor(ImGuiCol_Button, !states.compute_running ? GUI::color_green : GUI::color_red);
@@ -289,9 +392,15 @@ int main()
 			states.show_selected_frames=false;
 		}
 		ImGui::PopStyleColor(2);
-		ImGui::Text("\t\t");
+		ImGui::SameLine();ImGui::Text("\t\t");ImGui::SameLine();
 		if (ImGui::Button("BLEND") ) {
-			anim_r = blending::blend_anim(get_anim(anim_a), get_anim(anim_b), states.current_frame_a, states.current_frame_b, k);
+			vector<Pose*> pre_Ai = get_anim(anim_a)->getPosesInRange(0, states.current_frame_a-k-1);
+        	vector<Pose*> after_Bj = get_anim(anim_b)->getPosesInRange(states.current_frame_b+k+1, get_anim(anim_b)->getNumberOfFrames());
+			Animation* blend = blending::blend_anim(get_anim(anim_a), get_anim(anim_b), states.current_frame_a, states.current_frame_b, k);
+			vector<Pose*> blend_poses = blend->getPosesInRange(1, blend->getNumberOfFrames());
+			pre_Ai.insert(pre_Ai.end(), blend_poses.begin(), blend_poses.end());
+			pre_Ai.insert(pre_Ai.end(), after_Bj.begin(), after_Bj.end());
+			anim_r = new Animation(pre_Ai);
 		}
 		// Only tries to retrieve the return value of the thread compute, if it is has started.
 		if (states.compute_running) {
@@ -312,14 +421,72 @@ int main()
 		ImGui::ProgressBar(progress >= 0.98 ? 1.0f : progress, ImVec2(0.0f,0.0f));
 		int anim_a_size = get_anim(anim_a)->getNumberOfFrames();
 		int anim_b_size = get_anim(anim_b)->getNumberOfFrames();
+		int anim_r_size = anim_r == NULL ? 0:anim_r->getNumberOfFrames();
         GUI::showDistanceMatrix(anim_a_size, anim_b_size, dist_mat, selected_frames, &states.show_selected_frames, &states.update_texture);
         ImGui::Separator();
 		ImGui::ShowMetricsWindow();
 		
 		GUI::showBasicControls(&states.play, &states.split_screen, &states.exit, &anim_a, &anim_b, &states.current_frame_a, &states.current_frame_b, &states.current_frame_r, 
-			anim_a_size, anim_b_size, &states.speed, dir_files, res_path + "mocap/");
+			anim_a_size, anim_b_size, anim_r_size, &states.speed, dir_files, res_path + "mocap/");
 
-        ImGui::End();
+        ImGui::End(); //last END
+		{
+			static string motion_to_add, last_motion_to_add;
+			GUI::showMotionList(anim_list, dir_files, res_path + "mocap/", &motion_to_add);
+			if (last_motion_to_add != motion_to_add) {
+				anim_list.push_back(make_pair(motion_to_add, get_anim(motion_to_add)));
+				last_motion_to_add = motion_to_add;
+			}
+			ImGui::Begin("Motion graph");
+			ImGui::PushStyleColor(ImGuiCol_Button, !states.compute_mograph ? GUI::color_green : GUI::color_red);
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, !states.compute_mograph ? GUI::color_green_h : GUI::color_red_h);
+			if (ImGui::Button("Compute motion graph") && !states.compute_mograph) {
+				// ftr_mograph = std::async(get_motion_graph);
+				// states.compute_mograph = true;
+				motion_graph = new mograph::MotionGraph(anim_list, sk, k, &progress_mograph);
+				graph_traversal = motion_graph->traverse_min_rand();
+				motion_graph->set_head(graph_traversal.at(graph_traversal_index));
+				anim_r = motion_graph->edge2anim(graph_traversal.at(graph_traversal_index).first, graph_traversal.at(graph_traversal_index).second);
+			}
+			ImGui::PopStyleColor(2);
+			// Only tries to retrieve the return value of the thread compute, if it is has started.
+			// if (states.compute_mograph) {
+			// 	auto status = ftr_mograph.wait_for(0ms);
+			// 	if(status == std::future_status::ready){
+			// 		if (ftr_mograph.valid()) {
+			// 			motion_graph = ftr_mograph.get();
+			// 			anim_r = motion_graph->get_current_motion();
+			// 			states.compute_mograph = false;
+			// 		}
+			// 	}
+			// }
+			// ImGui::SameLine();
+			// ImGui::ProgressBar(progress_mograph >= 0.98 ? 1.0f : progress_mograph, ImVec2(0.0f,0.0f));
+			static bool show = false;
+			static float off_x = 0.f;
+			static float off_y = 0.f;
+			static float scale = 2.f;
+			glBindFramebuffer(GL_FRAMEBUFFER, framebufferPlot);
+			glDisable(GL_DEPTH_TEST);
+			// 2D texture for drawing the graph
+			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
+
+			glViewport(fullscreen_window.posX, fullscreen_window.posY, fullscreen_window.width, fullscreen_window.height);
+
+			plot_motion_graph(motion_graph, plane, cylinder, basicShader, off_x, off_y, scale);
+			ImTextureID my_tex_id = (void*)(intptr_t)texturePlotBuffer;
+			static float zoom = 0.5f;
+			ImGui::SliderFloat("Zoom", &zoom, 0.1f, 5.0f);
+			ImGui::SliderFloat("Scale", &scale, 1.f, 10.0f);
+			ImGui::DragFloat("translate x", &off_x);
+			ImGui::DragFloat("translate y", &off_y);
+			ImGui::Image(my_tex_id, ImVec2(curr_window.width*zoom, curr_window.height*zoom), 
+			ImVec2(0,0), ImVec2(1,1));				
+
+			ImGui::End();
+		}
+		// End UI
 
 		// input
 		// -----
@@ -330,6 +497,8 @@ int main()
 
 
 		// Rendering
+		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+        glEnable(GL_DEPTH_TEST);
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
 
@@ -345,15 +514,44 @@ int main()
 			update(get_anim(anim_b), &states.current_frame_b, selected_frames.second);
 			draw(plane, sphere, cylinder, cube, diffShader, lampShader, region_b, PCs_b);
 		}
+		else if (motion_graph != NULL) {
+			glViewport(curr_window.posX, curr_window.posY, curr_window.width, curr_window.height);
+			if (anim_r->getCurrentFrame() + 1 >= anim_r->getNumberOfFrames()) {
+				// delete anim_r;
+				graph_traversal_index = graph_traversal_index >= graph_traversal.size() - 1 ? 0 : graph_traversal_index + 1;
+				cout << "graph index =" << graph_traversal_index << ", size() = " << graph_traversal.size() << endl;
+				anim_r = motion_graph->edge2anim(graph_traversal.at(graph_traversal_index).first, graph_traversal.at(graph_traversal_index).second);
+				motion_graph->set_head(graph_traversal.at(graph_traversal_index));
+				states.current_frame_r = 1;
+			}
+			update(anim_r, &states.current_frame_r, 1);
+			// cout << "update, frame = " << states.current_frame_r << endl;
+			draw(plane, sphere, cylinder, cube, diffShader, lampShader, curr_window, PCs_a);
+		}
 		else { 
 			// Show only the result of the blending
 			glViewport(curr_window.posX, curr_window.posY, curr_window.width, curr_window.height);
 			update(anim_r, &states.current_frame_r, 1);
 			draw(plane, sphere, cylinder, cube, diffShader, lampShader, curr_window, PCs_a);
 		}
+
+		 // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glDisable(GL_DEPTH_TEST); // disable depth test so screen-space quad isn't discarded due to depth test.
+        // clear all relevant buffers
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
+        glClear(GL_COLOR_BUFFER_BIT);
+		glViewport(fullscreen_window.posX, fullscreen_window.posY, fullscreen_window.width, fullscreen_window.height);
+
+        screenShader.use();
+        glBindVertexArray(quadVAO);
+        glBindTexture(GL_TEXTURE_2D, textureMainBuffer);	// use the color attachment texture as the texture of the quad plane
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
 		if (timings.dt_update >= states.speed) timings.dt_update = 0.f;
 		// End Rendering
 
+		glBindFramebuffer(GL_FRAMEBUFFER, 0); // change framebuffer to default one
 		//glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		//-------------------------------------------------------------------------------
 		glfwPollEvents();
@@ -445,11 +643,11 @@ void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffS
 	// floor
 	diffShader.setVec3("objectColor", .95f, 0.95f, 0.95f);
 	glm::mat4 model = glm::mat4(1.0f);
-	model = glm::scale(model, glm::vec3(50.f, 0.001f, 50.f));
+	model = glm::scale(model, glm::vec3(50.f, 1.f, 50.f));
+	// model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f));
 	diffShader.setMat4("model", model);
-	//glBindVertexArray(cube.VAO);
-	//glDrawArrays(GL_TRIANGLES, 0, 36);
 	plane.Draw(diffShader);
+
 
 
 	// render Skeleton, root first
@@ -528,6 +726,130 @@ void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffS
 	float render_time = glfwGetTime() - render_start_time;
 	timings.agg_render += render_time;
 	/** END RENDERING **/
+}
+
+void plot_line_between_p1_p2(glm::vec3 p1, glm::vec3 p2, Model line, Shader shader, float thickness)
+{
+	glm::vec3 diff = p1-p2; // vec between p1 and p2
+	glm::vec3 v = glm::vec3(0.f, 1.f, 0.f); // initial axis of objection
+	
+	glm::vec3 rot_ax = glm::cross(v, diff);
+	float len = glm::sqrt(glm::dot(diff, diff)); //length of vector diff
+	//rotation angle to align object with vector diff
+	float angle = glm::acos(glm::dot(v, diff) / len);
+
+	glm::mat4 model = glm::mat4(1.0f);
+	model = glm::translate(model, p1);
+	model = glm::translate(model, -diff / 2.f);
+	// model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f) );
+	model = glm::rotate(model, angle, rot_ax );
+	model = glm::scale(model, glm::vec3(thickness, len/2, thickness));
+	shader.setMat4("model", model);
+	line.Draw(shader);
+}
+
+void plot_motion_graph(mograph::MotionGraph* graph, Model quad_mesh, Model line, Shader shader, float offset_x, float offset_y, float scale) 
+{
+	if (graph == NULL) return;
+
+	shader.use();
+	// Same projection for every draw call
+	glm::mat4 projection = glm::ortho(0.0f, (float)fullscreen_window.width, 0.0f, (float)fullscreen_window.height, 0.0f, 1000000.f);
+	shader.setMat4("projection", projection);
+
+		// shader.setVec3("objectColor", .05f, 0.95f, 0.95f);
+		// glm::mat4 model = glm::mat4(1.0f);
+		// model = glm::translate(model, glm::vec3(offset_x, offset_y, 0));
+		// model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f) );
+		// model = glm::scale(model, glm::vec3(scale, scale , scale));
+		// shader.setMat4("model", model);
+		// quad_mesh.Draw(shader);
+	
+	map<mograph::Vertex*, int> v_idx;
+	int idx = 0;
+	// store the vertex plot index
+	for (auto v_es:graph->get_graph()) { v_idx[v_es.first] = idx; idx++; };
+
+	int padding_left = 200, padding_top = 200;
+	float vertex_offset_h = 200*scale;
+	float scale_line_thick = 5*scale, scale_line_narrow = scale_line_thick/5, scale_point = 10*scale;
+	for (auto v_es:graph->get_graph()) // v_es -> pair<Vertex*, vector<Edges>>
+	// for (int i = 0 ; i < 5; i++)
+	{
+		mograph::Vertex* v = v_es.first;
+		// Draw vertex => motion line
+		shader.setVec3("objectColor", .6f, 0.6f, 0.6f);
+		int length_half = v->get_anim()->getNumberOfFrames() * scale;
+		float x_pos = offset_x+scale/2 + padding_left + length_half;
+		float y_pos = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[v];
+		glm::mat4 model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(x_pos, y_pos, 0));
+		model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f) );
+		model = glm::scale(model, glm::vec3(length_half, 1.f , scale_line_thick));
+		// model = glm::translate(model, glm::vec3(offset_x, offset_y, 0));
+		// model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f) );
+		// model = glm::scale(model, glm::vec3(scale, scale , scale));
+		shader.setMat4("model", model);
+		quad_mesh.Draw(shader);
+		// cout << "drawing vertex " << v->get_name() << " | x = " << x_pos << ", y = " << y_pos << endl;
+
+		shader.setVec3("objectColor",1.f, 0.05f, 0.05f);
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(x_pos - length_half, y_pos, 0));
+		model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f) );
+		model = glm::scale(model, glm::vec3(scale_point/5, 1.f,  scale_line_thick));
+		shader.setMat4("model", model);
+		quad_mesh.Draw(shader);
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(x_pos + length_half, y_pos, 0));
+		model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f) );
+		model = glm::scale(model, glm::vec3(scale_point/5, 1.f, scale_line_thick));
+		shader.setMat4("model", model);
+		quad_mesh.Draw(shader);
+
+		// Draw the local minimas points on the animation line
+		for (mograph::Edge e:v_es.second) {
+			shader.setVec3("objectColor", .75f, 0.75f, 0.75f);
+			// Drawing the bars on the animation line
+			int A = e.get_frames().first * scale * 2;
+			model = glm::mat4(1.0f);
+			model = glm::translate(model, glm::vec3(x_pos - length_half + A, y_pos, 0));
+			model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f) );
+			model = glm::scale(model, glm::vec3(scale_point/5, 1.f, scale_point));
+			shader.setMat4("model", model);
+			quad_mesh.Draw(shader);
+			
+			// Drawing the lines connecting the bars | from botton vertex to top vertex
+			if (v_idx[v] > 0) {
+				shader.setVec3("objectColor", .6f, 0.6f, 0.6f);
+				int B = e.get_frames().second * scale * 2;
+				float tar_h = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[e.get_target()];
+				glm::vec3 p1 = glm::vec3(x_pos - length_half + (float)B, tar_h, 1.f);
+				glm::vec3 p2 = glm::vec3(x_pos - length_half + (float)A, y_pos, 1.f);
+				plot_line_between_p1_p2(p1, p2, line, shader, scale_line_narrow);	
+			}
+		}
+	}
+	// Draw the current edge
+	shader.setVec3("objectColor", .05f, 0.75f, 0.05f);
+	mograph::Edge* head_edge = graph->get_head().second;
+	float A = head_edge->get_frames().first;
+	float B = head_edge->get_frames().second;
+	float A_scaled = A * scale * 2;
+	float B_scaled = B * scale * 2;  
+	if (graph->get_head().first == head_edge->get_target()) {
+		A_scaled = A == 1 ? A_scaled : (A-k) * scale * 2;
+		B_scaled = B == head_edge->get_target()->get_anim()->getNumberOfFrames() ? B_scaled : (B+k) * scale * 2;
+	}
+
+	float tar_h_offset_1 = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[graph->get_head().first];
+	float tar_h_offset_2 = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[head_edge->get_target()];
+	float x_pos_1 = offset_x+scale/2 + padding_left;
+	float x_pos_2 = offset_x+scale/2 + padding_left;
+	glm::vec3 p1 = glm::vec3(x_pos_1 + (float)A_scaled, tar_h_offset_1, 1.f);
+	glm::vec3 p2 = glm::vec3(x_pos_2 + (float)B_scaled, tar_h_offset_2, 1.f);
+	plot_line_between_p1_p2(p1, p2, line, shader, scale_line_narrow);
+
 }
 
 
@@ -625,6 +947,7 @@ Animation* get_anim(string amc)
 	{
 		Animation* an = new Animation(sk, (char*)(amc).c_str());
 		anim_cache.insert({ amc, an }); // insert only if not present
+		// anim_list.push_back({ amc, an });
 	}
 	return anim_cache[amc];
 }
@@ -637,11 +960,13 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	glViewport(0, 0, width, height);
 	curr_window.width = width;
 	curr_window.height = height;
-	region_a.width = curr_window.width / 2;
-	region_a.height = curr_window.height;
-	region_b.width = curr_window.width / 2;
-	region_b.height = curr_window.height;
-	region_b.posX = curr_window.width/2;
+	region_a.width = width / 2;
+	region_a.height = height;
+	region_b.width = width / 2;
+	region_b.height = height;
+	region_b.posX = width/2;
+
+	cout << "new width = " << width << " | region a w = " << region_a.width << ", region b w = " << region_b.width <<endl;
 }
 
 
@@ -702,4 +1027,10 @@ map<string, vector<string>> get_dirs_files(string root)
 pair<vector<float>, pair<float,float>> get_distance_matrix()
 {
 	return blending::compute_distance_matrix(get_anim(anim_a), get_anim(anim_b), sk, k, &progress);
+}
+
+mograph::MotionGraph* get_motion_graph()
+{
+	mograph::MotionGraph* m = new mograph::MotionGraph(anim_list, sk, k, &progress_mograph);
+	return m;
 }

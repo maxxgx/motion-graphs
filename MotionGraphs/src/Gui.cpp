@@ -67,6 +67,7 @@ namespace GUI{
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,GL_NEAREST);
 				glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
 				glTexImage2D(GL_TEXTURE_2D, 0 ,GL_RGB, my_tex_w, my_tex_h,0,GL_RGB,GL_FLOAT, &dist_mat_norm[0]);
+				glDisable(GL_TEXTURE_2D);
 			}
 
 
@@ -137,7 +138,7 @@ namespace GUI{
 	}
 
 	void showBasicControls(bool *play, bool *split_screen, bool *exit, string *anim_a, string *anim_b, 
-        int *frame_a, int *frame_b, int *frame_r, int num_frames_a, int num_frames_b, float *speed, 
+        int *frame_a, int *frame_b, int *frame_r, int num_frames_a, int num_frames_b, int num_frames_r, float *speed, 
 		map<string, vector<string>> dir_nfiles, string root)
 	{
 		ImGui::Begin("ControlsA");
@@ -187,7 +188,7 @@ namespace GUI{
 			if (ImGui::ArrowButton("##rightA", ImGuiDir_Right)) { ++*frame_r; }
 			
 			ImGui::SameLine();
-			ImGui::SliderInt("Frame", frame_r, 1, num_frames_b + num_frames_a, "%d");
+			ImGui::SliderInt("Frame", frame_r, 1, num_frames_r, "%d");
 		}
 		ImGui::PopButtonRepeat();
 
@@ -196,6 +197,35 @@ namespace GUI{
 		if (ImGui::Button("Exit"))
 			*exit = true; //exit gameloop
 
+		ImGui::End();
+	}
+
+	void showMotionList(vector<pair<string,Animation*>>& anim_cache, map<string, vector<string>> dir_nfiles, string root, string *anim)
+	{
+		ImGui::Begin("Motion list");
+		imgui_file_selector("Add motion", dir_nfiles, root, anim);
+		ImGui::Text("Number of motions: %d", anim_cache.size());
+		vector<vector<pair<string,Animation*>>::iterator> to_remove_item;
+		int index = 0;
+		for (auto& entry:anim_cache) {
+			string name = entry.first.substr(entry.first.find_last_of("/"));
+			string num_frames = std::to_string(entry.second->getNumberOfFrames());
+			ImGui::Text((name + " | " + num_frames + "\t\t\t").c_str());
+			ImGui::SameLine();
+			ImGui::PushStyleColor(ImGuiCol_Button, color_red);
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, color_red_h);
+			ImGui::PushID(index);
+			++index;
+			if (ImGui::Button("X") ){
+				to_remove_item.push_back(std::find(begin(anim_cache), end(anim_cache), entry));
+			}
+			ImGui::PopID();
+			ImGui::PopStyleColor(2);
+		}
+
+		for (auto& it:to_remove_item) {
+			anim_cache.erase(it);
+		}
 		ImGui::End();
 	}
 }
