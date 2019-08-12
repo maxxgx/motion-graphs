@@ -97,6 +97,11 @@ namespace mograph {
         return G;
     }
 
+    void MotionGraph::reset_head()
+    {
+        head = head_init_copy;
+    }
+
     MotionGraph::MotionGraph(vector<pair<string,Animation*>> anim_list, Skeleton* sk, int k, float *progress)
     {
         this->k = k;
@@ -165,6 +170,7 @@ namespace mograph {
                 // int j = e.get_frames().second;
             }
         }
+        head_init_copy = head;
         cout << "... end construction mograph." << endl;
     }
 

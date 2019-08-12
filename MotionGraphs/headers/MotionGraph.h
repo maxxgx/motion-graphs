@@ -58,6 +58,8 @@ namespace mograph {
         void set_head(pair<Vertex*, Edge>& h);
 
         map<Vertex*, vector<Edge>> get_graph();
+        void reset_head();
+
         Animation* edge2anim(Vertex* src, Edge e);
         Animation* edge2anim(vector<pair<Vertex*, Edge>> edges);
         vector<pair<Vertex*, Edge>> traverse_min_rand();

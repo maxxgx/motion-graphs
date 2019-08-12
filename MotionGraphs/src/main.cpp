@@ -448,6 +448,15 @@ int main()
 				motion_graph->set_head(graph_traversal.at(graph_traversal_index));
 				anim_r = motion_graph->edge2anim(graph_traversal.at(graph_traversal_index).first, graph_traversal.at(graph_traversal_index).second);
 			}
+			if (motion_graph != nullptr) {
+				ImGui::SameLine();
+				if (ImGui::Button("Traversal - Min edge")) {
+					motion_graph->reset_head();
+					graph_traversal = motion_graph->traverse_min_rand();
+					motion_graph->set_head(graph_traversal.at(graph_traversal_index));
+					anim_r = motion_graph->edge2anim(graph_traversal.at(graph_traversal_index).first, graph_traversal.at(graph_traversal_index).second);
+				}
+			}
 			ImGui::PopStyleColor(2);
 			// Only tries to retrieve the return value of the thread compute, if it is has started.
 			// if (states.compute_mograph) {

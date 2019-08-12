@@ -46,8 +46,10 @@ namespace blending {
         const int num_frames_a = anim_a->getNumberOfFrames();
         const int num_frames_b = anim_b->getNumberOfFrames();
         double t = glfwGetTime();
-        vector<PointCloud*> cloud_a_total = getCumulativePC(anim_a, sk, 2*k);
-        vector<PointCloud*> cloud_b_total = getCumulativePC(anim_b, sk, 2*k);
+        // vector<PointCloud*> cloud_a_total = getCumulativePC(anim_a, sk, 2*k);
+        // vector<PointCloud*> cloud_b_total = getCumulativePC(anim_b, sk, 2*k);
+
+        // std::function<bool(int, int)> valid_pc = [&] (int index, int size) { return index + k < size && index - k > 0; };
 
         // Individual PC, of single frame
         vector<PointCloud*> cloud_a_ind = getInividualPC(anim_a, sk);
@@ -82,16 +84,14 @@ namespace blending {
             frame_dist_mat.emplace_back(row);
         }
         
-
         for (int i = 0; i < num_frames_a; i++) {
-            PointCloud* cloud_a = cloud_a_total[i];
-            float last_valid_dist = -1;
+            float last_valid_dist = 0;
 
             for (int j = 0; j < num_frames_b; j++) {
-                PointCloud* cloud_b = cloud_b_total[j];
                 float distance = -1.f; // default distance == -1
 
-                if (cloud_a != NULL && cloud_b != NULL) {
+                if (i + k < anim_a->getNumberOfFrames() && j + k < anim_b->getNumberOfFrames() &&
+                    i - k >= 0 && j - k >= 0) {
                     distance = 0.f;
                     for (int z = j-k, x = i-k; z < k+j+1; z++, x++) 
                     {
@@ -99,7 +99,8 @@ namespace blending {
                     }
                     // float distance_old = cloud_a->computeDistance(cloud_b);
                     // if (distance != distance_old) {
-                    //     std::cout << "assigning " << i << " - " << j << "dist = " << distance << " ---- old distance = " << distance_old << endl;
+                    
+                        // std::cout << "assigning " << i << " - " << j << "dist = " << distance << endl;
                     // }
                     if (distance != -1.f && distance < range.first) {
                         range.first = distance;
@@ -108,6 +109,8 @@ namespace blending {
                     if (distance > range.second) {
                         range.second = distance;
                     }
+                } else {
+                    last_valid_dist = 0;
                 }
                 //std::cout << "| @"<<i<<"," <<j<<"\td="<<distance<<"\t"; 
                 distance_mat.push_back(distance);
@@ -115,9 +118,9 @@ namespace blending {
             *progress = (float)i/(float)num_frames_a;
             // std::cout << "i = "<< i <<endl;
         }
-
-        for (auto c_a:cloud_a_total) delete c_a;
-        for (auto c_b:cloud_b_total) delete c_b;
+ 
+        // for (auto c_a:cloud_a_total) delete c_a;
+        // for (auto c_b:cloud_b_total) delete c_b;
 
         std::cout << distance_mat.size() << "== size of mat row" << endl;
 
