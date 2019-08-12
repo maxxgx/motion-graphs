@@ -52,5 +52,5 @@ namespace GUI {
         map<string, vector<string>> dir_nfiles, 
         string root);
 
-    void showMotionList(vector<pair<string,Animation*>> anim_cache);
+    void showMotionList(vector<pair<string,Animation*>>& anim_cache, map<string, vector<string>> dir_nfiles, string root, string *anim);
 }

@@ -200,13 +200,31 @@ namespace GUI{
 		ImGui::End();
 	}
 
-	void showMotionList(vector<pair<string,Animation*>> anim_cache)
+	void showMotionList(vector<pair<string,Animation*>>& anim_cache, map<string, vector<string>> dir_nfiles, string root, string *anim)
 	{
 		ImGui::Begin("Motion list");
-		for (auto entry:anim_cache) {
+		imgui_file_selector("Add motion", dir_nfiles, root, anim);
+		ImGui::Text("Number of motions: %d", anim_cache.size());
+		vector<vector<pair<string,Animation*>>::iterator> to_remove_item;
+		int index = 0;
+		for (auto& entry:anim_cache) {
 			string name = entry.first.substr(entry.first.find_last_of("/"));
 			string num_frames = std::to_string(entry.second->getNumberOfFrames());
-			ImGui::Text((name + " | " + num_frames).c_str());
+			ImGui::Text((name + " | " + num_frames + "\t\t\t").c_str());
+			ImGui::SameLine();
+			ImGui::PushStyleColor(ImGuiCol_Button, color_red);
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, color_red_h);
+			ImGui::PushID(index);
+			++index;
+			if (ImGui::Button("X") ){
+				to_remove_item.push_back(std::find(begin(anim_cache), end(anim_cache), entry));
+			}
+			ImGui::PopID();
+			ImGui::PopStyleColor(2);
+		}
+
+		for (auto& it:to_remove_item) {
+			anim_cache.erase(it);
 		}
 		ImGui::End();
 	}

@@ -284,6 +284,8 @@ int main()
 	// Add first anim to cache 
 	get_anim(anim_a);
 	get_anim(anim_b);
+	anim_list.push_back(make_pair(anim_a, get_anim(anim_a)));
+	anim_list.push_back(make_pair(anim_b, get_anim(anim_b)));
 	cube.setBuffers();
 
 	// Set shader to use
@@ -379,7 +381,7 @@ int main()
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        ImGui::ShowDemoWindow();
+        // ImGui::ShowDemoWindow();
         ImGui::Begin("Vis");
 
 		ImGui::PushStyleColor(ImGuiCol_Button, !states.compute_running ? GUI::color_green : GUI::color_red);
@@ -429,7 +431,12 @@ int main()
 
         ImGui::End(); //last END
 		{
-			GUI::showMotionList(anim_list);
+			static string motion_to_add, last_motion_to_add;
+			GUI::showMotionList(anim_list, dir_files, res_path + "mocap/", &motion_to_add);
+			if (last_motion_to_add != motion_to_add) {
+				anim_list.push_back(make_pair(motion_to_add, get_anim(motion_to_add)));
+				last_motion_to_add = motion_to_add;
+			}
 			ImGui::Begin("Motion graph");
 			ImGui::PushStyleColor(ImGuiCol_Button, !states.compute_mograph ? GUI::color_green : GUI::color_red);
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, !states.compute_mograph ? GUI::color_green_h : GUI::color_red_h);
@@ -458,7 +465,7 @@ int main()
 			static bool show = false;
 			static float off_x = 0.f;
 			static float off_y = 0.f;
-			static float scale = 1.f;
+			static float scale = 2.f;
 			glBindFramebuffer(GL_FRAMEBUFFER, framebufferPlot);
 			glDisable(GL_DEPTH_TEST);
 			// 2D texture for drawing the graph
@@ -940,7 +947,7 @@ Animation* get_anim(string amc)
 	{
 		Animation* an = new Animation(sk, (char*)(amc).c_str());
 		anim_cache.insert({ amc, an }); // insert only if not present
-		anim_list.push_back({ amc, an });
+		// anim_list.push_back({ amc, an });
 	}
 	return anim_cache[amc];
 }
