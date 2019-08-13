@@ -649,13 +649,28 @@ void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffS
 		diffShader.setMat4("view", camera.GetViewMatrix());
 	}
 
-	// floor
-	diffShader.setVec3("objectColor", .95f, 0.95f, 0.95f);
 	glm::mat4 model = glm::mat4(1.0f);
-	model = glm::scale(model, glm::vec3(50.f, 1.f, 50.f));
-	// model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f));
-	diffShader.setMat4("model", model);
-	plane.Draw(diffShader);
+	diffShader.setVec3("objectColor", .95f, 0.95f, 0.95f);
+	// floor
+	int grid_size = 20;
+	static float tile_scale = 0.5f;
+	static float tile_offset = 2.f;
+	model = glm::mat4(1.0f);
+	model = glm::scale(model, glm::vec3(tile_scale, 1.f, tile_scale));
+	model = glm::translate(model, glm::vec3(-grid_size * tile_offset / 2, 0.f, -grid_size * tile_offset / 2));
+	for (int i = 0; i < grid_size; i++) {
+		for (int j = 0; j < grid_size; j++) {
+			if ((i + j) % 2 == 0) 
+				diffShader.setVec3("objectColor", 1.f, 1.f, 1.f);
+			else 
+				diffShader.setVec3("objectColor", 0.7f, 0.7f, 0.7f);
+			model = glm::translate(model, glm::vec3(tile_offset, 0.f, 0.f));
+			// model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f));
+			diffShader.setMat4("model", model);
+			plane.Draw(diffShader);			
+		}
+		model = glm::translate(model, glm::vec3(-tile_offset*grid_size, 0.f, tile_offset));
+	}
 
 
 
