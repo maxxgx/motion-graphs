@@ -66,9 +66,9 @@ void Animation::addPoses(vector<Pose*> ps)
 
 Pose* Animation::getPoseAt(long frame)
 {
-	frame--; // poses start from [0], frames starts from 1
 	this->currentFrame = frame;
-	if (this->poses.size() > frame && frame > 0) {
+	frame--; // poses start from [0], frames starts from 1
+	if (this->poses.size() > frame && frame >= 0) {
 		return this->poses.at(frame);
 	}
 	else 
