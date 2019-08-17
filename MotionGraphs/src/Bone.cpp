@@ -219,7 +219,7 @@ void Bone::updateSegMat()
 
 	// Point cloud plane z
 	int samples_along_line = (int)(length*3);
-	float offset_normal = 0.1f;
+	float offset_normal = 0.01f;
 	Bseg = glm::mat4(1.f);
 	Bseg = glm::translate(Bseg, p1);
 	float unit_len = p1p2_len / samples_along_line;

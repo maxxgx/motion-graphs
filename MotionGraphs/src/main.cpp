@@ -61,6 +61,8 @@ struct controls {
 	bool disable_floor_tiles = false;
 
     bool show_selected_frames = false;
+	bool show_bone_segment = true;
+	bool show_joints = true;
 
     bool mouse_btn2_pressed = false;
 
@@ -71,6 +73,8 @@ struct controls {
 	// COntrols
 	int current_frame_a = 1, current_frame_b = 1, current_frame_r = 1;
 	float speed = 1.f;
+	
+	float point_cloud_size = 0.005f;
 } states;
 
 // timing
@@ -383,9 +387,24 @@ int main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         // ImGui::ShowDemoWindow();
-        ImGui::Begin("Vis");
-		ImGui::Checkbox("Show floor tiles", &states.disable_floor_tiles);
+        ImGui::Begin("Visualisation");
+		if (ImGui::TreeNode("Options"))
+		{
+			ImGui::Checkbox("Show floor tiles", &states.disable_floor_tiles);
+			ImGui::Checkbox("Show point cloud", &states.show_cloud);
+			if (states.show_cloud) {
+				static float step = 0.001f;
+				ImGui::SameLine();
+				if (ImGui::ArrowButton("##CP_up_size", ImGuiDir_Up)) { states.point_cloud_size += step; }
+				ImGui::SameLine();
+				if (ImGui::ArrowButton("##CP_down_size", ImGuiDir_Down)) { if (states.point_cloud_size > 0) states.point_cloud_size -= step; }
+			}
+			ImGui::Checkbox("Show skeleton joints", &states.show_joints);
+			ImGui::Checkbox("Show skeleton bone segments", &states.show_bone_segment);
+			ImGui::TreePop();
+		}
 
+		ImGui::Separator();
 		ImGui::PushStyleColor(ImGuiCol_Button, !states.compute_running ? GUI::color_green : GUI::color_red);
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, !states.compute_running ? GUI::color_green_h : GUI::color_red_h);
 		if (ImGui::Button("Compute distance matrix") && !states.compute_running) {
@@ -705,7 +724,7 @@ void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffS
 		// calculate the model matrix for each object and pass it to shader before drawing
 		model = glm::scale(bone->getJointMat(), glm::vec3(render_scale));
 		diffShader.setMat4("model", model);
-		sphere.Draw(diffShader);
+		if (states.show_joints) sphere.Draw(diffShader);
 
 		// Draw segment
 		diffShader.setVec3("objectColor", .6f, 0.6f, 0.6f);
@@ -714,7 +733,7 @@ void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffS
 		}
 		model = glm::scale(bone->getSegMat(), glm::vec3(render_scale));
 		diffShader.setMat4("model", model);
-		cylinder.Draw(diffShader);
+		if (states.show_bone_segment) cylinder.Draw(diffShader);
 
 		//Cloud point guideline
 		/*diffShader.setVec3("objectColor", 0.41f, 0.41f, .6f);
@@ -729,18 +748,17 @@ void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffS
 		glDrawArrays(GL_TRIANGLES, 0, 36);*/
 
 		//Cloud points
-		// if (states.show_cloud && PC.size() > frame) 
-		// {
-		// 	PointCloud* w_pc = PC[frame]; // window frame
-		// 	diffShader.setVec3("objectColor", .8f, 0.8f, 0.8f);
-		// 	for (auto p : w_pc->points) {
-		// 		model = glm::scale(bone->getLocalPointCloud()->getPointMat(p), glm::vec3(0.01f));
-		// 		diffShader.setMat4("model", model);
-		// 		// sphere.Draw(diffShader);
-		// 		glBindVertexArray(cube.VAO);
-		// 		glDrawArrays(GL_TRIANGLES, 0, 36);
-		// 	}
-		// }			
+		if (states.show_cloud) 
+		{
+			diffShader.setVec3("objectColor", .8f, 0.8f, 0.8f);
+			vector<glm::vec3>& points = bone->getLocalPointCloud()->points;
+			// cout << "bone " << bone->name << ", pc size: " << points.size() << endl;
+			for (auto p : points) {
+				model = glm::scale(bone->getLocalPointCloud()->getPointMat(p), glm::vec3(states.point_cloud_size));
+				diffShader.setMat4("model", model);
+				sphere.Draw(diffShader);
+			}
+		}		
 	}
 
 	// Draw Lights
