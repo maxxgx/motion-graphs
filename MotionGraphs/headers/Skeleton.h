@@ -11,7 +11,6 @@
 #include <fstream>
 #include <sstream>
 #include <map>
-#include "Scene.h"
 #include "Utils.h"
 
 #include "../includes/imgui/imgui.h"
