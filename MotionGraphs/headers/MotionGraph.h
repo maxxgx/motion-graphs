@@ -62,8 +62,8 @@ namespace mograph {
 
         Animation* edge2anim(Vertex* src, Edge e);
         Animation* edge2anim(vector<pair<Vertex*, Edge>> edges);
-        vector<pair<Vertex*, Edge>> traverse_min_rand();
-        vector<pair<Vertex*, Edge>> traverse_sequential(vector<pair<string,Animation*>> anim_list);
+        vector<pair<Vertex*, Edge>> traverse_min_rand(float threshold);
+        vector<pair<Vertex*, Edge>> traverse_sequential(vector<pair<string,Animation*>> anim_list, float threshold);
 
         ~MotionGraph() {
             delete head.first;
@@ -80,6 +80,7 @@ namespace mograph {
                             next_candidate = make_pair(nullptr, nullptr), 
                             head_init_copy = make_pair(nullptr, nullptr);
         map<Vertex*, vector<Edge>> G;
+        map<string, Vertex*> vert_map;
         int k;
     };
 }

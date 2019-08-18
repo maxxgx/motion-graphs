@@ -75,6 +75,8 @@ struct controls {
 	float speed = 1.f;
 	
 	float point_cloud_size = 0.005f;
+
+	float threshold = 1000.0f;
 } states;
 
 // timing
@@ -386,7 +388,7 @@ int main()
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        // ImGui::ShowDemoWindow();
+        ImGui::ShowDemoWindow();
         ImGui::Begin("Visualisation");
 		if (ImGui::TreeNode("Options"))
 		{
@@ -416,7 +418,7 @@ int main()
 		ImGui::SameLine();ImGui::Text("\t\t");ImGui::SameLine();
 		if (ImGui::Button("BLEND") ) {
 			vector<Pose*> pre_Ai = get_anim(anim_a)->getPosesInRange(0, states.current_frame_a-k-1);
-        	vector<Pose*> after_Bj = get_anim(anim_b)->getPosesInRange(states.current_frame_b+k+1, get_anim(anim_b)->getNumberOfFrames());
+			vector<Pose*> after_Bj = get_anim(anim_b)->getPosesInRange(states.current_frame_b+k+1, get_anim(anim_b)->getNumberOfFrames());
 			Animation* blend = blending::blend_anim(get_anim(anim_a), get_anim(anim_b), states.current_frame_a, states.current_frame_b, k);
 			vector<Pose*> blend_poses = blend->getPosesInRange(1, blend->getNumberOfFrames());
 			pre_Ai.insert(pre_Ai.end(), blend_poses.begin(), blend_poses.end());
@@ -459,22 +461,35 @@ int main()
 				last_motion_to_add = motion_to_add;
 			}
 			ImGui::Begin("Motion graph");
+			ImGui::DragFloat("Threshold", &states.threshold); 
+			if (states.threshold < 0) states.threshold = 0.0f;
+			static int e = 0;
+			ImGui::RadioButton("Greedy search", &e, 0); ImGui::SameLine();
+			ImGui::RadioButton("Sequential graph walk", &e, 1);
 			ImGui::PushStyleColor(ImGuiCol_Button, !states.compute_mograph ? GUI::color_green : GUI::color_red);
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, !states.compute_mograph ? GUI::color_green_h : GUI::color_red_h);
 			if (ImGui::Button("Compute motion graph") && !states.compute_mograph) {
 				// ftr_mograph = std::async(get_motion_graph);
 				// states.compute_mograph = true;
 				motion_graph = new mograph::MotionGraph(anim_list, sk, k, &progress_mograph);
-				graph_traversal = motion_graph->traverse_min_rand();
+				graph_traversal = motion_graph->traverse_min_rand(states.threshold);
 				motion_graph->set_head(graph_traversal.at(graph_traversal_index));
 				anim_r = motion_graph->edge2anim(graph_traversal.at(graph_traversal_index).first, graph_traversal.at(graph_traversal_index).second);
 				states.split_screen = false;
 			}
 			if (motion_graph != nullptr) {
 				ImGui::SameLine();
-				if (ImGui::Button("Traversal - Min edge")) {
+				if (ImGui::Button("Traversal")) {
 					motion_graph->reset_head();
-					graph_traversal = motion_graph->traverse_min_rand();
+					switch (e)
+					{
+					case 1:
+						graph_traversal = motion_graph->traverse_sequential(anim_list, states.threshold);
+						break;
+					default:
+						graph_traversal = motion_graph->traverse_min_rand(states.threshold);
+						break;
+					}
 					motion_graph->set_head(graph_traversal.at(graph_traversal_index));
 					anim_r = motion_graph->edge2anim(graph_traversal.at(graph_traversal_index).first, graph_traversal.at(graph_traversal_index).second);
 				}
@@ -859,6 +874,10 @@ void plot_motion_graph(mograph::MotionGraph* graph, Model quad_mesh, Model line,
 
 		// Draw the local minimas points on the animation line
 		for (mograph::Edge e:v_es.second) {
+			// skip if not in threshold
+			if (e.get_weight() > states.threshold) 
+				continue;
+
 			shader.setVec3("objectColor", .75f, 0.75f, 0.75f);
 			// Drawing the bars on the animation line
 			int A = e.get_frames().first * scale * 2;

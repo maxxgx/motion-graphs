@@ -208,7 +208,21 @@ namespace mograph {
         return anim;
     }
 
-    vector<pair<Vertex*, Edge>> MotionGraph::traverse_min_rand()
+    void print_traversal_path(vector<pair<Vertex*, Edge>> path) 
+    {
+        cout << "\nPath:\n" ;
+        for (auto &v:path) {
+            cout << "\t\tvisited node: " << v.first->get_name().substr(v.first->get_name().find_last_of("/"))
+                << " --- target node :  " << v.second.get_target()->get_name().substr(v.second.get_target()->get_name().find_last_of("/"))
+                << ", edge i-j = " << v.second.get_frames().first
+                << "-" << v.second.get_frames().second
+                << ", w -> " << v.second.get_weight()
+                << endl;
+        }
+        cout << "total traversed nodes: " << path.size() << endl;
+    }
+
+    vector<pair<Vertex*, Edge>> MotionGraph::traverse_min_rand(float threshold)
     {
         vector<pair<Vertex*, Edge>> visited;
         // visited.push_back(make_pair(next_candidate.first, *next_candidate.second));
@@ -261,23 +275,22 @@ namespace mograph {
             visited_nodes.insert(head.first);
         }
 
-        cout << "\nPath:\n" ;
-        for (auto &v:visited) {
-            cout << "\t\tvisited node: " << v.first 
-                << " --- target node :  " << v.second.get_target()
-                << ", edge i-j = " << v.second.get_frames().first
-                << "-" << v.second.get_frames().second
-                << ", w -> " << v.second.get_weight()
-                << endl;
-        }
-
-        cout << "total traversed nodes: " << visited.size() << endl;
+        print_traversal_path(visited);
         return visited;
     }
 
-     vector<pair<Vertex*, Edge>> MotionGraph::traverse_sequential(vector<pair<string,Animation*>> anim_list)
-     {
+    vector<pair<Vertex*, Edge>> MotionGraph::traverse_sequential(vector<pair<string,Animation*>> anim_list, float threshold)
+    {
+    /**
+     *  Algorithm:
+     *  1. for each animation, get the next one in order
+     *  2. filter the edges to next animation that meet the threshold
+     *  3. select one of the best fit edges.
+     */
+        vector<pair<Vertex*, Edge>> trav;
+        Edge* last_e = nullptr; 
         for (int i = 0; i < anim_list.size(); i++){
+            // 1. select next
             Vertex* curr = this->vert_map[anim_list.at(i).first];
             Vertex* next = nullptr;
             try {
@@ -286,9 +299,91 @@ namespace mograph {
                 next = nullptr;
             }
 
-            vector<Edge>& edges = G[curr];
+            cout << "curr = " << curr->get_name().substr(curr->get_name().find_last_of("/")) << endl;
+            cout << "next = " << next << endl;
 
-            // for (Edge)
+            // 2. filter edges
+            vector<Edge> edges(G[curr]); // copy of all the edges
+            edges.erase(
+                std::remove_if(begin(edges), end(edges), [&] (Edge e) {
+                    return e.get_target() != next;} ),
+                    end(edges));
+
+            edges.erase(
+                std::remove_if(begin(edges), end(edges), [&] (Edge e) {
+                if (last_e != nullptr) {
+                    return last_e->get_frames().second + k > e.get_frames().first;
+                } else
+                    return false;}),
+                end(edges));
+
+            std::sort(begin(edges), end(edges));
+            
+            cout << "Sorted edges:" << endl;
+            for (auto e:edges) 
+                cout << "\t\tcurr node: " << curr->get_name().substr(curr->get_name().find_last_of("/"))
+                << " --- target node :  " << e.get_target()->get_name().substr(e.get_target()->get_name().find_last_of("/"))
+                << ", edge i-j = " << e.get_frames().first
+                << "-" << e.get_frames().second
+                << ", w -> " << e.get_weight()
+                << endl;
+
+            if (edges.size() > 0) {
+                float top_perc = 0.2f; // top 20 %
+                cout << "\n size of edges = " << edges.size() << ", ith = " << int(top_perc * edges.size()) << endl;
+                float ith_val = edges.at(int(top_perc * edges.size())).get_weight();
+
+                cout << "ith val = " << ith_val << endl;
+
+                edges.erase(
+                    std::remove_if(begin(edges), end(edges), [&] (Edge e) {return e.get_weight() >= ith_val && e.get_weight() > threshold;}),
+                    end(edges));
+                if (edges.size() <= 0) {
+                    cout << "\nError: no edges to select... threshold too low" << endl;
+                    return trav;
+                }
+                
+                cout << "\nAfter selection:" << endl;
+                for (auto e:edges) 
+                    cout << "\t\tcurr node: " << curr->get_name().substr(curr->get_name().find_last_of("/"))
+                    << " --- target node :  " << e.get_target()->get_name().substr(e.get_target()->get_name().find_last_of("/"))
+                    << ", edge i-j = " << e.get_frames().first
+                    << "-" << e.get_frames().second
+                    << ", w -> " << e.get_weight()
+                    << endl;
+
+            // 3. select from the remaining
+                random_selector<> rnd_sel{};
+                Edge selected_e = rnd_sel(edges);
+                cout << "selected w = " << selected_e.get_weight() << endl;            
+
+                if (last_e == nullptr) { // first animation
+                    Edge gap(curr, 1, selected_e.get_frames().first - k, -1);
+                    trav.push_back(make_pair(curr, gap));
+                    last_e = new Edge(selected_e);
+                } else {
+                    Edge gap(curr, last_e->get_frames().second + k, selected_e.get_frames().first - k, -1);
+                    trav.push_back(make_pair(curr, gap));
+                    last_e = new Edge(selected_e);
+                }
+                trav.push_back(make_pair(curr,selected_e));
+            } else {
+                cout << "\nError: no edges to select..." << endl;
+            }
+
+            if (next == nullptr) { // last animation
+                cout << "next == null" << endl;
+                // create anim to finish off the last animation
+                int last_frame_e = last_e->get_frames().second;
+                Edge gap(curr, last_frame_e+k, curr->get_anim()->getNumberOfFrames(), -1);
+                trav.push_back(make_pair(curr, gap));
+                cout << "breaking" << endl;
+                break;
+            }
+            cout << "bottom loop" << endl;
         }
-     }
+        cout << "Traversal done..." << endl;
+        print_traversal_path(trav);
+        return trav;
+    }
 }
