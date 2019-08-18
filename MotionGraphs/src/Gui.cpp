@@ -210,8 +210,28 @@ namespace GUI{
 		for (auto& entry:anim_cache) {
 			string name = entry.first.substr(entry.first.find_last_of("/"));
 			string num_frames = std::to_string(entry.second->getNumberOfFrames());
-			ImGui::Text((name + " | " + num_frames + "\t\t\t").c_str());
+			ImGui::Text((name + " | " + num_frames + "\t").c_str());
 			ImGui::SameLine();
+
+			// Arrow keys to move motion up/down
+			ImGui::SameLine();
+			if (ImGui::ArrowButton("arrow_up_list" + index, ImGuiDir_Up)) {
+				try {
+					std::swap(anim_cache.at(index), anim_cache.at(index-1));
+				} catch (const std::out_of_range e) {
+					cout << "Cannot swap element: " << e.what() << endl;
+				}
+			}
+			ImGui::SameLine();
+			if (ImGui::ArrowButton("arrow_down_list" + index, ImGuiDir_Down)) { 
+				try {
+					std::swap(anim_cache.at(index), anim_cache.at(index+1));
+				} catch (const std::out_of_range e) {
+					cout << "Cannot swap element: " << e.what() << endl;
+				}
+			}
+			ImGui::SameLine();ImGui::Text("\t");ImGui::SameLine();
+
 			ImGui::PushStyleColor(ImGuiCol_Button, color_red);
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, color_red_h);
 			ImGui::PushID(index);

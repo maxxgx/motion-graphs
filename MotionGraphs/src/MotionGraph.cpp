@@ -107,7 +107,6 @@ namespace mograph {
         this->k = k;
         cout << "Creating mograph..." << endl;
         // Create vertex
-        map<string, Vertex*> vert_map;
         for (auto A:anim_list) {
             vert_map[A.first] = new Vertex(A.first, A.second);
             if (head.first == nullptr) head.first = vert_map[A.first];
@@ -275,4 +274,21 @@ namespace mograph {
         cout << "total traversed nodes: " << visited.size() << endl;
         return visited;
     }
+
+     vector<pair<Vertex*, Edge>> MotionGraph::traverse_sequential(vector<pair<string,Animation*>> anim_list)
+     {
+        for (int i = 0; i < anim_list.size(); i++){
+            Vertex* curr = this->vert_map[anim_list.at(i).first];
+            Vertex* next = nullptr;
+            try {
+                next = this->vert_map[anim_list.at(i+1).first];
+            } catch (std::out_of_range e) {
+                next = nullptr;
+            }
+
+            vector<Edge>& edges = G[curr];
+
+            // for (Edge)
+        }
+     }
 }

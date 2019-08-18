@@ -468,6 +468,7 @@ int main()
 				graph_traversal = motion_graph->traverse_min_rand();
 				motion_graph->set_head(graph_traversal.at(graph_traversal_index));
 				anim_r = motion_graph->edge2anim(graph_traversal.at(graph_traversal_index).first, graph_traversal.at(graph_traversal_index).second);
+				states.split_screen = false;
 			}
 			if (motion_graph != nullptr) {
 				ImGui::SameLine();
@@ -492,7 +493,6 @@ int main()
 			// }
 			// ImGui::SameLine();
 			// ImGui::ProgressBar(progress_mograph >= 0.98 ? 1.0f : progress_mograph, ImVec2(0.0f,0.0f));
-			static bool show = false;
 			static float off_x = 0.f;
 			static float off_y = 0.f;
 			static float scale = 2.f;

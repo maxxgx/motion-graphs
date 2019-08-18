@@ -63,10 +63,11 @@ namespace mograph {
         Animation* edge2anim(Vertex* src, Edge e);
         Animation* edge2anim(vector<pair<Vertex*, Edge>> edges);
         vector<pair<Vertex*, Edge>> traverse_min_rand();
+        vector<pair<Vertex*, Edge>> traverse_sequential(vector<pair<string,Animation*>> anim_list);
 
         ~MotionGraph() {
             delete head.first;
-            delete head.second;
+            // delete head.second;
             for (auto item:G){
                 delete item.first;
                 // for (auto v_item:item.second) delete v_item;
