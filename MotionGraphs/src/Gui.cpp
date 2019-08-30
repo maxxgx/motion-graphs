@@ -12,9 +12,9 @@ namespace GUI{
 
 	void showDistanceMatrix(int anim_a_size, int anim_b_size, vector<float> dist_mat, std::pair<int,int> &selected_frames, bool *show_selected_frames, bool *update_texture)
 	{
-		static float threshold = 0.5f;
+		static float threshold = 100.0f;
 		static float last_threshold = threshold;
-		ImGui::DragFloat("Threshold", &threshold);
+		ImGui::InputFloat("Threshold",  &threshold, 1000.0, 10000.0f, 2);
 		threshold = threshold >= 0.f ? threshold : 0.f;
 		if (ImGui::TreeNode("Distance matrix"))
 		{

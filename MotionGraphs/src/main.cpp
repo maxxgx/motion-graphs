@@ -514,7 +514,7 @@ int main()
 					last_motion_to_add = motion_to_add;
 				}
 				ImGui::Begin("Motion graph");
-				ImGui::DragFloat("Threshold", &states.threshold); 
+				ImGui::DragFloat("Threshold", &states.threshold);
 				if (states.threshold < 0) states.threshold = 0.0f;
 				static int e = 0;
 				ImGui::RadioButton("Greedy search", &e, 0); ImGui::SameLine();
