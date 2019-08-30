@@ -67,6 +67,8 @@ struct controls {
 
 	bool show_GUI = true;
 
+	bool lock_skeleton = false;
+
     bool mouse_btn2_pressed = false;
 
 	bool update_texture = false;
@@ -401,28 +403,29 @@ int main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         // ImGui::ShowDemoWindow();
-		ImGui::Checkbox("Show GUI", &states.show_GUI);
+		
+		{
+			ImGui::Begin("Options");
+			ImGui::Checkbox("Show GUI", &states.show_GUI);
+			ImGui::Checkbox("Show floor tiles", &states.disable_floor_tiles);
+			ImGui::Checkbox("Show pose point cloud", &states.show_cloud);
+			ImGui::Checkbox("Show full point cloud", &states.show_window_cloud);
+			if (states.show_cloud || states.show_window_cloud) {
+				static float step = 0.001f;
+				ImGui::SameLine();
+				if (ImGui::ArrowButton("##CP_up_size", ImGuiDir_Up)) { states.point_cloud_size += step; }
+				ImGui::SameLine();
+				if (ImGui::ArrowButton("##CP_down_size", ImGuiDir_Down)) { if (states.point_cloud_size > 0) states.point_cloud_size -= step; }
+			}
+			ImGui::Checkbox("Show skeleton joints", &states.show_joints);
+			ImGui::Checkbox("Show skeleton bone segments", &states.show_bone_segment);
+			ImGui::Checkbox("Lock skeleton in place", &states.lock_skeleton);
+			ImGui::End();
+		}
 
 		if (states.show_GUI)
 		{
 			ImGui::Begin("Visualisation");
-			if (ImGui::TreeNode("Options"))
-			{
-				ImGui::Checkbox("Show GUI", &states.show_GUI);
-				ImGui::Checkbox("Show floor tiles", &states.disable_floor_tiles);
-				ImGui::Checkbox("Show pose point cloud", &states.show_cloud);
-				ImGui::Checkbox("Show full point cloud", &states.show_window_cloud);
-				if (states.show_cloud || states.show_window_cloud) {
-					static float step = 0.001f;
-					ImGui::SameLine();
-					if (ImGui::ArrowButton("##CP_up_size", ImGuiDir_Up)) { states.point_cloud_size += step; }
-					ImGui::SameLine();
-					if (ImGui::ArrowButton("##CP_down_size", ImGuiDir_Down)) { if (states.point_cloud_size > 0) states.point_cloud_size -= step; }
-				}
-				ImGui::Checkbox("Show skeleton joints", &states.show_joints);
-				ImGui::Checkbox("Show skeleton bone segments", &states.show_bone_segment);
-				ImGui::TreePop();
-			}
 
 			ImGui::Separator();
 			ImGui::PushStyleColor(ImGuiCol_Button, !states.compute_running ? GUI::color_green : GUI::color_red);
@@ -714,7 +717,10 @@ void update(Animation* anim, int *current_frame, int selected_frame)
 		PCs_b = PCs_a;
 	}
 
-	sk->apply_pose(anim->getPoseAt(*current_frame));
+	if (states.lock_skeleton)
+		sk->apply_pose_locked(anim->getPoseAt(*current_frame));
+	else	
+		sk->apply_pose(anim->getPoseAt(*current_frame));
 
 	if (states.play)
 	{
@@ -1014,7 +1020,7 @@ void plot_motion_graph(mograph::MotionGraph* graph, Model quad_mesh, Model line,
 	float x_pos_2 = offset_x+scale/2 + padding_left;
 	glm::vec3 p1 = glm::vec3(x_pos_1 + (float)A_scaled, tar_h_offset_1, 1.f);
 	glm::vec3 p2 = glm::vec3(x_pos_2 + (float)B_scaled, tar_h_offset_2, 1.f);
-	plot_line_between_p1_p2(p1, p2, line, shader, scale_line_narrow);
+	plot_line_between_p1_p2(p1, p2, line, shader, scale_line_thick/2);
 
 }
 
