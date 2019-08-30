@@ -58,11 +58,14 @@ struct controls {
 	bool split_screen = true;
     bool lock_view = false;
     bool show_cloud = false;
+	bool show_window_cloud = false;
 	bool disable_floor_tiles = false;
 
     bool show_selected_frames = false;
 	bool show_bone_segment = true;
 	bool show_joints = true;
+
+	bool show_GUI = true;
 
     bool mouse_btn2_pressed = false;
 
@@ -104,8 +107,9 @@ Animation* get_anim(string amc);
 
 void update(Animation* anim, int *current_frame, int selected_frame);
 
+void draw_skeleton(Skeleton *sk, Model sphere, Model cylinder, Shader diffShader, PointCloud* PC);
 void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader, 
-		screen_size window_region, vector<PointCloud*> PC);
+		screen_size window_region, PointCloud* PC);
 void plot_line_between_p1_p2(glm::vec3 p1, glm::vec3 p2, Model line, Shader shader, float thickness);
 void plot_motion_graph(mograph::MotionGraph* graph, Model quad_mesh, Model line, Shader shader, float offset_x, float offset_y, float scale);
 
@@ -121,6 +125,12 @@ bool firstMouse = true;
 
 // Lights
 PointLight lamp = PointLight();
+
+// Floor tiles pre-computed matrices
+vector<glm::mat4> tiles_mat;
+int grid_size = 20;
+float tile_scale = 0.5f;
+float tile_offset = 2.f;
 
 
 float scale = 0.056444f; //inches to meters
@@ -143,10 +153,9 @@ vector<pair<string,Animation*>> anim_list;
 Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
 string anim_a = (file_amc + "3.amc");
 string anim_b = (file_amc + "1.amc");
-vector<PointCloud*> PCs_a;
-vector<PointCloud*> PCs_b;
-
-unsigned int textureFloor;
+PointCloud* PCs_a;
+PointCloud* PCs_b;
+vector<unique_ptr<Skeleton>> sk_frames;
 
 int main()
 {
@@ -340,22 +349,25 @@ int main()
         cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	//Floor tile texture
-	vector<float> floor_tiles_col = { 
-		1.0, 1.0, 1.0,		0.0, 0.0, 0.0,
-		0.0, 0.0, 0.0,		1.0, 1.0, 1.0
-	};
+	//Floor tile mat computation
+	glm::mat4 model = glm::mat4(1.0f);
 	
-	glEnable(GL_TEXTURE_2D);
-	glGenTextures(1,&textureFloor);
-	glBindTexture(GL_TEXTURE_2D, textureFloor);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,GL_NEAREST);
-	glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
-	glTexImage2D(GL_TEXTURE_2D, 0 ,GL_RGB, 2, 2,0,GL_RGB,GL_FLOAT, &floor_tiles_col[0]);
-	glDisable(GL_TEXTURE_2D);
+	model = glm::scale(model, glm::vec3(tile_scale, 1.f, tile_scale));
+	model = glm::translate(model, glm::vec3(-grid_size * tile_offset / 2, 0.f, -grid_size * tile_offset / 2));
+	tiles_mat.reserve(grid_size*grid_size);
+
+	for (int i = 0; i < grid_size; i++) {
+		for (int j = 0; j < grid_size; j++) {
+			if ((i + j) % 2 == 0) 
+				diffShader.setVec3("objectColor", 1.f, 1.f, 1.f);
+			else 
+				diffShader.setVec3("objectColor", 0.7f, 0.7f, 0.7f);
+			model = glm::translate(model, glm::vec3(tile_offset, 0.f, 0.f));
+			// model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f));
+			tiles_mat.push_back(model);
+		}
+		model = glm::translate(model, glm::vec3(-tile_offset*grid_size, 0.f, tile_offset));
+	}
 
 	
     // Vars
@@ -389,147 +401,199 @@ int main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         // ImGui::ShowDemoWindow();
-        ImGui::Begin("Visualisation");
-		if (ImGui::TreeNode("Options"))
+		ImGui::Checkbox("Show GUI", &states.show_GUI);
+
+		if (states.show_GUI)
 		{
-			ImGui::Checkbox("Show floor tiles", &states.disable_floor_tiles);
-			ImGui::Checkbox("Show point cloud", &states.show_cloud);
-			if (states.show_cloud) {
-				static float step = 0.001f;
-				ImGui::SameLine();
-				if (ImGui::ArrowButton("##CP_up_size", ImGuiDir_Up)) { states.point_cloud_size += step; }
-				ImGui::SameLine();
-				if (ImGui::ArrowButton("##CP_down_size", ImGuiDir_Down)) { if (states.point_cloud_size > 0) states.point_cloud_size -= step; }
-			}
-			ImGui::Checkbox("Show skeleton joints", &states.show_joints);
-			ImGui::Checkbox("Show skeleton bone segments", &states.show_bone_segment);
-			ImGui::TreePop();
-		}
-
-		ImGui::Separator();
-		ImGui::PushStyleColor(ImGuiCol_Button, !states.compute_running ? GUI::color_green : GUI::color_red);
-		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, !states.compute_running ? GUI::color_green_h : GUI::color_red_h);
-		if (ImGui::Button("Compute distance matrix") && !states.compute_running) {
-			ftr = std::async(get_distance_matrix);
-			states.compute_running = true;
-			states.show_selected_frames=false;
-		}
-		ImGui::PopStyleColor(2);
-		ImGui::SameLine();ImGui::Text("\t\t");ImGui::SameLine();
-		if (ImGui::Button("BLEND") ) {
-			vector<Pose*> pre_Ai = get_anim(anim_a)->getPosesInRange(0, states.current_frame_a-k-1);
-			vector<Pose*> after_Bj = get_anim(anim_b)->getPosesInRange(states.current_frame_b+k+1, get_anim(anim_b)->getNumberOfFrames());
-			Animation* blend = blending::blend_anim(get_anim(anim_a), get_anim(anim_b), states.current_frame_a, states.current_frame_b, k);
-			vector<Pose*> blend_poses = blend->getPosesInRange(1, blend->getNumberOfFrames());
-			pre_Ai.insert(pre_Ai.end(), blend_poses.begin(), blend_poses.end());
-			pre_Ai.insert(pre_Ai.end(), after_Bj.begin(), after_Bj.end());
-			anim_r = new Animation(pre_Ai);
-		}
-		// Only tries to retrieve the return value of the thread compute, if it is has started.
-		if (states.compute_running) {
-			auto status = ftr.wait_for(0ms);
-			if(status == std::future_status::ready){
-				if (ftr.valid()) {
-					pair<vector<float>, pair<float, float>> dist_mat_res = ftr.get();
-					dist_mat = dist_mat_res.first;
-					dist_mat_range = dist_mat_res.second;
-					// cout << "dist_mat_res.first.size() = " << dist_mat_res.first.size() << endl;
-					states.compute_running = false;
-					states.update_texture = true;
+			ImGui::Begin("Visualisation");
+			if (ImGui::TreeNode("Options"))
+			{
+				ImGui::Checkbox("Show GUI", &states.show_GUI);
+				ImGui::Checkbox("Show floor tiles", &states.disable_floor_tiles);
+				ImGui::Checkbox("Show pose point cloud", &states.show_cloud);
+				ImGui::Checkbox("Show full point cloud", &states.show_window_cloud);
+				if (states.show_cloud || states.show_window_cloud) {
+					static float step = 0.001f;
+					ImGui::SameLine();
+					if (ImGui::ArrowButton("##CP_up_size", ImGuiDir_Up)) { states.point_cloud_size += step; }
+					ImGui::SameLine();
+					if (ImGui::ArrowButton("##CP_down_size", ImGuiDir_Down)) { if (states.point_cloud_size > 0) states.point_cloud_size -= step; }
 				}
+				ImGui::Checkbox("Show skeleton joints", &states.show_joints);
+				ImGui::Checkbox("Show skeleton bone segments", &states.show_bone_segment);
+				ImGui::TreePop();
 			}
-		}
-		ImGui::Text("range distance %.3f to %.3f", dist_mat_range.first, dist_mat_range.second);
 
-		ImGui::ProgressBar(progress >= 0.98 ? 1.0f : progress, ImVec2(0.0f,0.0f));
-		int anim_a_size = get_anim(anim_a)->getNumberOfFrames();
-		int anim_b_size = get_anim(anim_b)->getNumberOfFrames();
-		int anim_r_size = anim_r == NULL ? 0:anim_r->getNumberOfFrames();
-        GUI::showDistanceMatrix(anim_a_size, anim_b_size, dist_mat, selected_frames, &states.show_selected_frames, &states.update_texture);
-        ImGui::Separator();
-		ImGui::ShowMetricsWindow();
-		
-		GUI::showBasicControls(&states.play, &states.split_screen, &states.exit, &anim_a, &anim_b, &states.current_frame_a, &states.current_frame_b, &states.current_frame_r, 
-			anim_a_size, anim_b_size, anim_r_size, &states.speed, dir_files, res_path + "mocap/");
-
-        ImGui::End(); //last END
-		{
-			static string motion_to_add, last_motion_to_add;
-			GUI::showMotionList(anim_list, dir_files, res_path + "mocap/", &motion_to_add);
-			if (last_motion_to_add != motion_to_add) {
-				anim_list.push_back(make_pair(motion_to_add, get_anim(motion_to_add)));
-				last_motion_to_add = motion_to_add;
-			}
-			ImGui::Begin("Motion graph");
-			ImGui::DragFloat("Threshold", &states.threshold); 
-			if (states.threshold < 0) states.threshold = 0.0f;
-			static int e = 0;
-			ImGui::RadioButton("Greedy search", &e, 0); ImGui::SameLine();
-			ImGui::RadioButton("Sequential graph walk", &e, 1);
-			ImGui::PushStyleColor(ImGuiCol_Button, !states.compute_mograph ? GUI::color_green : GUI::color_red);
-			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, !states.compute_mograph ? GUI::color_green_h : GUI::color_red_h);
-			if (ImGui::Button("Compute motion graph") && !states.compute_mograph) {
-				// ftr_mograph = std::async(get_motion_graph);
-				// states.compute_mograph = true;
-				motion_graph = new mograph::MotionGraph(anim_list, sk, k, &progress_mograph);
-				graph_traversal = motion_graph->traverse_min_rand(states.threshold);
-				motion_graph->set_head(graph_traversal.at(graph_traversal_index));
-				anim_r = motion_graph->edge2anim(graph_traversal.at(graph_traversal_index).first, graph_traversal.at(graph_traversal_index).second);
-				states.split_screen = false;
-			}
-			if (motion_graph != nullptr) {
-				ImGui::SameLine();
-				if (ImGui::Button("Traversal")) {
-					motion_graph->reset_head();
-					switch (e)
-					{
-					case 1:
-						graph_traversal = motion_graph->traverse_sequential(anim_list, states.threshold);
-						break;
-					default:
-						graph_traversal = motion_graph->traverse_min_rand(states.threshold);
-						break;
-					}
-					motion_graph->set_head(graph_traversal.at(graph_traversal_index));
-					anim_r = motion_graph->edge2anim(graph_traversal.at(graph_traversal_index).first, graph_traversal.at(graph_traversal_index).second);
-				}
+			ImGui::Separator();
+			ImGui::PushStyleColor(ImGuiCol_Button, !states.compute_running ? GUI::color_green : GUI::color_red);
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, !states.compute_running ? GUI::color_green_h : GUI::color_red_h);
+			if (ImGui::Button("Compute distance matrix") && !states.compute_running) {
+				ftr = std::async(get_distance_matrix);
+				states.compute_running = true;
+				states.show_selected_frames=false;
 			}
 			ImGui::PopStyleColor(2);
+			ImGui::SameLine();ImGui::Text("\t\t");ImGui::SameLine();
+			if (ImGui::Button("BLEND") ) {
+				vector<Pose*> pre_Ai = get_anim(anim_a)->getPosesInRange(0, states.current_frame_a-k-1);
+				vector<Pose*> after_Bj = get_anim(anim_b)->getPosesInRange(states.current_frame_b+k+1, get_anim(anim_b)->getNumberOfFrames());
+				Animation* blend = blending::blend_anim(get_anim(anim_a), get_anim(anim_b), states.current_frame_a, states.current_frame_b, k);
+				vector<Pose*> blend_poses = blend->getPosesInRange(1, blend->getNumberOfFrames());
+				pre_Ai.insert(pre_Ai.end(), blend_poses.begin(), blend_poses.end());
+				pre_Ai.insert(pre_Ai.end(), after_Bj.begin(), after_Bj.end());
+				anim_r = new Animation(pre_Ai);
+			}
 			// Only tries to retrieve the return value of the thread compute, if it is has started.
-			// if (states.compute_mograph) {
-			// 	auto status = ftr_mograph.wait_for(0ms);
-			// 	if(status == std::future_status::ready){
-			// 		if (ftr_mograph.valid()) {
-			// 			motion_graph = ftr_mograph.get();
-			// 			anim_r = motion_graph->get_current_motion();
-			// 			states.compute_mograph = false;
-			// 		}
-			// 	}
-			// }
-			// ImGui::SameLine();
-			// ImGui::ProgressBar(progress_mograph >= 0.98 ? 1.0f : progress_mograph, ImVec2(0.0f,0.0f));
-			static float off_x = 0.f;
-			static float off_y = 0.f;
-			static float scale = 2.f;
-			glBindFramebuffer(GL_FRAMEBUFFER, framebufferPlot);
-			glDisable(GL_DEPTH_TEST);
-			// 2D texture for drawing the graph
-			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
+			if (states.compute_running) {
+				auto status = ftr.wait_for(0ms);
+				if(status == std::future_status::ready){
+					if (ftr.valid()) {
+						pair<vector<float>, pair<float, float>> dist_mat_res = ftr.get();
+						dist_mat = dist_mat_res.first;
+						dist_mat_range = dist_mat_res.second;
+						// cout << "dist_mat_res.first.size() = " << dist_mat_res.first.size() << endl;
+						states.compute_running = false;
+						states.update_texture = true;
+					}
+				}
+			}
+			ImGui::Text("range distance %.3f to %.3f", dist_mat_range.first, dist_mat_range.second);
 
-			glViewport(fullscreen_window.posX, fullscreen_window.posY, fullscreen_window.width, fullscreen_window.height);
+			ImGui::ProgressBar(progress >= 0.98 ? 1.0f : progress, ImVec2(0.0f,0.0f));
+			int anim_a_size = get_anim(anim_a)->getNumberOfFrames();
+			int anim_b_size = get_anim(anim_b)->getNumberOfFrames();
+			int anim_r_size = anim_r == NULL ? 0:anim_r->getNumberOfFrames();
+			GUI::showDistanceMatrix(anim_a_size, anim_b_size, dist_mat, selected_frames, &states.show_selected_frames, &states.update_texture);
+			ImGui::Separator();
+			ImGui::ShowMetricsWindow();
+			
+			GUI::showBasicControls(&states.play, &states.split_screen, &states.exit, &anim_a, &anim_b, &states.current_frame_a, &states.current_frame_b, &states.current_frame_r, 
+				anim_a_size, anim_b_size, anim_r_size, &states.speed, dir_files, res_path + "mocap/");
 
-			plot_motion_graph(motion_graph, plane, cylinder, basicShader, off_x, off_y, scale);
-			ImTextureID my_tex_id = (void*)(intptr_t)texturePlotBuffer;
-			static float zoom = 0.5f;
-			ImGui::SliderFloat("Zoom", &zoom, 0.1f, 5.0f);
-			ImGui::SliderFloat("Scale", &scale, 1.f, 10.0f);
-			ImGui::DragFloat("translate x", &off_x);
-			ImGui::DragFloat("translate y", &off_y);
-			ImGui::Image(my_tex_id, ImVec2(curr_window.width*zoom, curr_window.height*zoom), 
-			ImVec2(0,0), ImVec2(1,1));				
+			if (ImGui::TreeNode("Clone motion"))
+			{
+				static int skip_frames = 1;
+				ImGui::PushButtonRepeat(true);
+				ImGui::Text("Skip: %d frames", skip_frames);
+				ImGui::SameLine();
+				if (ImGui::ArrowButton("skip_frame_down", ImGuiDir_Left)) skip_frames = skip_frames > 0 ? --skip_frames : 0;
+				ImGui::SameLine();
+				if (ImGui::ArrowButton("skip_frame_up", ImGuiDir_Right)) ++skip_frames;
 
-			ImGui::End();
+				if (ImGui::Button("Snap skeleton pose")) {
+					bool play_temp = states.play;
+					states.play = true;
+					update(get_anim(anim_a), &states.current_frame_a, selected_frames.first);
+					update(anim_r, &states.current_frame_r, 1);
+					sk_frames.push_back(make_unique<Skeleton>(*sk));
+
+					for (int i=0; i < skip_frames; i++) {
+						update(get_anim(anim_a), &states.current_frame_a, selected_frames.first);
+						update(anim_r, &states.current_frame_r, 1);
+					}
+					states.play = play_temp;
+				}
+				ImGui::PopButtonRepeat();
+				ImGui::SameLine();
+				if (ImGui::Button("Clear Snap")) {
+					sk_frames.clear();
+				}
+				ImGui::TreePop();
+			}
+
+			ImGui::End(); //last END
+
+			{
+				static string motion_to_add, last_motion_to_add;
+				GUI::showMotionList(anim_list, dir_files, res_path + "mocap/", &motion_to_add);
+				if (last_motion_to_add != motion_to_add) {
+					anim_list.push_back(make_pair(motion_to_add, get_anim(motion_to_add)));
+					last_motion_to_add = motion_to_add;
+				}
+				ImGui::Begin("Motion graph");
+				ImGui::DragFloat("Threshold", &states.threshold); 
+				if (states.threshold < 0) states.threshold = 0.0f;
+				static int e = 0;
+				ImGui::RadioButton("Greedy search", &e, 0); ImGui::SameLine();
+				ImGui::RadioButton("Sequential graph walk", &e, 1);
+				ImGui::PushStyleColor(ImGuiCol_Button, !states.compute_mograph ? GUI::color_green : GUI::color_red);
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, !states.compute_mograph ? GUI::color_green_h : GUI::color_red_h);
+				if (ImGui::Button("Compute motion graph") && !states.compute_mograph) {
+					// ftr_mograph = std::async(get_motion_graph);
+					// states.compute_mograph = true;
+					motion_graph = new mograph::MotionGraph(anim_list, sk, k, &progress_mograph);
+					graph_traversal = motion_graph->traverse_min_rand(states.threshold);
+					motion_graph->set_head(graph_traversal.at(graph_traversal_index));
+					anim_r = motion_graph->edge2anim(graph_traversal.at(graph_traversal_index).first, graph_traversal.at(graph_traversal_index).second);
+					states.split_screen = false;
+				}
+				if (motion_graph != nullptr) {
+					ImGui::SameLine();
+					if (ImGui::Button("Traversal")) {
+						motion_graph->reset_head();
+						switch (e)
+						{
+						case 1:
+							graph_traversal = motion_graph->traverse_sequential(anim_list, states.threshold);
+							break;
+						default:
+							graph_traversal = motion_graph->traverse_min_rand(states.threshold);
+							break;
+						}
+						motion_graph->set_head(graph_traversal.at(graph_traversal_index));
+						anim_r = motion_graph->edge2anim(graph_traversal.at(graph_traversal_index).first, graph_traversal.at(graph_traversal_index).second);
+					}
+				}
+				ImGui::PopStyleColor(2);
+
+				if (graph_traversal.size()) {
+					ImGui::Text("Traversal path:");
+					float sum = 0.0f;
+					for (auto p : graph_traversal) {
+						char* src = (char*)p.first->get_name().substr(p.first->get_name().find_last_of("/")).c_str();
+						char* tar = (char*)p.second.get_target()->get_name().substr(p.second.get_target()->get_name().find_last_of("/")).c_str();
+						ImGui::Text("%s -> %s (%.2f)", src, tar, p.second.get_weight());
+						sum += p.second.get_weight();
+					}
+					ImGui::Text("Total cost: %.2f", sum);
+				}
+				// Only tries to retrieve the return value of the thread compute, if it is has started.
+				// if (states.compute_mograph) {
+				// 	auto status = ftr_mograph.wait_for(0ms);
+				// 	if(status == std::future_status::ready){
+				// 		if (ftr_mograph.valid()) {
+				// 			motion_graph = ftr_mograph.get();
+				// 			anim_r = motion_graph->get_current_motion();
+				// 			states.compute_mograph = false;
+				// 		}
+				// 	}
+				// }
+				// ImGui::SameLine();
+				// ImGui::ProgressBar(progress_mograph >= 0.98 ? 1.0f : progress_mograph, ImVec2(0.0f,0.0f));
+				static float off_x = 0.f;
+				static float off_y = 0.f;
+				static float scale = 2.f;
+				glBindFramebuffer(GL_FRAMEBUFFER, framebufferPlot);
+				glDisable(GL_DEPTH_TEST);
+				// 2D texture for drawing the graph
+				glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
+
+				glViewport(fullscreen_window.posX, fullscreen_window.posY, fullscreen_window.width, fullscreen_window.height);
+
+				plot_motion_graph(motion_graph, plane, cylinder, basicShader, off_x, off_y, scale);
+				ImTextureID my_tex_id = (void*)(intptr_t)texturePlotBuffer;
+				static float zoom = 0.5f;
+				ImGui::SliderFloat("Zoom", &zoom, 0.1f, 5.0f);
+				ImGui::SliderFloat("Scale", &scale, 1.f, 10.0f);
+				ImGui::DragFloat("translate x", &off_x);
+				ImGui::DragFloat("translate y", &off_y);
+				ImGui::Image(my_tex_id, ImVec2(curr_window.width*zoom, curr_window.height*zoom), 
+				ImVec2(0,0), ImVec2(1,1));	
+
+				ImGui::End();
+			}
+
 		}
 		// End UI
 
@@ -544,7 +608,7 @@ int main()
 		// Rendering
 		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
         glEnable(GL_DEPTH_TEST);
-		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		glClearColor(0.2f, 0.3f, 0.3f, 1.0f); // background
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
 
 		timings.dt_update += timings.delta_time;
@@ -553,7 +617,6 @@ int main()
 			// Update motion A and render
 			update(get_anim(anim_a), &states.current_frame_a, selected_frames.first);
 			draw(plane, sphere, cylinder, cube, diffShader, lampShader, region_a, PCs_a);
-			
 			// Update motion B and render
 			glViewport(region_b.posX, region_b.posY, region_b.width, region_b.height);
 			update(get_anim(anim_b), &states.current_frame_b, selected_frames.second);
@@ -601,8 +664,9 @@ int main()
 		//-------------------------------------------------------------------------------
 		glfwPollEvents();
         glViewport(curr_window.posX, curr_window.posY, curr_window.width, curr_window.height);
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		glfwSwapBuffers(window);
 		// wait for sync
@@ -643,6 +707,13 @@ void update(Animation* anim, int *current_frame, int selected_frame)
 	// ImGui::Text("Dt = %f", dt);
 	// Pose dt_pose = *blending::blend_pose(anim->getPoseAt(*current_frame), anim->getPoseAt(*current_frame+1), dt);
 	// sk->apply_pose(&dt_pose);
+
+	if (states.show_window_cloud && *current_frame - k > 0 && *current_frame + k < anim->getNumberOfFrames()) {
+		PCs_a = sk->getGlobalWindowPointCloud(anim->getPosesInRange(*current_frame - k, *current_frame + k));
+		// PCs_a = sk->getGlobalPointCloud(anim->getPoseAt(*current_frame));
+		PCs_b = PCs_a;
+	}
+
 	sk->apply_pose(anim->getPoseAt(*current_frame));
 
 	if (states.play)
@@ -661,70 +732,18 @@ void update(Animation* anim, int *current_frame, int selected_frame)
 	}
 }
 
-void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader, 
-		screen_size window_region, vector<PointCloud*> PC)
+void draw_skeleton(Skeleton *skeleton, Model sphere, Model cylinder, Shader diffShader, PointCloud* PC)
 {
-	/** Start Rendering **/
-	float render_start_time = glfwGetTime();
-
-	// activate shader
-	diffShader.use();
-	diffShader.setVec3("lightColor", 1.0f, 1.0f, 1.0f);
-	diffShader.setVec3("lightPos", lamp.Position);
-	diffShader.setVec3("viewPos", camera.Position);
-
-	// pass projection matrix to shader (note that in this case it could change every frame)
-	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)window_region.width / (float)window_region.height, 0.1f, 100.0f);
-	diffShader.setMat4("projection", projection);
-
-	// camera/view transformation
-	if (states.lock_view) {
-		diffShader.setMat4("view", glm::lookAt(camera.Position, sk->getPos(), camera.Up));
-	}
-	else {
-		diffShader.setMat4("view", camera.GetViewMatrix());
-	}
-
-	glm::mat4 model = glm::mat4(1.0f);
-	diffShader.setVec3("objectColor", .95f, 0.95f, 0.95f);
-	// floor
-	int grid_size = 20;
-	static float tile_scale = 0.5f;
-	static float tile_offset = 2.f;
-	model = glm::mat4(1.0f);
-	if (!states.disable_floor_tiles) {
-		model = glm::scale(model, glm::vec3(tile_scale, 1.f, tile_scale));
-		model = glm::translate(model, glm::vec3(-grid_size * tile_offset / 2, 0.f, -grid_size * tile_offset / 2));
-		for (int i = 0; i < grid_size; i++) {
-			for (int j = 0; j < grid_size; j++) {
-				if ((i + j) % 2 == 0) 
-					diffShader.setVec3("objectColor", 1.f, 1.f, 1.f);
-				else 
-					diffShader.setVec3("objectColor", 0.7f, 0.7f, 0.7f);
-				model = glm::translate(model, glm::vec3(tile_offset, 0.f, 0.f));
-				// model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f));
-				diffShader.setMat4("model", model);
-				plane.Draw(diffShader);			
-			}
-			model = glm::translate(model, glm::vec3(-tile_offset*grid_size, 0.f, tile_offset));
-		}
-	} else {
-		model = glm::scale(model, glm::vec3(tile_scale*grid_size, 1.f, tile_scale*grid_size));
-		diffShader.setMat4("model", model);
-		plane.Draw(diffShader);	
-	}
-
-
-
+	glm::mat4 model = glm::mat4();
 	// render Skeleton, root first
 	float render_scale = .02f;
-	model = glm::scale(sk->getJointMat(), glm::vec3(render_scale));
+	model = glm::scale(skeleton->getJointMat(), glm::vec3(render_scale));
 	diffShader.setVec3("objectColor", 1.0f, 0.1f, 0.1f);
 	diffShader.setMat4("model", model);
 	//glDrawArrays(GL_TRIANGLES, 0, 36);
 	sphere.Draw(diffShader);
 
-	for (Bone* bone : sk->getAllBones())
+	for (Bone* bone : skeleton->getAllBones())
 	{
 		diffShader.setVec3("objectColor", 0.31f, 1.f, 0.31f);
 
@@ -773,7 +792,85 @@ void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffS
 				diffShader.setMat4("model", model);
 				sphere.Draw(diffShader);
 			}
-		}		
+		}
+	}
+
+	if (states.show_window_cloud && PC != nullptr) {
+		diffShader.setVec3("objectColor", .8f, 0.8f, 0.8f);
+		vector<glm::vec3>& points = PC->points;
+		for (auto p : points) {
+			model = glm::scale(PC->getPointMat(p), glm::vec3(states.point_cloud_size));
+			diffShader.setMat4("model", model);
+			sphere.Draw(diffShader);
+		}
+	}
+}
+
+void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader, 
+		screen_size window_region, PointCloud*PC)
+{
+	/** Start Rendering **/
+	float render_start_time = glfwGetTime();
+
+	// activate shader
+	diffShader.use();
+	diffShader.setVec3("lightColor", 1.0f, 1.0f, 1.0f);
+	diffShader.setVec3("lightPos", lamp.Position);
+	diffShader.setVec3("viewPos", camera.Position);
+
+	// pass projection matrix to shader (note that in this case it could change every frame)
+	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)window_region.width / (float)window_region.height, 0.1f, 100.0f);
+	diffShader.setMat4("projection", projection);
+
+	// camera/view transformation
+	if (states.lock_view) {
+		diffShader.setMat4("view", glm::lookAt(camera.Position, sk->getPos(), camera.Up));
+	}
+	else {
+		diffShader.setMat4("view", camera.GetViewMatrix());
+	}
+
+	glm::mat4 model = glm::mat4(1.0f);
+	diffShader.setVec3("objectColor", .95f, 0.95f, 0.95f);
+	// floor
+	// int grid_size = 20;
+	static float tile_scale = 0.5f;
+	static float tile_offset = 2.f;
+	model = glm::mat4(1.0f);
+	if (!states.disable_floor_tiles) {
+		// model = glm::scale(model, glm::vec3(tile_scale, 1.f, tile_scale));
+		// model = glm::translate(model, glm::vec3(-grid_size * tile_offset / 2, 0.f, -grid_size * tile_offset / 2));
+		// for (int i = 0; i < grid_size; i++) {
+		// 	for (int j = 0; j < grid_size; j++) {
+		// 		if ((i + j) % 2 == 0) 
+		// 			diffShader.setVec3("objectColor", 1.f, 1.f, 1.f);
+		// 		else 
+		// 			diffShader.setVec3("objectColor", 0.7f, 0.7f, 0.7f);
+		// 		model = glm::translate(model, glm::vec3(tile_offset, 0.f, 0.f));
+		// 		diffShader.setMat4("model", model);
+		// 		plane.Draw(diffShader);			
+		// 	}
+		// 	model = glm::translate(model, glm::vec3(-tile_offset*grid_size, 0.f, tile_offset));
+		// }
+		for (int i = 0; i < grid_size; i++) {
+			for (int j = 0; j < grid_size; j++) {
+				if ((i + j) % 2 == 0) 
+					diffShader.setVec3("objectColor", 1.f, 1.f, 1.f);
+				else 
+					diffShader.setVec3("objectColor", 0.7f, 0.7f, 0.7f);
+				diffShader.setMat4("model", tiles_mat.at(i*grid_size+j));
+				plane.Draw(diffShader);			
+			}
+		}
+	} else {
+		model = glm::scale(model, glm::vec3(tile_scale*grid_size, 1.f, tile_scale*grid_size));
+		diffShader.setMat4("model", model);
+		plane.Draw(diffShader);	
+	}
+
+	draw_skeleton(sk, sphere, cylinder, diffShader, PC);
+	for (auto &s:sk_frames) {
+		draw_skeleton(s.get(), sphere, cylinder, diffShader, nullptr);
 	}
 
 	// Draw Lights
@@ -992,6 +1089,9 @@ void keyboardInput(GLFWwindow *window)
 		camera.ProcessKeyboard(DOWN, timings.delta_time);
 	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
 		camera.ProcessKeyboard(UP, timings.delta_time);
+
+	if (glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS)
+		states.show_GUI = !states.show_GUI;
 
 	// Lights control
 	float light_offset = 1.f;

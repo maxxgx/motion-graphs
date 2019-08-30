@@ -29,12 +29,14 @@ public:
 
 	Skeleton();
 	Skeleton(char* asf_filename, float scale);
+	Skeleton(const Skeleton &skel);
 	
 	Bone* getByName(string name);
 	Bone* getById(int id);
 	int getIdByName(string name);
 
 	void apply_pose(Pose* pose);
+	void apply_pose_locked(Pose* pose);
 	glm::vec3 getPos();
 	vector<Bone*> getAllBones();
 	void resetAll();
@@ -50,4 +52,6 @@ public:
 protected:
 	//other bones
 	vector<Bone*> bones;
+
+	void apply_pose_to_bones(Pose *pose);
 };

@@ -123,6 +123,28 @@ Skeleton::Skeleton(char* asf_filename, float scale)
 	copy_length = this->length;
 }
 
+Skeleton::Skeleton(const Skeleton &skel)
+{
+	this->axis = skel.axis;
+	this->axiz_order = skel.axiz_order;
+	this->name = skel.name;
+	this->order = skel.order;
+	this->parent = skel.parent;
+	this->rot = skel.rot;
+	this->scale = skel.scale;
+	this->SegMat = skel.SegMat;
+	this->JointMat = skel.JointMat;
+	this->dir[0] = skel.dir[0];
+	this->dir[1] = skel.dir[1];
+	this->dir[2] = skel.dir[2];
+	for (auto bone:skel.bones) {
+		this->bones.push_back(new Bone(*bone));
+	}
+	for (auto c:skel.children) {
+		this->children.push_back(this->getByName(c->name));
+	}
+}
+
 Bone* Skeleton::getByName(string name) {
 	if (name.compare(this->name) == 0)
 		return this;
@@ -175,22 +197,8 @@ void Skeleton::rescale(float scale)
 	}
 }
 
-void Skeleton::apply_pose(Pose* pose)
+void Skeleton::apply_pose_to_bones(Pose *pose)
 {
-	if (pose != NULL) {
-		// new root coords
-		//cout << "getting pose name " << name << "\n";
-		glm::vec3 dirvec = glm::vec3(pose->getRootPos());
-		dir[0] = dirvec.x;
-		dir[1] = dirvec.y;
-		dir[2] = dirvec.z;
-		this->rot = glm::quat(pose->getBoneTrans(this->name));
-	}
-	else {
-		// cout << "--- NULL pose!" << "\n";
-		// ImGui::Text("NULL POSE!"); // crashes when computing dist mat
-	}
-
 	// Depth Traversal of the skeleton to update the model matrix
 	/// note: preorder traversal
 	vector<Bone*> stack;
@@ -211,11 +219,49 @@ void Skeleton::apply_pose(Pose* pose)
 	stack.clear();
 }
 
+void Skeleton::apply_pose(Pose* pose)
+{
+	if (pose != NULL) {
+		// new root coords
+		//cout << "getting pose name " << name << "\n";
+		glm::vec3 dirvec = glm::vec3(pose->getRootPos());
+		dir[0] = dirvec.x;
+		dir[1] = dirvec.y;
+		dir[2] = dirvec.z;
+		this->rot = glm::quat(pose->getBoneTrans(this->name));
+	}
+	else {
+		// cout << "--- NULL pose!" << "\n";
+		// ImGui::Text("NULL POSE!"); // crashes when computing dist mat
+	}
+
+	this->apply_pose_to_bones(pose);
+}
+
+void Skeleton::apply_pose_locked(Pose* pose)
+{
+	if (pose != NULL) {
+		// new root coords
+		//cout << "getting pose name " << name << "\n";
+		glm::vec3 dirvec = glm::vec3(pose->getRootPos());
+		dir[0] = 0.0f;
+		dir[1] = dirvec.y;
+		dir[2] = 0.0f;
+		this->rot = glm::quat(pose->getBoneTrans(this->name));
+	}
+	else {
+		// cout << "--- NULL pose!" << "\n";
+		// ImGui::Text("NULL POSE!"); // crashes when computing dist mat
+	}
+
+	this->apply_pose_to_bones(pose);
+}
+
 map<string, PointCloud*> Skeleton::getBoneWindowPointCloud(vector<Pose*> poses)
 {
 	map<string, PointCloud*> pCloud_over_window;
 	for (auto &pose: poses) {
-		this->apply_pose(pose);
+		this->apply_pose_locked(pose);
 		for(auto & bone: this->children) {
 			PointCloud* bone_pc = this->getByName(bone->name)->getLocalPointCloud();
 
@@ -232,18 +278,17 @@ map<string, PointCloud*> Skeleton::getBoneWindowPointCloud(vector<Pose*> poses)
 PointCloud* Skeleton::getGlobalWindowPointCloud(vector<Pose*> poses)
 {
 	PointCloud* global = new PointCloud();
-	for (auto &pose: poses) {
+	for (auto pose: poses) {
 		global->addPointCloud(this->getGlobalPointCloud(pose));
 	}
 	return global;
-
 }
 
 PointCloud * Skeleton::getGlobalPointCloud(Pose * pose)
 {
 	PointCloud* global = new PointCloud();	
-	this->apply_pose(pose);
-	for (auto & bone : this->children) {
+	this->apply_pose_locked(pose);
+	for (auto & bone : this->getAllBones()) {
 		PointCloud* bone_pc = this->getByName(bone->name)->getLocalPointCloud();
 		global->addPointCloud(bone_pc);
 	}

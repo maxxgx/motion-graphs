@@ -53,8 +53,8 @@ void Bone::updateModelMat()
 		//Apply transformation on model matrix
 		glm::mat4 B = glm::mat4(1.0f);
 
-		//B = glm::translate(B, glm::vec3(dir[0]*scale, dir[1]*scale, dir[2]*scale));
-		B = glm::translate(B, glm::vec3(0.f, dir[1] * scale, 0.f)); // in-place movement
+		B = glm::translate(B, glm::vec3(dir[0]*scale, dir[1]*scale, dir[2]*scale));
+		// B = glm::translate(B, glm::vec3(0.f, dir[1] * scale, 0.f)); // in-place movement
 
 		// glm::mat4 ax = glm::eulerAngleX(glm::radians(axis[0]));
 		// glm::mat4 ay = glm::eulerAngleY(glm::radians(axis[1]));

@@ -24,7 +24,7 @@ float PointCloud::computeDistance(PointCloud* cp)
 	if (this->points.size() == cp->points.size() && points.size() > 0) {
 		for (int i=0; i < this->points.size(); i++) {
 			glm::vec3 vec_diff = this->getPoint(i) - cp->getPoint(i);
-			float dist = glm::dot(vec_diff, vec_diff)*100;
+			float dist = glm::dot(vec_diff, vec_diff);
 			sum += pow(dist, 2);
 		}
 		return sum;
