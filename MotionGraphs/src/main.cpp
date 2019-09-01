@@ -148,8 +148,8 @@ float progress_mograph = 0.f;
 
 // Animation & skeleton
 string res_path = ROOT_DIR + "/resources/";
-string file_asf = res_path + "mocap/02/02.asf";
-string file_amc = res_path + "mocap/02/02_0";
+string file_asf = res_path + "mocap/127/127.asf";
+string file_amc = res_path + "mocap/127/127_";
 //string file_asf = res_path + "mocap/14/14.asf";
 //string file_amc = res_path + "mocap/14/14_0";
 map<string, Animation*> anim_cache;
@@ -157,8 +157,8 @@ vector<pair<string,Animation*>> anim_list;
 
 // Loading mocap data: skeleton from .asf and animation (poses) from .amc
 Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
-string anim_a = (file_amc + "3.amc");
-string anim_b = (file_amc + "1.amc");
+string anim_a = (file_amc + "11.amc");
+string anim_b = (file_amc + "13.amc");
 PointCloud* PCs_a;
 PointCloud* PCs_b;
 vector<unique_ptr<Skeleton>> sk_frames;

@@ -23,16 +23,13 @@ static vector<string> strSplit(string str, char delimiter) {
 
 /*Returns: -1 if not, a positive long if string is an integer*/
 static long is_new_frame(string line) {
-	char* p;
-	long converted = strtol(line.c_str(), &p, 10);
-	if (*p) {
-		// conversion failed because the input wasn't a number
-		return -1;
-	}
-	else {
-		// use converted
-		return converted;
-	}
+	long converted = 0;
+	try {
+        converted = std::stol(line);
+
+    } catch (std::invalid_argument e){
+        return -1;
+    }
 }
 
 template <typename RandomGenerator = std::default_random_engine>

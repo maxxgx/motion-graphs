@@ -9,6 +9,9 @@ Skeleton::Skeleton(char* asf_filename, float scale)
 {
 	this->scale = scale;
 	this->name = "root";
+	this->dof[0] = true;
+	this->dof[1] = true;
+	this->dof[2] = true;
 	bool begin = false;
 	bool root, bonedata, hierarchy; root = bonedata = hierarchy = false;
 

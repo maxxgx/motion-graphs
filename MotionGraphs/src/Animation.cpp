@@ -17,7 +17,7 @@ Animation::Animation(Skeleton* sk, char* amc_filename)
 		while (getline(myfile, line))
 		{
 			/*	Loading data	*/
-			//cout << "loading line : " << line << "\n";
+			// cout << "loading line : " << line << "\n";
 			vector<string> toks = strSplit(line, ' ');
 			
 			long p_frame = is_new_frame(line);
