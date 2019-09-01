@@ -127,7 +127,7 @@ namespace mograph {
                         cout << "----------------------\tdist_mat size is different than num of frame" << endl;
                     } else
                     {
-                         cout << "----------------------\t size == num of frame" << endl;
+                        cout << "----------------------\t size == num of frame" << endl;
                     }
                     
                     vector<pair<int,int>> local_minimas = blending::find_local_minima(dist_mat_range.first, size_b, size_a);

@@ -28,6 +28,8 @@ namespace GUI {
     static ImVec4 color_green = (ImVec4)ImColor::HSV(0.3333f, 0.7500f, 0.7843f), color_green_h = (ImVec4)ImColor::HSV(0.3333f, 0.7727f, 0.8627f);
 	static ImVec4 color_red = (ImVec4)ImColor::HSV(0.0f, 0.7500f, 0.7843f), color_red_h = (ImVec4)ImColor::HSV(0.f, 0.7727f, 0.8627f);
 
+    void imgui_file_selector(string name, map<string, vector<string>> dir_nfiles, string root, string *filename);
+
     void showDistanceMatrix(
         int anim_a_size, 
         int anim_b_size, 

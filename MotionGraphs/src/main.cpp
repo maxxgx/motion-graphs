@@ -67,6 +67,9 @@ struct controls {
 
 	bool show_GUI = true;
 
+	bool show_mograph_path = false;
+	bool show_mograph_trav = false;
+
 	bool lock_skeleton = false;
 
     bool mouse_btn2_pressed = false;
@@ -113,7 +116,8 @@ void draw_skeleton(Skeleton *sk, Model sphere, Model cylinder, Shader diffShader
 void draw(Model plane, Model sphere, Model cylinder, CubeCore cube, Shader diffShader, Shader lampShader, 
 		screen_size window_region, PointCloud* PC);
 void plot_line_between_p1_p2(glm::vec3 p1, glm::vec3 p2, Model line, Shader shader, float thickness);
-void plot_motion_graph(mograph::MotionGraph* graph, Model quad_mesh, Model line, Shader shader, float offset_x, float offset_y, float scale);
+void plot_motion_graph(mograph::MotionGraph* graph, vector<pair<mograph::Vertex*, mograph::Edge>> graph_traversal, 
+		Model quad_mesh, Model line, Shader shader, float offset_x, float offset_y, float scale);
 
 pair<vector<float>, pair<float,float>> get_distance_matrix();
 mograph::MotionGraph* get_motion_graph();
@@ -379,6 +383,16 @@ int main()
     static vector<float> dist_mat;
     future<pair<vector<float>, pair<float,float>>> ftr;
 	map<string, vector<string>> dir_files = get_dirs_files(res_path + "mocap/");
+	map<string, vector<string>> dir_asf, dir_amc;
+	for (auto p:dir_files) {
+		for (string f:p.second) {
+			if (f.find(".asf") != std::string::npos)
+				dir_asf[p.first].push_back(f);
+			else if (f.find(".amc") != std::string::npos)
+				dir_amc[p.first].push_back(f);
+		}
+	}
+
 
 	future<mograph::MotionGraph*> ftr_mograph;
 	Animation* anim_r = NULL;
@@ -406,6 +420,16 @@ int main()
 		
 		{
 			ImGui::Begin("Options");
+			static string last_asf = file_asf;
+			ImGui::BulletText( ("Skelton: " + file_asf.substr(file_asf.find_last_of("/"))).c_str());
+			ImGui::SameLine();
+			GUI::imgui_file_selector("Select skeleton", dir_asf, string(res_path + "mocap/"), &file_asf);
+			if (last_asf != file_asf) {
+				delete sk;
+				sk = new Skeleton((char*)file_asf.c_str(), scale);
+				last_asf = file_asf;
+			}
+
 			ImGui::Checkbox("Show GUI", &states.show_GUI);
 			ImGui::Checkbox("Show floor tiles", &states.disable_floor_tiles);
 			ImGui::Checkbox("Show pose point cloud", &states.show_cloud);
@@ -420,6 +444,8 @@ int main()
 			ImGui::Checkbox("Show skeleton joints", &states.show_joints);
 			ImGui::Checkbox("Show skeleton bone segments", &states.show_bone_segment);
 			ImGui::Checkbox("Lock skeleton in place", &states.lock_skeleton);
+			ImGui::Checkbox("Show motion graph path", &states.show_mograph_path);
+			ImGui::Checkbox("Show motion graph current edge", &states.show_mograph_trav);
 			ImGui::End();
 		}
 
@@ -471,7 +497,7 @@ int main()
 			ImGui::ShowMetricsWindow();
 			
 			GUI::showBasicControls(&states.play, &states.split_screen, &states.exit, &anim_a, &anim_b, &states.current_frame_a, &states.current_frame_b, &states.current_frame_r, 
-				anim_a_size, anim_b_size, anim_r_size, &states.speed, dir_files, res_path + "mocap/");
+				anim_a_size, anim_b_size, anim_r_size, &states.speed, dir_amc, res_path + "mocap/");
 
 			if (ImGui::TreeNode("Clone motion"))
 			{
@@ -584,7 +610,7 @@ int main()
 
 				glViewport(fullscreen_window.posX, fullscreen_window.posY, fullscreen_window.width, fullscreen_window.height);
 
-				plot_motion_graph(motion_graph, plane, cylinder, basicShader, off_x, off_y, scale);
+				plot_motion_graph(motion_graph, graph_traversal, plane, cylinder, basicShader, off_x, off_y, scale);
 				ImTextureID my_tex_id = (void*)(intptr_t)texturePlotBuffer;
 				static float zoom = 0.5f;
 				ImGui::SliderFloat("Zoom", &zoom, 0.1f, 5.0f);
@@ -740,18 +766,31 @@ void update(Animation* anim, int *current_frame, int selected_frame)
 
 void draw_skeleton(Skeleton *skeleton, Model sphere, Model cylinder, Shader diffShader, PointCloud* PC)
 {
+	vector<float> col_root = {1.0f, 0.1f, 0.1f};
+	vector<float> col_bone = {0.6f, 0.6f, 0.6f};
+	vector<float> col_bone_highlight = {0.31f, 0.31f, .6f};
+	vector<float> col_joint = {0.31f, 1.f, 0.31f};
+	vector<float> col_joint_highlight = {0.31f, 0.31f, 1.f};
+	// if (skeleton != sk) {
+	// 	vector<float> mono = {0.6f, 0.6f, 0.6f};
+	// 	col_root = mono;
+	// 	col_bone = mono;
+	// 	col_bone_highlight = mono;
+	// 	// col_joint = mono;
+	// 	// col_joint_highlight = mono;
+	// }
 	glm::mat4 model = glm::mat4();
 	// render Skeleton, root first
 	float render_scale = .02f;
 	model = glm::scale(skeleton->getJointMat(), glm::vec3(render_scale));
-	diffShader.setVec3("objectColor", 1.0f, 0.1f, 0.1f);
+	diffShader.setVec3("objectColor", col_root.at(0), col_root.at(1), col_root.at(2));
 	diffShader.setMat4("model", model);
 	//glDrawArrays(GL_TRIANGLES, 0, 36);
 	sphere.Draw(diffShader);
 
 	for (Bone* bone : skeleton->getAllBones())
 	{
-		diffShader.setVec3("objectColor", 0.31f, 1.f, 0.31f);
+		diffShader.setVec3("objectColor",col_joint.at(0), col_joint.at(1), col_joint.at(2));
 
 		bool highlight = !strcmp(bone->name.c_str(), "rtibia") || !strcmp(bone->name.c_str(), "ltibia")
 			|| !strcmp(bone->name.c_str(), "rradius") || !strcmp(bone->name.c_str(), "lradius")
@@ -759,7 +798,7 @@ void draw_skeleton(Skeleton *skeleton, Model sphere, Model cylinder, Shader diff
 			//|| !strcmp(bone->name.c_str(), "rhumerus") || !strcmp(bone->name.c_str(), "lhumerus")
 		|| !strcmp(bone->name.c_str(), "lowerback");
 		if (highlight) {
-			diffShader.setVec3("objectColor", 0.31f, 0.31f, 1.f);
+			diffShader.setVec3("objectColor", col_joint_highlight.at(0), col_joint_highlight.at(1), col_joint_highlight.at(2));
 		}
 		// calculate the model matrix for each object and pass it to shader before drawing
 		model = glm::scale(bone->getJointMat(), glm::vec3(render_scale));
@@ -767,9 +806,9 @@ void draw_skeleton(Skeleton *skeleton, Model sphere, Model cylinder, Shader diff
 		if (states.show_joints) sphere.Draw(diffShader);
 
 		// Draw segment
-		diffShader.setVec3("objectColor", .6f, 0.6f, 0.6f);
+		diffShader.setVec3("objectColor", col_bone.at(0), col_bone.at(1), col_bone.at(2));
 		if (highlight) {
-			diffShader.setVec3("objectColor", 0.31f, 0.31f, .6f);
+			diffShader.setVec3("objectColor",col_bone_highlight.at(0), col_bone_highlight.at(1), col_bone_highlight.at(2));
 		}
 		model = glm::scale(bone->getSegMat(), glm::vec3(render_scale));
 		diffShader.setMat4("model", model);
@@ -916,7 +955,47 @@ void plot_line_between_p1_p2(glm::vec3 p1, glm::vec3 p2, Model line, Shader shad
 	line.Draw(shader);
 }
 
-void plot_motion_graph(mograph::MotionGraph* graph, Model quad_mesh, Model line, Shader shader, float offset_x, float offset_y, float scale) 
+void plot_mograph_edge(mograph::Vertex* src, mograph::Edge edge, map<mograph::Vertex*, int> v_idx, Model line, Shader shader, 
+		float thickness, float offset_x, float offset_y, float vertex_offset_h, float padding_top, float padding_left, float scale)
+		// mograph::Edge* head_edge = graph->get_head().second;
+		// float A = head_edge->get_frames().first;
+		// float B = head_edge->get_frames().second;
+		// float A_scaled = A * scale * 2;
+		// float B_scaled = B * scale * 2;  
+		// if (graph->get_head().first == head_edge->get_target()) {
+		// 	A_scaled = A == 1 ? A_scaled : (A-k) * scale * 2;
+		// 	B_scaled = B == head_edge->get_target()->get_anim()->getNumberOfFrames() ? B_scaled : (B+k) * scale * 2;
+		// }
+
+		// float tar_h_offset_1 = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[graph->get_head().first];
+		// float tar_h_offset_2 = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[head_edge->get_target()];
+		// float x_pos_1 = offset_x+scale/2 + padding_left;
+		// float x_pos_2 = offset_x+scale/2 + padding_left;
+		// glm::vec3 p1 = glm::vec3(x_pos_1 + (float)A_scaled, tar_h_offset_1, 1.f);
+		// glm::vec3 p2 = glm::vec3(x_pos_2 + (float)B_scaled, tar_h_offset_2, 1.f);
+		// plot_line_between_p1_p2(p1, p2, line, shader, scale_line_thick/2);
+{
+	float A = edge.get_frames().first;
+	float B = edge.get_frames().second;
+	float A_scaled = A * scale * 2;
+	float B_scaled = B * scale * 2;
+
+	if (src == edge.get_target()) {
+			A_scaled = A == 1 ? A_scaled : (A-k) * scale * 2;
+			B_scaled = B == edge.get_target()->get_anim()->getNumberOfFrames() ? B_scaled : (B+k) * scale * 2;
+	}
+
+	float tar_h_offset_1 = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[src];
+	float tar_h_offset_2 = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[edge.get_target()];
+	float x_pos_1 = offset_x+scale/2 + padding_left;
+	float x_pos_2 = offset_x+scale/2 + padding_left;
+	glm::vec3 p1 = glm::vec3(x_pos_1 + (float)A_scaled, tar_h_offset_1, 1.f);
+	glm::vec3 p2 = glm::vec3(x_pos_2 + (float)B_scaled, tar_h_offset_2, 1.f);
+		plot_line_between_p1_p2(p1, p2, line, shader, thickness/2);
+}
+
+void plot_motion_graph(mograph::MotionGraph* graph, vector<pair<mograph::Vertex*, mograph::Edge>> graph_traversal, 
+		Model quad_mesh, Model line, Shader shader, float offset_x, float offset_y, float scale)
 {
 	if (graph == NULL) return;
 
@@ -1002,26 +1081,17 @@ void plot_motion_graph(mograph::MotionGraph* graph, Model quad_mesh, Model line,
 			}
 		}
 	}
-	// Draw the current edge
-	shader.setVec3("objectColor", .05f, 0.75f, 0.05f);
-	mograph::Edge* head_edge = graph->get_head().second;
-	float A = head_edge->get_frames().first;
-	float B = head_edge->get_frames().second;
-	float A_scaled = A * scale * 2;
-	float B_scaled = B * scale * 2;  
-	if (graph->get_head().first == head_edge->get_target()) {
-		A_scaled = A == 1 ? A_scaled : (A-k) * scale * 2;
-		B_scaled = B == head_edge->get_target()->get_anim()->getNumberOfFrames() ? B_scaled : (B+k) * scale * 2;
+	if (states.show_mograph_path) {
+		for (auto e:graph_traversal) {
+			shader.setVec3("objectColor", .05f, 0.75f, 0.05f);
+			plot_mograph_edge(e.first, e.second, v_idx, line, shader, scale_line_thick/1.1f, offset_x, offset_y, vertex_offset_h, padding_top, padding_left, scale);
+		}
 	}
-
-	float tar_h_offset_1 = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[graph->get_head().first];
-	float tar_h_offset_2 = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[head_edge->get_target()];
-	float x_pos_1 = offset_x+scale/2 + padding_left;
-	float x_pos_2 = offset_x+scale/2 + padding_left;
-	glm::vec3 p1 = glm::vec3(x_pos_1 + (float)A_scaled, tar_h_offset_1, 1.f);
-	glm::vec3 p2 = glm::vec3(x_pos_2 + (float)B_scaled, tar_h_offset_2, 1.f);
-	plot_line_between_p1_p2(p1, p2, line, shader, scale_line_thick/2);
-
+	// Draw the current edge
+	if (states.show_mograph_trav) {
+		shader.setVec3("objectColor", .05f, 0.05f, 0.75f);
+		plot_mograph_edge(graph->get_head().first, *graph->get_head().second, v_idx, line, shader, scale_line_thick/1.5f, offset_x, offset_y, vertex_offset_h, padding_top, padding_left, scale);
+	}
 }
 
 
