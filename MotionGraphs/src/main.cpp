@@ -67,8 +67,8 @@ struct controls {
 
 	bool show_GUI = true;
 
-	bool show_mograph_path = false;
-	bool show_mograph_trav = false;
+	bool show_mograph_path = true;
+	bool show_mograph_trav = true;
 
 	bool lock_skeleton = false;
 
