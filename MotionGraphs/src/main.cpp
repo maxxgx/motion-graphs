@@ -154,6 +154,7 @@ string file_amc = res_path + "mocap/127/127_";
 //string file_amc = res_path + "mocap/14/14_0";
 map<string, Animation*> anim_cache;
 vector<pair<string,Animation*>> anim_list;
+map<string, bool> anim_list_in_graph;
 
 // Loading mocap data: skeleton from .asf and animation (poses) from .amc
 Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
@@ -303,11 +304,11 @@ int main()
 	// Lights buffers
 	lamp.setBuffers();
 
-	// Add first anim to cache 
+	// Add first anim to cache
 	get_anim(anim_a);
 	get_anim(anim_b);
-	anim_list.push_back(make_pair(anim_a, get_anim(anim_a)));
-	anim_list.push_back(make_pair(anim_b, get_anim(anim_b)));
+	// anim_list.push_back(make_pair(anim_a, get_anim(anim_a)));
+	// anim_list.push_back(make_pair(anim_b, get_anim(anim_b)));
 	cube.setBuffers();
 
 	// Set shader to use
@@ -386,11 +387,16 @@ int main()
 	map<string, vector<string>> dir_asf, dir_amc;
 	for (auto p:dir_files) {
 		for (string f:p.second) {
+			cout << f << endl;
 			if (f.find(".asf") != std::string::npos)
 				dir_asf[p.first].push_back(f);
 			else if (f.find(".amc") != std::string::npos)
 				dir_amc[p.first].push_back(f);
 		}
+	}
+	string labeled = res_path + "mocap/" + "labeled/";
+	for (string &f:dir_files["labeled"]) {
+		anim_list.push_back(make_pair(labeled + f, get_anim(labeled + f)));
 	}
 
 
@@ -398,6 +404,7 @@ int main()
 	Animation* anim_r = NULL;
 	mograph::MotionGraph* motion_graph = NULL; 
 	vector<pair<mograph::Vertex*, mograph::Edge>> graph_traversal;
+	map<int, int> mograph_frame_to_edge;
 	int graph_traversal_index = 0;
 
 
@@ -534,10 +541,11 @@ int main()
 
 			{
 				static string motion_to_add, last_motion_to_add;
-				GUI::showMotionList(anim_list, dir_files, res_path + "mocap/", &motion_to_add);
+				GUI::showMotionList(anim_list, dir_files, res_path + "mocap/", &motion_to_add, anim_list_in_graph);
 				if (last_motion_to_add != motion_to_add) {
 					anim_list.push_back(make_pair(motion_to_add, get_anim(motion_to_add)));
 					last_motion_to_add = motion_to_add;
+					anim_list_in_graph[motion_to_add] = false;
 				}
 				ImGui::Begin("Motion graph");
 				ImGui::DragFloat("Threshold", &states.threshold);
@@ -545,21 +553,32 @@ int main()
 				static int e = 0;
 				ImGui::RadioButton("Greedy search", &e, 0); ImGui::SameLine();
 				ImGui::RadioButton("Sequential graph walk", &e, 1);
-				ImGui::PushStyleColor(ImGuiCol_Button, !states.compute_mograph ? GUI::color_green : GUI::color_red);
-				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, !states.compute_mograph ? GUI::color_green_h : GUI::color_red_h);
+
+				ImGui::PushStyleColor(ImGuiCol_Button, GUI::color_red);
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, GUI::color_red_h);
 				if (ImGui::Button("Compute motion graph") && !states.compute_mograph) {
 					// ftr_mograph = std::async(get_motion_graph);
 					// states.compute_mograph = true;
 					motion_graph = new mograph::MotionGraph(anim_list, sk, k, &progress_mograph);
 					graph_traversal = motion_graph->traverse_min_rand(states.threshold);
 					motion_graph->set_head(graph_traversal.at(graph_traversal_index));
-					anim_r = motion_graph->edge2anim(graph_traversal.at(graph_traversal_index).first, graph_traversal.at(graph_traversal_index).second);
+					mograph_frame_to_edge.clear();
+					if (graph_traversal.size() > 0) {
+						anim_r = motion_graph->edge2anim(graph_traversal, &mograph_frame_to_edge);
+					}
 					states.split_screen = false;
+					for (auto &a:anim_list) {
+						anim_list_in_graph[a.first] = true;
+					}
 				}
+				ImGui::PopStyleColor(2);
+				ImGui::PushStyleColor(ImGuiCol_Button, GUI::color_green);
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, GUI::color_green_h);
 				if (motion_graph != nullptr) {
 					ImGui::SameLine();
 					if (ImGui::Button("Traversal")) {
-						motion_graph->reset_head();
+						graph_traversal_index = 0;
+						graph_traversal.clear();
 						switch (e)
 						{
 						case 1:
@@ -569,22 +588,38 @@ int main()
 							graph_traversal = motion_graph->traverse_min_rand(states.threshold);
 							break;
 						}
-						motion_graph->set_head(graph_traversal.at(graph_traversal_index));
-						anim_r = motion_graph->edge2anim(graph_traversal.at(graph_traversal_index).first, graph_traversal.at(graph_traversal_index).second);
+						if (graph_traversal.size() > 0) {
+							motion_graph->set_head(graph_traversal.at(graph_traversal_index));
+							mograph_frame_to_edge.clear();
+							anim_r = motion_graph->edge2anim(graph_traversal, &mograph_frame_to_edge);
+						}
+					}
+				}
+				if (motion_graph != NULL && ImGui::Button("Update motion graph") ) {
+					ImGui::SameLine();
+					motion_graph->update_motions(anim_list, sk, &progress_mograph);
+					for (auto &a:anim_list) {
+						anim_list_in_graph[a.first] = true;
 					}
 				}
 				ImGui::PopStyleColor(2);
 
-				if (graph_traversal.size()) {
-					ImGui::Text("Traversal path:");
+				if (graph_traversal.size() > 0 && ImGui::TreeNode("Traversal path")) {
 					float sum = 0.0f;
+					int edges = 0, c = 0;
 					for (auto p : graph_traversal) {
-						char* src = (char*)p.first->get_name().substr(p.first->get_name().find_last_of("/")).c_str();
-						char* tar = (char*)p.second.get_target()->get_name().substr(p.second.get_target()->get_name().find_last_of("/")).c_str();
-						ImGui::Text("%s -> %s (%.2f)", src, tar, p.second.get_weight());
-						sum += p.second.get_weight();
+						string src = p.first->get_name().substr(p.first->get_name().find_last_of("/"));
+						string tar = p.second.get_target()->get_name().substr(p.second.get_target()->get_name().find_last_of("/"));
+						string str = std::to_string(c) + ") " + src + " -> " + tar + " | distance = " + std::to_string(p.second.get_weight());
+						ImGui::Text(str.c_str());
+						if (p.second.get_weight() != -1.f) {
+							sum += p.second.get_weight();
+							edges++;
+						}
+						c++;
 					}
-					ImGui::Text("Total cost: %.2f", sum);
+					ImGui::Text("Total cost: %.2f | AVG: %.2f", sum, sum/edges);
+					ImGui::TreePop();
 				}
 				// Only tries to retrieve the return value of the thread compute, if it is has started.
 				// if (states.compute_mograph) {
@@ -651,21 +686,13 @@ int main()
 			update(get_anim(anim_b), &states.current_frame_b, selected_frames.second);
 			draw(plane, sphere, cylinder, cube, diffShader, lampShader, region_b, PCs_b);
 		}
-		else if (motion_graph != NULL) {
-			glViewport(curr_window.posX, curr_window.posY, curr_window.width, curr_window.height);
-			if (anim_r->getCurrentFrame() + 1 >= anim_r->getNumberOfFrames()) {
-				// delete anim_r;
-				graph_traversal_index = graph_traversal_index >= graph_traversal.size() - 1 ? 0 : graph_traversal_index + 1;
-				cout << "graph index =" << graph_traversal_index << ", size() = " << graph_traversal.size() << endl;
-				anim_r = motion_graph->edge2anim(graph_traversal.at(graph_traversal_index).first, graph_traversal.at(graph_traversal_index).second);
-				motion_graph->set_head(graph_traversal.at(graph_traversal_index));
-				states.current_frame_r = 1;
-			}
-			update(anim_r, &states.current_frame_r, 1);
-			// cout << "update, frame = " << states.current_frame_r << endl;
-			draw(plane, sphere, cylinder, cube, diffShader, lampShader, curr_window, PCs_a);
-		}
 		else { 
+			// switch the dummy to display the current edge
+			if (graph_traversal.size() > 0 && motion_graph != NULL) {
+				graph_traversal_index = mograph_frame_to_edge[states.current_frame_r];
+				// cout << "graph index =" << graph_traversal_index << ", size() = " << graph_traversal.size() << endl;
+				motion_graph->set_head(graph_traversal.at(graph_traversal_index));
+			}
 			// Show only the result of the blending
 			glViewport(curr_window.posX, curr_window.posY, curr_window.width, curr_window.height);
 			update(anim_r, &states.current_frame_r, 1);

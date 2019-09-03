@@ -19,6 +19,7 @@ class Pose
 {
 public:
 	Pose(long frame);
+	Pose(const Pose &pose);
 
 	glm::vec3 getRootPos();
 	glm::quat getBoneTrans(string name);
@@ -30,6 +31,8 @@ public:
 	void addTransf(string name, vector<float> transf, bool dof_x, bool dof_y, bool dof_z);
 
 	void addSingle(string name, glm::quat q);
+
+	void set_pos(glm::vec3 pos);
 
 	~Pose();
 

@@ -18,10 +18,12 @@ class Animation
 public:
 	Animation(Skeleton* sk, char *amc_filename);
 	Animation(vector<Pose*> ps);
+	Animation(const Animation &anim);
 
 	void addPoses(vector<Pose*> ps);
 
 	Pose* getPoseAt(long frame);
+	void setPoseAt(long frame, Pose *pose);
 	Pose* getNextPose();
 
 	vector<Pose*> getPosesInRange(unsigned long start, unsigned long end);
@@ -32,6 +34,8 @@ public:
 	void setFrame(long frame);
 	bool isOver();
 	void reset();
+
+	void normalise(Pose* n_pose, long frame);
 
 	~Animation();
 

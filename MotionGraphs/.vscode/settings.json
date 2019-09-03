@@ -53,6 +53,12 @@
         "algorithm": "cpp",
         "untitled-1": "cpp",
         "unordered_set": "cpp",
-        "numeric": "cpp"
+        "numeric": "cpp",
+        "iterator": "cpp",
+        "map": "cpp",
+        "memory_resource": "cpp",
+        "random": "cpp",
+        "set": "cpp",
+        "string": "cpp"
     }
 }

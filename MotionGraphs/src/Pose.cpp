@@ -5,6 +5,13 @@ Pose::Pose(long frame)
 	this->frame = frame;
 }
 
+Pose::Pose(const Pose &pose)
+{
+	this->root_pos = pose.root_pos;
+	this->frame = pose.frame;
+	this->transf = pose.transf;
+}
+
 glm::vec3 Pose::getRootPos()
 {
 	return this->root_pos;
@@ -57,6 +64,11 @@ void Pose::addTransf(string name, vector<float> transf, bool dof_x, bool dof_y, 
 void Pose::addSingle(string name, glm::quat q)
 {
 	this->transf[name] = q;
+}
+
+void Pose::set_pos(glm::vec3 pos) 
+{
+	this->root_pos = pos;
 }
 
 Pose::~Pose()

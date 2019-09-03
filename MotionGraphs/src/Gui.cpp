@@ -200,7 +200,7 @@ namespace GUI{
 		ImGui::End();
 	}
 
-	void showMotionList(vector<pair<string,Animation*>>& anim_cache, map<string, vector<string>> dir_nfiles, string root, string *anim)
+	void showMotionList(vector<pair<string,Animation*>>& anim_cache, map<string, vector<string>> dir_nfiles, string root, string *anim, map<string, bool> list_flag)
 	{
 		ImGui::Begin("Motion list");
 		imgui_file_selector("Add motion", dir_nfiles, root, anim);
@@ -208,13 +208,21 @@ namespace GUI{
 		vector<vector<pair<string,Animation*>>::iterator> to_remove_item;
 		int index = 0;
 		for (auto& entry:anim_cache) {
-			string name = entry.first.substr(entry.first.find_last_of("/"));
-			string num_frames = std::to_string(entry.second->getNumberOfFrames());
-			ImGui::Text((name + " | " + num_frames + "\t").c_str());
+			// Delete button
+			ImGui::PushStyleColor(ImGuiCol_Button, color_red);
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, color_red_h);
+			ImGui::PushID(index);
+			if (ImGui::Button("X") ){
+				to_remove_item.push_back(std::find(begin(anim_cache), end(anim_cache), entry));
+			}
+			ImGui::PopID();
+			ImGui::PopStyleColor(2);
 			ImGui::SameLine();
 
+			string name = entry.first.substr(entry.first.find_last_of("/"));
+			string num_frames = std::to_string(entry.second->getNumberOfFrames());
+
 			// Arrow keys to move motion up/down
-			ImGui::SameLine();
 			if (ImGui::ArrowButton("arrow_up_list" + index, ImGuiDir_Up)) {
 				try {
 					std::swap(anim_cache.at(index), anim_cache.at(index-1));
@@ -230,17 +238,12 @@ namespace GUI{
 					cout << "Cannot swap element: " << e.what() << endl;
 				}
 			}
-			ImGui::SameLine();ImGui::Text("\t");ImGui::SameLine();
 
-			ImGui::PushStyleColor(ImGuiCol_Button, color_red);
-			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, color_red_h);
-			ImGui::PushID(index);
+			// File name text
+			ImGui::SameLine();
+			if (list_flag[entry.first]) ImGui::TextColored(GUI::color_green, (name + " | " + num_frames + "\t").c_str());
+			else ImGui::Text((name + " | " + num_frames + "\t").c_str());
 			++index;
-			if (ImGui::Button("X") ){
-				to_remove_item.push_back(std::find(begin(anim_cache), end(anim_cache), entry));
-			}
-			ImGui::PopID();
-			ImGui::PopStyleColor(2);
 		}
 
 		for (auto& it:to_remove_item) {

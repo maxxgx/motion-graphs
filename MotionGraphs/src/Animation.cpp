@@ -59,6 +59,16 @@ Animation::Animation(vector<Pose*> ps)
 	this->poses = ps;
 }
 
+Animation::Animation(const Animation &anim)
+{
+	this->poses.reserve(anim.poses.size());
+	for (auto &p:anim.poses) {
+		// Pose* pose = new Pose(p->getPoseFrame());
+		this->poses.emplace_back(new Pose(*p));
+	}
+	this->currentFrame = anim.currentFrame;
+}
+
 void Animation::addPoses(vector<Pose*> ps) 
 {
 	this->poses.insert(this->poses.end(), ps.begin(), ps.end());
@@ -73,6 +83,13 @@ Pose* Animation::getPoseAt(long frame)
 	}
 	else 
 		return NULL;
+}
+
+void Animation::setPoseAt(long frame, Pose *pose)
+{
+	if (this->poses.size() > frame && frame >= 0) {
+		this->poses.at(frame) = pose;
+	}
 }
 
 Pose* Animation::getNextPose()
@@ -90,7 +107,7 @@ Pose* Animation::getNextPose()
 vector<Pose*> Animation::getPosesInRange(unsigned long start, unsigned long end)
 {
 	vector<Pose*> ps;
-	if (start >= 0 && start <= this->poses.size() && end >= 0 && end <= this->poses.size()) {
+	if (start >= 0 && start <= this->poses.size() && start < end && end >= 0 && end <= this->poses.size()) {
 		for(int i = start; i <= end; i++) {
 			ps.push_back(this->getPoseAt(i));
 		}
@@ -130,6 +147,25 @@ bool Animation::isOver()
 void Animation::reset()
 {
 	this->currentFrame = 1;
+}
+
+void Animation::normalise(Pose* n_pose, long frame)
+{
+	// normalise all to frame k
+	if (frame >= 0 && frame < poses.size()) {
+		glm::vec3 j_pos_relative = this->poses.at(frame)->getRootPos();
+		for (long i = 0; i < poses.size(); i++) {
+			glm::vec3 pos;
+			if (i <= frame) {
+				pos = n_pose->getRootPos() - (j_pos_relative - this->poses.at(i)->getRootPos());
+			} else {
+				pos = n_pose->getRootPos() - (j_pos_relative - this->poses.at(i)->getRootPos());
+			}
+			poses.at(i)->set_pos(pos);
+		}
+	} else {
+		cout << "Error: Aniamtion: normalise(). Frame out of range.";
+	}
 }
 
 Animation::~Animation() 
