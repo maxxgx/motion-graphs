@@ -23,6 +23,7 @@ class Skeleton :
 	public Bone
 {
 public:
+	glm::vec3 root_offset = glm::vec3(0.f);
 	//root bone
 	string order = "TX TY TZ RX RY RZ"; //default
 	string axiz_order = "XYZ"; //default
@@ -52,6 +53,7 @@ public:
 protected:
 	//other bones
 	vector<Bone*> bones;
+
 
 	void apply_pose_to_bones(Pose *pose);
 };

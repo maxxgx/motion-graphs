@@ -79,6 +79,7 @@ struct controls {
 	bool compute_running = false, compute_mograph = false;
 
 	// COntrols
+	bool move_character = false;
 	int current_frame_a = 1, current_frame_b = 1, current_frame_r = 1;
 	float speed = 1.f;
 	
@@ -134,7 +135,7 @@ PointLight lamp = PointLight();
 
 // Floor tiles pre-computed matrices
 vector<glm::mat4> tiles_mat;
-int grid_size = 20;
+int grid_size = 25;
 float tile_scale = 0.5f;
 float tile_offset = 2.f;
 
@@ -146,10 +147,14 @@ int k = 40;
 float progress = 0.f;
 float progress_mograph = 0.f;
 
+const float sk_offset_any_dir = 0.1f;
+const glm::vec3 sk_offset_left = glm::vec3(13.0f, 0.0f, 0.0f);
+const glm::vec3 sk_offset_right = glm::vec3(-13.0f, 0.0f, 0.0f);
+
 // Animation & skeleton
 string res_path = ROOT_DIR + "/resources/";
-string file_asf = res_path + "mocap/127/127.asf";
-string file_amc = res_path + "mocap/127/127_";
+string file_asf = res_path + "mocap/16/16.asf";
+string file_amc = res_path + "mocap/16/16_";
 //string file_asf = res_path + "mocap/14/14.asf";
 //string file_amc = res_path + "mocap/14/14_0";
 map<string, Animation*> anim_cache;
@@ -158,8 +163,8 @@ map<string, bool> anim_list_in_graph;
 
 // Loading mocap data: skeleton from .asf and animation (poses) from .amc
 Skeleton* sk = new Skeleton((char*)file_asf.c_str(), scale);
-string anim_a = (file_amc + "11.amc");
-string anim_b = (file_amc + "13.amc");
+string anim_a = (file_amc + "51.amc");
+string anim_b = (file_amc + "54.amc");
 PointCloud* PCs_a;
 PointCloud* PCs_b;
 vector<unique_ptr<Skeleton>> sk_frames;
@@ -387,7 +392,7 @@ int main()
 	map<string, vector<string>> dir_asf, dir_amc;
 	for (auto p:dir_files) {
 		for (string f:p.second) {
-			cout << f << endl;
+			// cout << f << endl;
 			if (f.find(".asf") != std::string::npos)
 				dir_asf[p.first].push_back(f);
 			else if (f.find(".amc") != std::string::npos)
@@ -395,8 +400,16 @@ int main()
 		}
 	}
 	string labeled = res_path + "mocap/" + "labeled/";
-	for (string &f:dir_files["labeled"]) {
-		anim_list.push_back(make_pair(labeled + f, get_anim(labeled + f)));
+	vector<string> files_to_add = {
+		labeled + "run_stop_16_08",
+		labeled + "walk_16_15",
+		labeled + "sneak_17_03",
+		labeled + "duck_slow_127_31",
+		labeled + "jump_up_down_49_03",
+		labeled + "jump_one_leg_49_03",
+		};
+	for (string &f:files_to_add) {
+		anim_list.push_back(make_pair(f + ".amc", get_anim(f + ".amc")));
 	}
 
 
@@ -450,7 +463,10 @@ int main()
 			}
 			ImGui::Checkbox("Show skeleton joints", &states.show_joints);
 			ImGui::Checkbox("Show skeleton bone segments", &states.show_bone_segment);
+			ImGui::Text("");
+			ImGui::Checkbox("Move character mode (WASD)", &states.move_character);
 			ImGui::Checkbox("Lock skeleton in place", &states.lock_skeleton);
+			ImGui::Text("");
 			ImGui::Checkbox("Show motion graph path", &states.show_mograph_path);
 			ImGui::Checkbox("Show motion graph current edge", &states.show_mograph_trav);
 			ImGui::End();
@@ -470,10 +486,16 @@ int main()
 			}
 			ImGui::PopStyleColor(2);
 			ImGui::SameLine();ImGui::Text("\t\t");ImGui::SameLine();
-			if (ImGui::Button("BLEND") ) {
-				vector<Pose*> pre_Ai = get_anim(anim_a)->getPosesInRange(0, states.current_frame_a-k-1);
-				vector<Pose*> after_Bj = get_anim(anim_b)->getPosesInRange(states.current_frame_b+k+1, get_anim(anim_b)->getNumberOfFrames());
-				Animation* blend = blending::blend_anim(get_anim(anim_a), get_anim(anim_b), states.current_frame_a, states.current_frame_b, k);
+
+			//TODO BLEND is broken... disable for now
+			if (ImGui::Button("BLEND") && false) {
+				Animation* cp_a = new Animation(*get_anim(anim_a));
+				Animation* cp_b = new Animation(*get_anim(anim_b));
+				cp_b->normalise(cp_a->getPoseAt(states.current_frame_a), states.current_frame_b);
+				vector<Pose*> pre_Ai = cp_a->getPosesInRange(0, states.current_frame_a-k-1);
+				vector<Pose*> after_Bj = cp_b->getPosesInRange(states.current_frame_b+k+1, get_anim(anim_b)->getNumberOfFrames());
+
+				Animation* blend = blending::blend_anim(cp_a, cp_b, states.current_frame_a, states.current_frame_b, k);
 				vector<Pose*> blend_poses = blend->getPosesInRange(1, blend->getNumberOfFrames());
 				pre_Ai.insert(pre_Ai.end(), blend_poses.begin(), blend_poses.end());
 				pre_Ai.insert(pre_Ai.end(), after_Bj.begin(), after_Bj.end());
@@ -516,6 +538,20 @@ int main()
 				ImGui::SameLine();
 				if (ImGui::ArrowButton("skip_frame_up", ImGuiDir_Right)) ++skip_frames;
 
+				ImGui::Text("Skeleton offset: x = %.2f, y = %.2f, z = %.2f", sk->root_offset.x, sk->root_offset.y, sk->root_offset.z);
+				ImGui::SameLine();
+				if (ImGui::ArrowButton("offset_left", ImGuiDir_Up)) {
+					sk->root_offset += sk_offset_left;
+				}
+				ImGui::SameLine();
+				if (ImGui::ArrowButton("off_set_right", ImGuiDir_Down)) {
+					sk->root_offset += sk_offset_right;
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Reset offset")) {
+					sk->root_offset = glm::vec3(0.f);
+				}
+
 				if (ImGui::Button("Snap skeleton pose")) {
 					bool play_temp = states.play;
 					states.play = true;
@@ -529,8 +565,11 @@ int main()
 					}
 					states.play = play_temp;
 				}
-				ImGui::PopButtonRepeat();
 				ImGui::SameLine();
+				if (sk_frames.size() > 0 && ImGui::Button("Pop snap")) {
+					sk_frames.pop_back();
+				}
+				ImGui::PopButtonRepeat();
 				if (ImGui::Button("Clear Snap")) {
 					sk_frames.clear();
 				}
@@ -560,7 +599,9 @@ int main()
 					// ftr_mograph = std::async(get_motion_graph);
 					// states.compute_mograph = true;
 					motion_graph = new mograph::MotionGraph(anim_list, sk, k, &progress_mograph);
-					graph_traversal = motion_graph->traverse_min_rand(states.threshold);
+					if (e == 1) graph_traversal = motion_graph->traverse_sequential(anim_list, states.threshold);
+					else  graph_traversal = motion_graph->traverse_min_rand(states.threshold);
+
 					motion_graph->set_head(graph_traversal.at(graph_traversal_index));
 					mograph_frame_to_edge.clear();
 					if (graph_traversal.size() > 0) {
@@ -603,6 +644,19 @@ int main()
 					}
 				}
 				ImGui::PopStyleColor(2);
+
+				if (motion_graph != NULL && ImGui::TreeNode("Graph metrics")) {
+					mograph::metrics met = motion_graph->get_metrics();
+
+					ImGui::Text("Distance: sum = %.2f, max = %.2f, min = %.2f,  avg = %.2f",
+						met.sum, met.max, met.min, met.avg);
+					ImGui::Text("\nEdge info: ");
+					ImGui::Text("\t-max edges per vertex: %d", met.max_num_edges);
+					ImGui::Text("\t-min edges per vertex: %d", met.min_num_edges);
+					ImGui::Text("\t-avg edges per vertex: %.2f", met.avg_num_edge_per_vertex);
+					ImGui::Text("Total: %d vertices and %d edges\n", met.num_vertex, met.num_tot_edges);
+					ImGui::TreePop();
+				}
 
 				if (graph_traversal.size() > 0 && ImGui::TreeNode("Traversal path")) {
 					float sum = 0.0f;
@@ -982,7 +1036,7 @@ void plot_line_between_p1_p2(glm::vec3 p1, glm::vec3 p2, Model line, Shader shad
 	line.Draw(shader);
 }
 
-void plot_mograph_edge(mograph::Vertex* src, mograph::Edge edge, map<mograph::Vertex*, int> v_idx, Model line, Shader shader, 
+void plot_mograph_edge(mograph::Vertex* src, mograph::Edge edge, map<string, int> v_idx, Model line, Shader shader, 
 		float thickness, float offset_x, float offset_y, float vertex_offset_h, float padding_top, float padding_left, float scale)
 		// mograph::Edge* head_edge = graph->get_head().second;
 		// float A = head_edge->get_frames().first;
@@ -1012,8 +1066,8 @@ void plot_mograph_edge(mograph::Vertex* src, mograph::Edge edge, map<mograph::Ve
 			B_scaled = B == edge.get_target()->get_anim()->getNumberOfFrames() ? B_scaled : (B+k) * scale * 2;
 	}
 
-	float tar_h_offset_1 = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[src];
-	float tar_h_offset_2 = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[edge.get_target()];
+	float tar_h_offset_1 = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[src->get_name()];
+	float tar_h_offset_2 = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[edge.get_target()->get_name()];
 	float x_pos_1 = offset_x+scale/2 + padding_left;
 	float x_pos_2 = offset_x+scale/2 + padding_left;
 	glm::vec3 p1 = glm::vec3(x_pos_1 + (float)A_scaled, tar_h_offset_1, 1.f);
@@ -1039,10 +1093,23 @@ void plot_motion_graph(mograph::MotionGraph* graph, vector<pair<mograph::Vertex*
 		// shader.setMat4("model", model);
 		// quad_mesh.Draw(shader);
 	
-	map<mograph::Vertex*, int> v_idx;
+	map<string, int> v_idx;
 	int idx = 0;
+	for (auto &s:anim_list) {
+		for (auto &p:graph->get_graph()) {
+			if(p.first->get_name() == s.first) {
+				v_idx[s.first] = idx; idx++;
+				break;
+			}
+		}
+	}
 	// store the vertex plot index
-	for (auto v_es:graph->get_graph()) { v_idx[v_es.first] = idx; idx++; };
+	for (auto v_es:graph->get_graph()) { 
+		if (v_idx.count(v_es.first->get_name()) == 0) {
+			v_idx[v_es.first->get_name()] = idx; idx++; 
+		}
+	}
+	
 
 	int padding_left = 200, padding_top = 200;
 	float vertex_offset_h = 200*scale;
@@ -1055,7 +1122,7 @@ void plot_motion_graph(mograph::MotionGraph* graph, vector<pair<mograph::Vertex*
 		shader.setVec3("objectColor", .6f, 0.6f, 0.6f);
 		int length_half = v->get_anim()->getNumberOfFrames() * scale;
 		float x_pos = offset_x+scale/2 + padding_left + length_half;
-		float y_pos = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[v];
+		float y_pos = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[v->get_name()];
 		glm::mat4 model = glm::mat4(1.0f);
 		model = glm::translate(model, glm::vec3(x_pos, y_pos, 0));
 		model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f) );
@@ -1098,10 +1165,10 @@ void plot_motion_graph(mograph::MotionGraph* graph, vector<pair<mograph::Vertex*
 			quad_mesh.Draw(shader);
 			
 			// Drawing the lines connecting the bars | from botton vertex to top vertex
-			if (v_idx[v] > 0) {
+			if (v_idx[v->get_name()] > 0) {
 				shader.setVec3("objectColor", .6f, 0.6f, 0.6f);
 				int B = e.get_frames().second * scale * 2;
-				float tar_h = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[e.get_target()];
+				float tar_h = offset_y+scale/2 + padding_top + vertex_offset_h * v_idx[e.get_target()->get_name()];
 				glm::vec3 p1 = glm::vec3(x_pos - length_half + (float)B, tar_h, 1.f);
 				glm::vec3 p2 = glm::vec3(x_pos - length_half + (float)A, y_pos, 1.f);
 				plot_line_between_p1_p2(p1, p2, line, shader, scale_line_narrow);	
@@ -1179,19 +1246,32 @@ void keyboardInput(GLFWwindow *window)
 	if ((glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS))
 		states.show_cloud = !states.show_cloud;
 
-	// WASD movement
-	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		camera.ProcessKeyboard(FORWARD, timings.delta_time);
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-		camera.ProcessKeyboard(BACKWARD, timings.delta_time);
-	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-		camera.ProcessKeyboard(LEFT, timings.delta_time);
-	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-		camera.ProcessKeyboard(RIGHT, timings.delta_time);
-	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-		camera.ProcessKeyboard(DOWN, timings.delta_time);
-	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-		camera.ProcessKeyboard(UP, timings.delta_time);
+	if (!states.move_character) {
+		// WASD movement for camera
+		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+			camera.ProcessKeyboard(FORWARD, timings.delta_time);
+		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+			camera.ProcessKeyboard(BACKWARD, timings.delta_time);
+		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+			camera.ProcessKeyboard(LEFT, timings.delta_time);
+		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+			camera.ProcessKeyboard(RIGHT, timings.delta_time);
+		if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+			camera.ProcessKeyboard(DOWN, timings.delta_time);
+		if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+			camera.ProcessKeyboard(UP, timings.delta_time);
+	}
+	else {
+	// WASD movement for camera
+		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+			sk->root_offset += glm::vec3(sk_offset_any_dir, 0.0f, 0.0f);
+		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+			sk->root_offset += glm::vec3(-sk_offset_any_dir, 0.0f, 0.0f);
+		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+			sk->root_offset += glm::vec3(0.0f, 0.0f, -sk_offset_any_dir);
+		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+			sk->root_offset += glm::vec3(0.0f, 0.0f, sk_offset_any_dir);
+	}
 
 	if (glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS)
 		states.show_GUI = !states.show_GUI;

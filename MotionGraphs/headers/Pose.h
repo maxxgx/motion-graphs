@@ -33,6 +33,7 @@ public:
 	void addSingle(string name, glm::quat q);
 
 	void set_pos(glm::vec3 pos);
+	void set_rot(string bone, glm::quat quat);
 
 	~Pose();
 

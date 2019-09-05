@@ -9,7 +9,10 @@ Pose::Pose(const Pose &pose)
 {
 	this->root_pos = pose.root_pos;
 	this->frame = pose.frame;
-	this->transf = pose.transf;
+	for (auto t:pose.transf) {
+		this->transf[t.first] = t.second;
+	}
+	// this->transf = pose.transf;
 }
 
 glm::vec3 Pose::getRootPos()
@@ -69,6 +72,11 @@ void Pose::addSingle(string name, glm::quat q)
 void Pose::set_pos(glm::vec3 pos) 
 {
 	this->root_pos = pos;
+}
+
+void Pose::set_rot(string bone, glm::quat quat)
+{
+	this->transf[bone] = quat;
 }
 
 Pose::~Pose()

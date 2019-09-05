@@ -19,12 +19,21 @@ namespace mograph {
         int num_transitions=0;
     } path_metrics;
 
+
+    typedef struct metrics{
+        float avg=0.0f, max=0.0f, min=-1000.0f, sum=0.0f;
+        int num_tot_edges=0, num_vertex=0;
+        int max_num_edges=0, min_num_edges=-1;
+        float avg_num_edge_per_vertex=0.f;
+    } metrics;
+
     class Vertex {
     public:
         Vertex(string name, Animation* motion, string action = "Undefined");
         Animation* get_anim();
         string get_name();
         string get_action();
+        void set_anim(Animation* anim);
 
     private:
         string v_name;
@@ -55,6 +64,8 @@ namespace mograph {
         // Animation* motion; // either a transition between motion or piece of original clip
     };
 
+    path_metrics get_path_metrics(vector<pair<Vertex*, Edge>> path);
+    
     class MotionGraph {
     public:
         MotionGraph(vector<pair<string,Animation*>> anim_list, Skeleton* sk, int k, float *progress);
@@ -66,6 +77,7 @@ namespace mograph {
         void reset_head();
 
         Animation* edge2anim(Vertex* src, Edge e);
+        Animation* edge2anim(Vertex* src, Edge e, Animation* A, Animation* B);
         Animation* edge2anim(vector<pair<Vertex*, Edge>> edges, map<int, int> *frame_to_edge);
         vector<pair<Vertex*, Edge>> traverse_min_rand(float threshold);
         vector<pair<Vertex*, Edge>> traverse_sequential(vector<pair<string,Animation*>> anim_list, float threshold);
@@ -73,6 +85,8 @@ namespace mograph {
         void update_motions(vector<pair<string,Animation*>> anim_list, Skeleton* sk, float *progress);
         void add_motions(vector<pair<string,Animation*>> anim_list, Skeleton* sk, float *progress);
         void remove_motions(vector<string> anim_list_to_remove);
+
+        metrics get_metrics();
 
         ~MotionGraph() {
             delete head.first;
@@ -93,5 +107,8 @@ namespace mograph {
         int k;
 
         double tot_cpu_time = 0.0f;
+        metrics graph_info;
+        
+        void update_graph_info();
     };
 }

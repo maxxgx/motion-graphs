@@ -56,7 +56,11 @@ Animation::Animation(Skeleton* sk, char* amc_filename)
 
 Animation::Animation(vector<Pose*> ps)
 {
-	this->poses = ps;
+	this->poses.reserve(ps.size());
+	for (auto &p:ps) {
+		// Pose* pose = new Pose(p->getPoseFrame());
+		this->poses.emplace_back(new Pose(*p));
+	}
 }
 
 Animation::Animation(const Animation &anim)
@@ -151,17 +155,31 @@ void Animation::reset()
 
 void Animation::normalise(Pose* n_pose, long frame)
 {
+	string root = "root";
 	// normalise all to frame k
 	if (frame >= 0 && frame < poses.size()) {
 		glm::vec3 j_pos_relative = this->poses.at(frame)->getRootPos();
+		glm::quat j_quat_relative = this->poses.at(frame)->getBoneTrans(root);
+		glm::quat n_quat = n_pose->getBoneTrans(root);
+		glm::vec3 euler_ang = glm::eulerAngles(n_quat);
+		glm::mat4 R = glm::mat4(1.f);
+		R = glm::rotate(R, euler_ang.y, glm::vec3(0.0f, 1.f, 0.f));
+		glm::quat xz_n_quat = glm::quat_cast(R);
+
+		j_pos_relative = glm::vec3(glm::mat4_cast(n_quat) * glm::vec4(j_pos_relative, 1.f));
 		for (long i = 0; i < poses.size(); i++) {
-			glm::vec3 pos;
-			if (i <= frame) {
-				pos = n_pose->getRootPos() - (j_pos_relative - this->poses.at(i)->getRootPos());
-			} else {
-				pos = n_pose->getRootPos() - (j_pos_relative - this->poses.at(i)->getRootPos());
-			}
-			poses.at(i)->set_pos(pos);
+			glm::vec3 old_pos = this->poses.at(i)->getRootPos();
+			glm::vec3 pos = glm::vec3(glm::mat4_cast(n_quat) * glm::vec4(old_pos, 1.f));
+			// if (i <= frame) {
+			// 	pos = n_pose->getRootPos() + (j_pos_relative - this->poses.at(i)->getRootPos());
+			// } else 
+			// 	pos = n_pose->getRootPos() - (j_pos_relative - this->poses.at(i)->getRootPos());
+			pos = n_pose->getRootPos() - (j_pos_relative - pos);
+			poses.at(i)->set_pos(glm::vec3(pos.x, old_pos.y, pos.z));
+
+			glm::quat qa = this->poses.at(i)->getBoneTrans(root);
+			glm::quat quat = glm::normalize(qa * xz_n_quat);
+			poses.at(i)->set_rot(root, quat);
 		}
 	} else {
 		cout << "Error: Aniamtion: normalise(). Frame out of range.";

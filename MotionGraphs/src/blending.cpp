@@ -89,12 +89,12 @@ namespace blending {
             int p = i*100/num_frames_a;
             if (p != perc) {
                 cout << "." << flush;
-                if (p % 10 == 0 && p != perc) cout << "\r" << ploffset << ".........." << p << "%";
+                cout << "\r" << ploffset << ".........." << p << "%.........";
             }
             perc = p;
         }
         double t = glfwGetTime() - start_time;
-        cout << "time = " << t * 1000 << "s" << endl;
+        cout << "time = " << t * 1000 << " ms" << endl;
         
         perc = 0;
         cout << ploffset <<  "Matrix computation..." << endl;
@@ -133,13 +133,13 @@ namespace blending {
             *progress = i/num_frames_a;
             int p = i*100/num_frames_a;
             if (p != perc) {
-                cout << "." << flush;
                 if (p % 10 == 0 && p != perc) cout << "\r" << ploffset << ".........." << p << "%";
+                cout << "." << flush;
             }
             perc = p;
         }
         t = glfwGetTime() - start_time;
-        cout << "time = " << t * 1000 << "s" << endl;
+        cout << "time = " << t * 1000 << " ms" << endl;
 
         // for (auto c_a:cloud_a_total) delete c_a;
         // for (auto c_b:cloud_b_total) delete c_b;

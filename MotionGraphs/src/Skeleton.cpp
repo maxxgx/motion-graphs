@@ -228,6 +228,7 @@ void Skeleton::apply_pose(Pose* pose)
 		// new root coords
 		//cout << "getting pose name " << name << "\n";
 		glm::vec3 dirvec = glm::vec3(pose->getRootPos());
+		dirvec += this->root_offset;
 		dir[0] = dirvec.x;
 		dir[1] = dirvec.y;
 		dir[2] = dirvec.z;

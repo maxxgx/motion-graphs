@@ -32,6 +32,11 @@ namespace mograph {
         return this->v_action;
     }
 
+    void Vertex::set_anim(Animation* anim)
+    {
+        this->anim = anim;
+    }
+
     Vertex* Edge::get_target()
     {
         return this->target;
@@ -101,6 +106,29 @@ namespace mograph {
     {
         head = head_init_copy;
     }
+    
+    void MotionGraph::update_graph_info()
+    {
+        metrics info;
+        for (auto &p:G) {
+            info.num_vertex += 1;
+            int num_edges_per_vertex = 0;
+            for (auto &e:p.second) {
+                float d = e.get_weight();
+                // graph metrics info
+                info.num_tot_edges += 1;
+                if (d > info.max) info.max = d;
+                if (d < info.min or info.min < -10.f) info.min = d;
+                if (d > 0.0f) info.sum += d;
+                num_edges_per_vertex++;
+            }
+            if (num_edges_per_vertex > info.max_num_edges) info.max_num_edges = num_edges_per_vertex;
+            if (num_edges_per_vertex < info.min_num_edges || info.min_num_edges==-1) info.min_num_edges = num_edges_per_vertex;
+        }
+        info.avg = info.sum / info.num_tot_edges;
+        info.avg_num_edge_per_vertex = info.num_tot_edges / info.num_vertex;
+        this->graph_info = info;
+    }
 
     MotionGraph::MotionGraph(vector<pair<string,Animation*>> anim_list, Skeleton* sk, int k, float *progress)
     {
@@ -115,6 +143,7 @@ namespace mograph {
             vert_map[A.first] = new Vertex(A.first, A.second);
             if (head.first == nullptr) head.first = vert_map[A.first];
             cout << ploffset << "Adding vertex " << A.first.substr(A.first.find_last_of("/")) <<endl;
+            this->graph_info.num_vertex += 1;
         }
         cout << ploffset << "Added " << vert_map.size() << " vertices..." << endl;
 
@@ -186,6 +215,7 @@ namespace mograph {
         //         // int j = e.get_frames().second;
         //     }
         // }
+        this->update_graph_info();
         head_init_copy = head;
 
         tot_cpu_time = glfwGetTime() - start_time;
@@ -243,6 +273,13 @@ namespace mograph {
                         Edge e_2(vert_map[A.first], l.second, l.first, d);
                         edges_b.push_back(e_2);
 
+                        // graph metrics info
+                        this->graph_info.num_tot_edges += 2;
+                        if (d > this->graph_info.max) this->graph_info.max = d;
+                        if (d < this->graph_info.min or this->graph_info.min < -10.f) this->graph_info.min = d;
+                        if (d > 0.0f) this->graph_info.sum += d;
+                        
+
                         cout << ploffset << "\tEdge " << c << ": target = " 
                             << e.get_target()->get_name().substr(e.get_target()->get_name().find_last_of("/"))
                             << " | i-j = " << e.get_frames().first << "-" << e.get_frames().second
@@ -272,6 +309,8 @@ namespace mograph {
         //         // int j = e.get_frames().second;
         //     }
         // }
+
+        this->update_graph_info();
 
         tot_cpu_time += glfwGetTime() - start_time;
         cout << ploffset << "CPU time = " << glfwGetTime() - start_time << "s (total = " << tot_cpu_time << "s) | total numer of frames = " << num_total_frames << endl;
@@ -318,6 +357,8 @@ namespace mograph {
                 id++;
             }
         }
+
+        this->update_graph_info();
 
         cout << ploffset << "Total edges erased: " << num_erase << endl;
 
@@ -370,18 +411,47 @@ namespace mograph {
         }
     }
 
+    Animation* MotionGraph::edge2anim(Vertex* src, Edge e, Animation* A, Animation* B)
+    {
+        Vertex* tar = e.get_target();
+
+        int i = e.get_frames().first;
+        int j = e.get_frames().second;
+        
+        // same animation 
+        if (tar == src) {
+            Animation* gap = new Animation(B->getPosesInRange(i,j));
+            cout << "Not Blend: gap anim size is " << gap->getNumberOfFrames() << endl;
+            return gap;
+        } else {
+            return blending::blend_anim(A, B, i, j, k);
+        }
+    }
+
     Animation* MotionGraph::edge2anim(vector<pair<Vertex*, Edge>> edges, map<int, int> *frame_to_edge)
     {
+        map<Vertex*, Animation*> anim_map;
+        for (auto &s_e:edges) {
+            if (anim_map.count(s_e.first) == 0) {
+                anim_map[s_e.first] = new Animation(*s_e.first->get_anim());
+            }
+        }
         vector<Pose*> poses;
         int id = 0;
         for (auto src_edge:edges) {
             vector<Pose*> cur_poses = edge2anim(src_edge.first, src_edge.second)->getAllPoses();
+            // vector<Pose*> cur_poses = edge2anim(src_edge.first, src_edge.second, A, B)->getAllPoses();
             for (int i=poses.size(); i < poses.size()+cur_poses.size(); i++) {
                 frame_to_edge->insert_or_assign(i, id);
             }
             poses.insert(end(poses), begin(cur_poses), end(cur_poses));
             id++;
         }
+
+        for (auto &s_e:edges) {
+            s_e.first->set_anim(anim_map[s_e.first]);
+        }
+
         Animation* anim = new Animation(poses);
         return anim;
     }
@@ -403,6 +473,11 @@ namespace mograph {
         }
         m.avg = m.sum / (float)m.num_transitions;
         return m;
+    }
+
+    metrics MotionGraph::get_metrics()
+    {
+        return this->graph_info;
     }
 
     void print_traversal_path(vector<pair<Vertex*, Edge>> path, string path_name)
