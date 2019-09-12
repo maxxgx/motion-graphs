@@ -15,7 +15,7 @@ make -j8
 ```
 Run the executable:
 ```
-./main
+./bin/main/main
 ```
 ## Linux (Ubuntu)
 Install, if you haven't already, CMake, Git, and GCC as root:
