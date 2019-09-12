@@ -10,7 +10,7 @@ Human motion synthesis from motion capture data ([CMU](http://mocap.cs.cmu.edu))
 - **play animation**: space bar.
 
 # How to build and run
-The code is derived from the [LearnOpenGL](https://github.com/JoeyDeVries/LearnOpenGL) repository, and share much of the basic structure.
+The code is derived from the [LearnOpenGL](https://github.com/JoeyDeVries/LearnOpenGL) repository, and share much of the basic structure. Use Linux for better performance.
 ## Mac OS X
 Building on Mac OS X is fairly simple:
 ```
