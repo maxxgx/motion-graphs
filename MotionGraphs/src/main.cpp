@@ -194,6 +194,10 @@ int main()
 	GLFWvidmode *primary_mode = (GLFWvidmode*)glfwGetVideoMode(glfwGetPrimaryMonitor());
 	fullscreen_window.width = primary_mode->width; 
 	fullscreen_window.height = primary_mode-> height;
+    #ifdef __APPLE__
+        fullscreen_window.width *= 2;
+        fullscreen_window.height *= 2;
+    #endif
 	curr_window.width = fullscreen_window.width;
 	curr_window.height = fullscreen_window.height;
 	init_window = curr_window;
