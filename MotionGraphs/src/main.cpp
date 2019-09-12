@@ -261,8 +261,10 @@ int main()
     // - Read 'misc/fonts/README.txt' for more instructions and details.
     // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
     // io.Fonts->AddFontDefault();
+    #ifdef __APPLE__
+        io.Fonts->AddFontFromFileTTF("../resources/fonts/Cousine-Regular.ttf", 14.0f);
+    #endif
     io.Fonts->AddFontFromFileTTF("../resources/fonts/Cousine-Regular.ttf", 20.0f);
-	io.Fonts->AddFontFromFileTTF("../resources/fonts/Cousine-Regular.ttf", 26.0f);
     io.Fonts->AddFontFromFileTTF("../resources/fonts/Roboto-Medium.ttf", 32.0f);
     io.Fonts->AddFontFromFileTTF("../resources/fonts/DroidSans.ttf", 32.0f);
     io.Fonts->AddFontFromFileTTF("../resources/fonts/ProggyTiny.ttf", 20.0f);
@@ -407,8 +409,8 @@ int main()
 	vector<string> files_to_add = {
 		//labeled + "run_stop_16_08",
 		labeled + "walk_16_15",
-		labeled + "sneak_17_03",
-		labeled + "duck_slow_127_31",
+        labeled + "sneak_17_03",
+//        labeled + "duck_slow_127_31",
 		//labeled + "jump_up_down_49_03",
 		//labeled + "jump_one_leg_49_03",
 		};
