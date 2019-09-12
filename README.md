@@ -42,7 +42,7 @@ Finally:
 ./main
 ```
 ## Windows
-Currently, only Visual Studio 17 is supported. Change branch to dev-vs to access the working VS solution:
+Currently, windows is not fully supported. However, an early demo version can be accessed with Visual Studio 17. Change branch to dev-vs to access the working VS solution:
 ```
 git checkout dev-vs
 ```
@@ -60,3 +60,11 @@ To setup the VS solution, add the following in project properties:
 ```
 GLFW_INCLUDE_NONE
 ```
+# Controls and shortcuts
+## Move camera
+- **camera**: hold left mouse button
+- **move**: W, A, S, D.
+- **fly up, down**: E, Q.
+- **hide GUI**: U.
+- **show pointcloud**: C.
+- **play animation**: space bar.
