@@ -103,6 +103,18 @@ set(NAME "main")
 add_executable(${NAME} ${SOURCES} ${PROJECT_HEADERS} ${SHADERS})
 target_link_libraries(${NAME} ${LIBS})
 
+
+if(WIN32)
+	set_target_properties(${NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}")
+elseif(UNIX AND NOT APPLE)
+        set_target_properties(${NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
+elseif(APPLE)
+        set_target_properties(${NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
+        set_target_properties(${NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}")
+        set_target_properties(${NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}")
+endif(WIN32)
+
+
 foreach(SHADER ${SHADERS})
     if(WIN32)
         # configure_file(${SHADER} "test")
