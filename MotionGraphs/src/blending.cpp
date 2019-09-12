@@ -208,12 +208,20 @@ namespace blending {
 
     vector<pair<int,int>> find_local_minima(vector<float> D, int w, int h)
     {
+        string ploffset = "||\t|\t";
+        int perc = 0;
         vector<pair<int,int>> minimas;
         for (int i = 0; i < h; i++) {
             for (int j = 0; j < w; j++)
                 if (is_local_minima(D, h, w, i*w + j)) {
                     minimas.push_back(make_pair(i,j));
                 }
+            int p = i*100/h;
+            if (p != perc) {
+                cout << "." << flush;
+                cout << "\r" << ploffset << ".........." << p << "%.........";
+            }
+            perc = p;
         }
         return minimas;
     }
