@@ -167,7 +167,7 @@ namespace mograph {
                         cout << ploffset << " - ERROR: dist_mat size is different than num of frame" << endl;
                     }
                     
-                    cout << ploffset << "Finding local minima: ";
+                    cout << ploffset << "Finding local minima: " << endl;
                     vector<pair<int,int>> local_minimas = blending::find_local_minima(dist_mat_range.first, size_b, size_a);
                     cout << " found " << local_minimas.size() << " points" << endl;
 
