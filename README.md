@@ -1,6 +1,14 @@
 # motion-graphs
 Human motion synthesis from motion capture data ([CMU](http://mocap.cs.cmu.edu)) in OpenGL Core.
 
+# Controls and shortcuts
+- **camera**: hold left mouse button
+- **move**: W, A, S, D.
+- **fly up, down**: E, Q.
+- **hide GUI**: U.
+- **show pointcloud**: C.
+- **play animation**: space bar.
+
 # How to build and run
 The code is derived from the [LearnOpenGL](https://github.com/JoeyDeVries/LearnOpenGL) repository, and share much of the basic structure.
 ## Mac OS X
@@ -60,10 +68,3 @@ To setup the VS solution, add the following in project properties:
 ```
 GLFW_INCLUDE_NONE
 ```
-# Controls and shortcuts
-- **camera**: hold left mouse button
-- **move**: W, A, S, D.
-- **fly up, down**: E, Q.
-- **hide GUI**: U.
-- **show pointcloud**: C.
-- **play animation**: space bar.
