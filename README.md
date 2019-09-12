@@ -61,7 +61,6 @@ To setup the VS solution, add the following in project properties:
 GLFW_INCLUDE_NONE
 ```
 # Controls and shortcuts
-## Move camera
 - **camera**: hold left mouse button
 - **move**: W, A, S, D.
 - **fly up, down**: E, Q.
