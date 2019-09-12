@@ -1,4 +1,4 @@
-# motion-graphs (WIP)
+# motion-graphs
 Human motion synthesis from motion capture data ([CMU](http://mocap.cs.cmu.edu)) in OpenGL Core.
 
 # How to build and run
@@ -6,7 +6,7 @@ The code is derived from the [LearnOpenGL](https://github.com/JoeyDeVries/LearnO
 ## Mac OS X
 Building on Mac OS X is fairly simple:
 ```
-brew install cmake assimp glm glfw
+brew install cmake assimp glm glfw glew
 cd MotionGraphs
 mkdir build
 cd build
