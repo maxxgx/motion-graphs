@@ -13,6 +13,10 @@ cd build
 cmake ../.
 make -j8
 ```
+Run the executable:
+```
+./main
+```
 ## Linux (Ubuntu)
 Install, if you haven't already, CMake, Git, and GCC as root:
 ```
