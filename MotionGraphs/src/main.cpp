@@ -405,12 +405,12 @@ int main()
 	}
 	string labeled = res_path + "mocap/" + "labeled/";
 	vector<string> files_to_add = {
-		labeled + "run_stop_16_08",
+		//labeled + "run_stop_16_08",
 		labeled + "walk_16_15",
 		labeled + "sneak_17_03",
 		labeled + "duck_slow_127_31",
-		labeled + "jump_up_down_49_03",
-		labeled + "jump_one_leg_49_03",
+		//labeled + "jump_up_down_49_03",
+		//labeled + "jump_one_leg_49_03",
 		};
 	for (string &f:files_to_add) {
 		anim_list.push_back(make_pair(f + ".amc", get_anim(f + ".amc")));
