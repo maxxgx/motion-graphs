@@ -28,14 +28,14 @@ Run the executable:
 ```
 ./bin/main/main
 ```
-## Linux (Ubuntu)
+## Linux (Ubuntu, also works under WSLg)
 Install, if you haven't already, CMake, Git, and GCC as root:
 ```
 sudo apt-get install g++ cmake git
 ```
 And then get the required packages:
 ```
-sudo apt-get install libsoil-dev libglm-dev libassimp-dev libglew-dev libglfw3-dev libxinerama-dev libxcursor-dev  libxi-dev
+sudo apt-get install libsoil-dev libglm-dev libassimp-dev libglew-dev libglfw3-dev libxinerama-dev libxcursor-dev  libxi-dev libxxf86vm-dev
 ``` 
 Create the build directory inside the project and navigate to it:
 ```
