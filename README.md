@@ -2,7 +2,7 @@
 This project implements motion graphs. A technique for human motion synthesis from motion capture data.
 It is developed using OpenGL Core, and uses the [CMU](http://mocap.cs.cmu.edu) mocap data.
 
-If you want to learn more, please refer to my [dissertation](https://sudohead.github.io/posts/2019_motion_synthesis/msc_dissertation.pdf).
+If you want to learn more, please refer to my dissertation ["Animation of 3D avatars"](https://github.com/maxxgx/motion-graphs/blob/master/msc_animation_of_3d_avatars.pdf).
 
 # Controls and shortcuts
 - **camera**: hold left mouse button
